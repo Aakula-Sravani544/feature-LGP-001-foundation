@@ -52,10 +52,19 @@ def get_driver():
         options.add_argument("--disable-infobars")
         options.add_argument("--disable-notifications")
         options.add_argument("--remote-debugging-port=9222")
-        # Extreme RAM Optimization for Render
         options.add_argument('--js-flags="--max-old-space-size=256"')
         options.add_argument("--window-size=1280,720")
+        options.add_argument("--blink-settings=imagesEnabled=false") # Block images at engine level
         options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36")
+        
+        # Extreme RAM savings: Block images, CSS, fonts, etc.
+        prefs = {
+            "profile.managed_default_content_settings.images": 2,
+            "profile.managed_default_content_settings.stylesheets": 2,
+            "profile.managed_default_content_settings.fonts": 2,
+            "profile.default_content_setting_values.notifications": 2
+        }
+        options.add_experimental_option("prefs", prefs)
         
         render_path = "/opt/render/project/.render/chrome/opt/google/chrome/google-chrome"
         docker_path = "/usr/bin/google-chrome"
