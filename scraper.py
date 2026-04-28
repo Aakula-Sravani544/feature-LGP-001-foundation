@@ -41,31 +41,32 @@ def kill_chrome():
 def get_driver():
     kill_chrome()
     try:
-        log("Launching Production Browser...")
+        log("Launching Turbo-Optimized Browser...")
         options = webdriver.ChromeOptions()
         options.add_argument("--headless=new")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-gpu")
         options.add_argument("--disable-software-rasterizer")
+        options.add_argument("--disable-extensions")
+        options.add_argument("--disable-infobars")
+        options.add_argument("--disable-notifications")
         options.add_argument("--remote-debugging-port=9222")
-        options.add_argument("--window-size=1920,1080")
+        # Extreme RAM Optimization for Render
+        options.add_argument('--js-flags="--max-old-space-size=256"')
+        options.add_argument("--window-size=1280,720")
         options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36")
         
-        # 1. Check for render-build.sh path
         render_path = "/opt/render/project/.render/chrome/opt/google/chrome/google-chrome"
-        # 2. Check for Docker path
         docker_path = "/usr/bin/google-chrome"
         
         if os.path.exists(render_path):
-            log(f"Found Chrome at {render_path}")
             options.binary_location = render_path
         elif os.path.exists(docker_path):
-            log(f"Found Chrome at {docker_path}")
             options.binary_location = docker_path
             
-        # Selenium 4.10+ handles drivers automatically! No Service() needed with ChromeDriverManager
         driver = webdriver.Chrome(options=options)
+        driver.set_page_load_timeout(30)
         return driver
     except Exception as e:
         log(f"Browser launch failed: {str(e)}")
@@ -189,7 +190,7 @@ def run_scraper(query, target_count=100):
                 time.sleep(0.5)
                 try: card.click()
                 except: driver.execute_script("arguments[0].click()", card)
-                time.sleep(3.5) # Optimized wait
+                time.sleep(2.5) # Turbo speed: reduced from 4s
 
                 def get_val(selectors, attr=None):
                     for sel in selectors:
