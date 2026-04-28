@@ -52,9 +52,17 @@ def get_driver():
         options.add_argument("--window-size=1920,1080")
         options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36")
         
-        # In Docker, Chrome is installed at /usr/bin/google-chrome
-        if os.path.exists("/usr/bin/google-chrome"):
-            options.binary_location = "/usr/bin/google-chrome"
+        # 1. Check for render-build.sh path
+        render_path = "/opt/render/project/.render/chrome/opt/google/chrome/google-chrome"
+        # 2. Check for Docker path
+        docker_path = "/usr/bin/google-chrome"
+        
+        if os.path.exists(render_path):
+            log(f"Found Chrome at {render_path}")
+            options.binary_location = render_path
+        elif os.path.exists(docker_path):
+            log(f"Found Chrome at {docker_path}")
+            options.binary_location = docker_path
             
         service = Service(ChromeDriverManager().install())
         driver = webdriver.Chrome(service=service, options=options)
