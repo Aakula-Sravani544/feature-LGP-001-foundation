@@ -1,9 +1,8 @@
 streamlit
 pandas
+requests
 gspread
 google-auth
+selenium>=4.10.0
 python-dotenv
-selenium
 webdriver-manager
-undetected-chromedriver
-openpyxl

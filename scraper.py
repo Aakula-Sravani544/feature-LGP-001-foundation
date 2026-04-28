@@ -64,8 +64,8 @@ def get_driver():
             log(f"Found Chrome at {docker_path}")
             options.binary_location = docker_path
             
-        service = Service(ChromeDriverManager().install())
-        driver = webdriver.Chrome(service=service, options=options)
+        # Selenium 4.10+ handles drivers automatically! No Service() needed with ChromeDriverManager
+        driver = webdriver.Chrome(options=options)
         return driver
     except Exception as e:
         log(f"Browser launch failed: {str(e)}")
