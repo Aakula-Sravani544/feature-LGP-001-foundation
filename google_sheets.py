@@ -137,12 +137,14 @@ def save_to_google_sheets(leads_data):
 
 def check_connection():
     """Simplified check for UI badge"""
+    global LAST_ERROR
     try:
         credentials = get_credentials()
         if not credentials: return False
         gspread.authorize(credentials)
         return True
-    except:
+    except Exception as e:
+        LAST_ERROR = f"Handshake Error: {str(e)}"
         return False
 
 def get_last_error():
