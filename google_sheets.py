@@ -29,19 +29,23 @@ def get_credentials():
         
     if env_creds:
         try:
-            # Troubleshooting: Report string length and start/end if there's an error
+            # Troubleshooting: Report string length
             str_len = len(env_creds)
             
-            # Handle potential escaped newlines
-            cleaned_json = env_creds.replace('\\n', '\n')
+            # DEEP CLEAN: Handle literal newlines that break JSON
+            # This converts actual 'Enter' keys into the '\n' string
+            cleaned_input = env_creds.replace('\r\n', '\\n').replace('\n', '\\n').replace('\r', '\\n')
+            
+            # If the user already had '\n' as text, the above made it '\\n'. Let's fix that.
+            cleaned_input = cleaned_input.replace('\\\\n', '\\n')
             
             # Try standard JSON first
             try:
-                creds_dict = json.loads(cleaned_json)
+                creds_dict = json.loads(cleaned_input)
             except Exception as json_e:
                 # Fallback for single-quoted "JSON-like" strings
                 try:
-                    creds_dict = ast.literal_eval(cleaned_json)
+                    creds_dict = ast.literal_eval(cleaned_input)
                 except Exception as ast_e:
                     LAST_ERROR = f"Format Error (Len: {str_len}): JSON fail ({str(json_e)}), AST fail ({str(ast_e)}). Start: {env_creds[:10]}... End: {env_creds[-10:]}"
                     return None
