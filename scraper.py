@@ -89,11 +89,41 @@ def run_scraper(query, target_count=100):
     try:
         wait = WebDriverWait(driver, 15)
         log("Opening Maps...")
-        
         encoded_query = urllib.parse.quote_plus(query)
         driver.get(f"https://www.google.com/maps/search/{encoded_query}")
-        time.sleep(5)
         
+        # --- NEW: Handle Cookie Consent / "Accept All" ---
+        time.sleep(3)
+        consent_selectors = [
+            "form[action*='consent'] button",
+            "button[aria-label='Accept all']",
+            "button[aria-label='Agree']",
+            ".VfPpkd-LgbsBe[aria-label*='Accept']"
+        ]
+        for sel in consent_selectors:
+            try:
+                btn = driver.find_element(By.CSS_SELECTOR, sel)
+                btn.click()
+                log("Bypassed Cookie Consent.")
+                time.sleep(2)
+                break
+            except: continue
+
+        # Ensure we are on the search page after potential redirect
+        if "consent" in driver.current_url:
+            log("Still on consent page, retrying search...")
+            driver.get(f"https://www.google.com/maps/search/{encoded_query}")
+            time.sleep(5)
+
+        log("Waiting for results to load...")
+        try:
+            # Wait until at least one card is present
+            wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "div.Nv2PK, div[role='article']")))
+        except:
+            log("Timeout waiting for cards. Retrying page load...")
+            driver.refresh()
+            time.sleep(7)
+
         log("Collecting result cards...")
         last_count = 0
         attempts = 0
