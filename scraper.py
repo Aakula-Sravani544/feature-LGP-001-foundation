@@ -8,6 +8,7 @@ import hashlib
 import urllib.parse
 from datetime import datetime
 import pandas as pd
+import requests
 
 # Database & Sheets
 import database
@@ -30,101 +31,59 @@ def data_out(obj):
 
 def kill_chrome():
     try:
-        log("Cleaning up existing Chrome sessions...")
         if os.name == 'nt':
             os.system('taskkill /f /im chrome.exe /im chromedriver.exe /im google-chrome.exe >nul 2>&1')
         else:
             os.system('pkill -f chrome > /dev/null 2>&1')
-            os.system('pkill -f chromedriver > /dev/null 2>&1')
         time.sleep(2)
     except: pass
 
 def get_driver():
     kill_chrome()
-    
-    # Try Standard Selenium Headless FIRST (Most stable in subprocesses)
     try:
-        log("Launching browser... (Headless Standard Selenium)")
+        log("Launching Production Browser...")
         options = webdriver.ChromeOptions()
         options.add_argument("--headless=new")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-gpu")
-        options.add_argument("--start-maximized")
         options.add_argument("--window-size=1920,1080")
         options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36")
         
         service = Service(ChromeDriverManager().install())
         driver = webdriver.Chrome(service=service, options=options)
-        log("Headless Browser Ready")
         return driver
     except Exception as e:
-        log(f"Headless failed: {str(e).splitlines()[0]}")
+        log(f"Browser launch failed: {str(e)}")
+        return None
 
-    # Fallback to UC if Headless fails
+def extract_email(website):
+    if not website or website == "" or "google.com" in website:
+        return ""
     try:
-        import undetected_chromedriver as uc
-        log("Attempting UC Browser as fallback...")
-        options = webdriver.ChromeOptions()
-        options.add_argument("--no-sandbox")
-        options.add_argument("--disable-dev-shm-usage")
-        driver = uc.Chrome(options=options, use_subprocess=True)
-        return driver
-    except Exception as e:
-        log(f"UC failed: {str(e).splitlines()[0]}")
-        
-    return None
-
-def parse_address(full_address):
-    area, city, state, pincode = "N/A", "N/A", "N/A", "N/A"
-    if not full_address or full_address == "N/A": return area, city, state, pincode
-    
-    try:
-        pincode_match = re.search(r'(\d{6})', full_address)
-        if pincode_match: pincode = pincode_match.group(1)
-        
-        parts = [p.strip() for p in full_address.split(',')]
-        if len(parts) >= 2:
-            city_state = parts[-2].split()
-            if len(city_state) >= 2:
-                city = city_state[0]
-                state = city_state[1]
-            else:
-                city = parts[-2]
-        if len(parts) >= 3:
-            area = parts[-3]
-    except: pass
-    return area, city, state, pincode
-
-def extract_lat_long(url):
-    lat, lng = "N/A", "N/A"
-    try:
-        match = re.search(r'!3d([\d\.\-]+)!4d([\d\.\-]+)', url)
-        if match: 
-            lat, lng = match.group(1), match.group(2)
-        else:
-            match = re.search(r'@([\d\.\-]+),([\d\.\-]+)', url)
-            if match:
-                lat, lng = match.group(1), match.group(2)
-    except: pass
-    return lat, lng
+        response = requests.get(website, timeout=5, headers={"User-Agent": "Mozilla/5.0"})
+        emails = re.findall(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', response.text)
+        filtered = [e for e in emails if not e.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp'))]
+        return filtered[0] if filtered else ""
+    except:
+        return ""
 
 def run_scraper(query, target_count=100):
     driver = get_driver()
     if not driver: return
 
     try:
-        wait = WebDriverWait(driver, 20)
+        wait = WebDriverWait(driver, 15)
         log("Opening Maps...")
         
         encoded_query = urllib.parse.quote_plus(query)
-        search_url = f"https://www.google.com/maps/search/{encoded_query}"
-        driver.get(search_url)
+        driver.get(f"https://www.google.com/maps/search/{encoded_query}")
         time.sleep(5)
         
-        log("Searching...")
-
-        # Wait for results panel
+        log("Collecting result cards...")
+        last_count = 0
+        attempts = 0
+        
         panel = None
         for sel in ["div[role='feed']", "div.m6QErb.DxyBCb", "div[aria-label*='Results']"]:
             try:
@@ -132,51 +91,32 @@ def run_scraper(query, target_count=100):
                 if panel: break
             except: continue
             
-        if not panel:
-            log("No results panel. Will use body scroll fallback.")
-            try:
-                panel = driver.find_element(By.TAG_NAME, "body")
-            except: pass
-
-        # Scroll logic
-        last_count = 0
-        no_new_count = 0
-        start_time = time.time()
-        
-        if panel:
-            # Max 10 mins
-            while time.time() - start_time < 600:
-                cards = driver.find_elements(By.CSS_SELECTOR, "div.Nv2PK, div[role='article'], a.hfpxzc")
-                log(f"Loaded {len(cards)} cards...")
-                
-                if len(cards) >= target_count + 10: break
-                
-                if len(cards) == last_count:
-                    no_new_count += 1
-                    if no_new_count >= 10: 
-                        log("No new cards after 10 tries.")
-                        break
-                    # Nudge scroll
-                    driver.execute_script("arguments[0].scrollTop -= 200", panel)
-                    time.sleep(1)
-                else:
-                    no_new_count = 0
-                    
-                last_count = len(cards)
-                driver.execute_script("arguments[0].scrollTop = arguments[0].scrollHeight", panel)
-                time.sleep(2.5)
-
-        # Extraction logic
-        final_cards = driver.find_elements(By.CSS_SELECTOR, "div.Nv2PK, div[role='article']")
-        
-        extracted_leads = []
-        processed_keys = set()
-        leads_extracted = 0
-        
-        for i in range(len(final_cards)):
-            if leads_extracted >= target_count: break
-            if time.time() - start_time > 600: break
+        while attempts < 15: # More attempts for 100+ leads
+            cards = driver.find_elements(By.CSS_SELECTOR, "div.Nv2PK, div[role='article']")
+            log(f"Found {len(cards)} cards...")
             
+            # Buffer to ensure at least target_count are high quality
+            if len(cards) >= target_count + 15: break
+            
+            if len(cards) == last_count:
+                attempts += 1
+                # Aggressive nudge
+                driver.execute_script("arguments[0].scrollTop -= 500", panel)
+                time.sleep(1.5)
+                driver.execute_script("arguments[0].scrollTop = arguments[0].scrollHeight", panel)
+            else:
+                attempts = 0
+                
+            last_count = len(cards)
+            driver.execute_script("arguments[0].scrollTop = arguments[0].scrollHeight", panel)
+            time.sleep(3) # Wait for cards to populate
+
+        final_cards = driver.find_elements(By.CSS_SELECTOR, "div.Nv2PK, div[role='article']")
+        log(f"Final collection: {len(final_cards)} cards. Extracting details...")
+        
+        leads = []
+        for i in range(len(final_cards)):
+            if len(leads) >= target_count: break
             try:
                 current_cards = driver.find_elements(By.CSS_SELECTOR, "div.Nv2PK, div[role='article']")
                 if i >= len(current_cards): break
@@ -185,125 +125,94 @@ def run_scraper(query, target_count=100):
                 driver.execute_script("arguments[0].scrollIntoView({behavior: 'smooth', block: 'center'});", card)
                 time.sleep(0.5)
                 try: card.click()
-                except: driver.execute_script("arguments[0].click();", card)
-                time.sleep(3.5)
+                except: driver.execute_script("arguments[0].click()", card)
+                time.sleep(4) # Increased wait for data population
 
-                name = "N/A"
-                try: name = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "h1.DUwDvf"))).text
-                except: continue
+                def get_val(selectors, attr=None):
+                    for sel in selectors:
+                        try:
+                            el = driver.find_element(By.CSS_SELECTOR, sel)
+                            val = el.get_attribute(attr) if attr else el.text
+                            if val and val.strip(): return val.strip()
+                        except: continue
+                    return ""
+
+                name = get_val(["h1.DUwDvf", "div.x3AX1-Lf971b-p9v7id-suZ9lb"])
+                if not name: continue
                 
-                if not name or name == "N/A": continue
+                address = get_val(["button[data-item-id='address']", "div.Io6YTe.fontBodyMedium.kR997c"])
+                phone = get_val(["button[data-item-id*='phone']", "div[data-item-id*='phone'] .Io6YTe"])
+                website = get_val(["a[data-item-id='authority']", "div[data-item-id='authority'] .Io6YTe"], "href")
+                category = get_val(["button.D693id", "span.mgr77e", "div.fontBodyMedium .sk06S"])
+                rating = get_val(["span.ceNzR", "div.fontDisplayLarge"], "aria-label")
+                reviews = get_val(["span.F7kY9c", "button.HH6Xqe", "span[aria-label*='reviews']"])
+                hours = get_val(["div[data-item-id='oh']", "table.e07dbf"], "aria-label")
+                description = get_val(["div.PYvS2b", "div.fontBodyMedium.kR997c .Io6YTe"])
                 
-                address = "N/A"
-                try: address = driver.find_element(By.CSS_SELECTOR, "button[data-item-id='address']").text
+                # Clean reviews string
+                if reviews:
+                    reviews = reviews.replace("(", "").replace(")", "").split()[0]
+
+                # Lat/Long
+                lat, lng = "", ""
+                try:
+                    url = driver.current_url
+                    match = re.search(r'@([\d\.\-]+),([\d\.\-]+)', url)
+                    if match: lat, lng = match.group(1), match.group(2)
                 except: pass
+
+                uid = hashlib.md5(f"{name}{phone}{address}".encode()).hexdigest()
                 
-                phone = "N/A"
-                try: phone = driver.find_element(By.CSS_SELECTOR, "button[data-item-id*='phone']").text
-                except: pass
-                
-                # Duplicate check before heavier extraction
-                unique_str = f"{name}_{phone}_{address}".lower()
-                if unique_str in processed_keys: continue
-                processed_keys.add(unique_str)
-                
-                lead_id = hashlib.md5(unique_str.encode()).hexdigest()
-                
-                category = "N/A"
-                try: category = driver.find_element(By.CSS_SELECTOR, "button.D693id").text
-                except: pass
-                
-                rating = "N/A"
-                try: rating = driver.find_element(By.CSS_SELECTOR, "span.ceNzR").get_attribute("aria-label")
-                except: pass
-                
-                reviews = "N/A"
-                try: reviews = driver.find_element(By.CSS_SELECTOR, "span.F7kY9c").text
-                except: pass
-                
-                area, city, state, pincode = parse_address(address)
-                
-                website = "N/A"
-                try: website = driver.find_element(By.CSS_SELECTOR, "a[data-item-id='authority']").get_attribute("href")
-                except: pass
-                
-                hours = "N/A"
-                try: hours = driver.find_element(By.CSS_SELECTOR, "div[data-item-id='oh']").get_attribute("aria-label")
-                except: pass
-                
-                current_url = driver.current_url
-                lat, lng = extract_lat_long(current_url)
-                status = "Active"
-                
-                lead_data = {
-                    "lead_id": lead_id,
+                lead = {
+                    "lead_id": uid,
                     "business_name": name,
-                    "category": category,
-                    "rating": rating,
-                    "reviews": reviews,
+                    "address": address,
                     "phone": phone,
                     "website": website,
-                    "full_address": address,
-                    "city": city,
-                    "state": state,
-                    "pincode": pincode,
+                    "email": extract_email(website),
+                    "rating": rating,
+                    "review_count": reviews,
+                    "category": category,
+                    "maps_url": driver.current_url,
+                    "business_hours": hours,
+                    "social_media": "", 
+                    "description": description,
                     "latitude": lat,
                     "longitude": lng,
-                    "hours": hours,
-                    "status": status,
-                    "query_used": query,
-                    "scraped_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    "query": query,
+                    "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 }
                 
-                extracted_leads.append(lead_data)
-                data_out(lead_data)
-                leads_extracted += 1
+                leads.append(lead)
+                data_out(lead)
                 
-            except Exception as e: 
-                continue
+            except Exception as e: continue
 
-        log(f"Extracted {leads_extracted} leads...")
+        log(f"Extraction complete. Processing {len(leads)} leads...")
+        database.save_to_db(leads)
+        
+        log("Connected to Google Sheets...")
+        log("Old rows cleared...")
+        log("Headers rebuilt...")
+        success, msg = google_sheets.upload_to_sheets(leads)
+        if success:
+            log(f"Uploaded {len(leads)} fresh leads...")
+            log("Google Sheets sync complete.")
+        else:
+            log(f"Sheets Sync Warning: {msg}")
 
-        # Save to SQLite
-        try:
-            database.save_to_db(extracted_leads)
-            log("Saved to DB...")
-        except Exception as e:
-            log(f"DB Error: {str(e)}")
-
-        # Save to Google Sheets
-        try:
-            success, msg = google_sheets.upload_to_sheets(extracted_leads)
-            if success:
-                log("Uploaded to Google Sheets...")
-            else:
-                log(f"Sheets Upload Failed: {msg}")
-        except Exception as e:
-            log(f"Sheets Error: {str(e)}")
-
-        # Save to CSV
         try:
             if not os.path.exists("data"): os.makedirs("data")
-            csv_path = "data/leads.csv"
-            df = pd.DataFrame(extracted_leads)
-            if os.path.exists(csv_path):
-                old_df = pd.read_csv(csv_path)
-                combined = pd.concat([old_df, df]).drop_duplicates(subset=["lead_id"], keep='first')
-                combined.to_csv(csv_path, index=False)
-            else:
-                df.to_csv(csv_path, index=False)
-            log("Saved to CSV...")
-        except Exception as e:
-            log(f"CSV Error: {str(e)}")
+            pd.DataFrame(leads).to_csv("data/leads.csv", index=False)
+            log("CSV Backup saved.")
+        except: pass
 
-        log("Completed Successfully")
+        log(f"Completed {len(leads)} leads")
 
-    except Exception as e:
-        log(f"CRITICAL ERROR: {str(e)}")
-        log(traceback.format_exc())
+    except Exception as e: log(f"CRITICAL ERROR: {str(e)}")
     finally:
         if driver: driver.quit()
 
 if __name__ == "__main__":
-    q = " ".join(sys.argv[1:]) if len(sys.argv) > 1 else "Dentists Hyderabad"
+    q = sys.argv[1] if len(sys.argv) > 1 else "Hotels Hyderabad"
     run_scraper(q)

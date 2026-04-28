@@ -1,6 +1,7 @@
 import gspread
 from google.oauth2.service_account import Credentials
 import os
+from datetime import datetime
 
 def upload_to_sheets(leads_data):
     if not leads_data:
@@ -25,29 +26,85 @@ def upload_to_sheets(leads_data):
             
         worksheet = sh.sheet1
         
-        existing_records = worksheet.get_all_records()
-        existing_ids = set([str(row.get('lead_id', '')) for row in existing_records])
+        # 1. Full Reset for Professional Sync
+        worksheet.clear()
         
-        new_rows = []
+        # 2. 17-Field Professional Headers
         headers = [
-            "lead_id", "business_name", "category", "rating", "reviews", "phone", 
-            "website", "full_address", "city", "state", "pincode", "latitude", 
-            "longitude", "hours", "status", "query_used", "scraped_at"
+            "lead_id", "business_name", "address", "phone", "website", "email",
+            "rating", "review_count", "category", "maps_url", "business_hours",
+            "social_media", "description", "latitude", "longitude", "query", "timestamp"
         ]
+        worksheet.append_row(headers)
         
-        if not existing_records:
-            worksheet.append_row(headers)
-            
+        # 3. Clean and Batch Prepare Data
+        rows_to_upload = []
         for lead in leads_data:
-            if str(lead.get('lead_id', '')) not in existing_ids:
-                row = [str(lead.get(h, 'N/A')) for h in headers]
-                new_rows.append(row)
-                existing_ids.add(str(lead.get('lead_id', '')))
-                
-        if new_rows:
-            worksheet.append_rows(new_rows)
-            return True, f"Uploaded {len(new_rows)} rows"
-        return True, "No new rows to upload"
+            def clean(key):
+                val = lead.get(key, "")
+                if val is None or str(val).lower() == "n/a" or str(val).lower() == "none":
+                    return ""
+                return str(val).strip()
+
+            row = [
+                clean("lead_id"),
+                clean("business_name"),
+                clean("address"),
+                clean("phone"),
+                clean("website"),
+                clean("email"),
+                clean("rating"),
+                clean("review_count"),
+                clean("category"),
+                clean("maps_url"),
+                clean("business_hours"),
+                clean("social_media"),
+                clean("description"),
+                clean("latitude"),
+                clean("longitude"),
+                clean("query"),
+                clean("timestamp")
+            ]
+            rows_to_upload.append(row)
+            
+        if rows_to_upload:
+            worksheet.append_rows(rows_to_upload)
+            return True, f"Uploaded {len(rows_to_upload)} leads"
+            
+        return True, "No data to sync"
         
+    except Exception as e:
+        return False, str(e)
+
+def check_connection():
+    if not os.path.exists("creds.json"):
+        return False
+    try:
+        scopes = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
+        credentials = Credentials.from_service_account_file('creds.json', scopes=scopes)
+        gspread.authorize(credentials)
+        return True
+    except:
+        return False
+
+def clear_sheet_data():
+    if not os.path.exists("creds.json"):
+        return False, "creds.json missing"
+    try:
+        scopes = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
+        credentials = Credentials.from_service_account_file('creds.json', scopes=scopes)
+        gc = gspread.authorize(credentials)
+        
+        sh = gc.open("LeadPulse_Data")
+        worksheet = sh.sheet1
+        
+        headers = [
+            "lead_id", "business_name", "address", "phone", "website", "email",
+            "rating", "review_count", "category", "maps_url", "business_hours",
+            "social_media", "description", "latitude", "longitude", "query", "timestamp"
+        ]
+        worksheet.clear()
+        worksheet.append_row(headers)
+        return True, "Sheet cleared successfully"
     except Exception as e:
         return False, str(e)
