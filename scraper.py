@@ -192,11 +192,10 @@ def run_scraper(query, target_count=100):
         database.save_to_db(leads)
         
         log("Connected to Google Sheets...")
-        log("Old rows cleared...")
-        log("Headers rebuilt...")
-        success, msg = google_sheets.upload_to_sheets(leads)
+        log("Validating existing lead repository...")
+        success, msg = google_sheets.save_to_google_sheets(leads)
         if success:
-            log(f"Uploaded {len(leads)} fresh leads...")
+            log(f"Sync Result: {msg}")
             log("Google Sheets sync complete.")
         else:
             log(f"Sheets Sync Warning: {msg}")

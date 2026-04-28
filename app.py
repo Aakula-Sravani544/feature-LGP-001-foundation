@@ -365,7 +365,7 @@ def show_admin_dashboard():
             with st.spinner("Syncing..."):
                 df_local = database.load_db()
                 if not df_local.empty:
-                    success, msg = google_sheets.upload_to_sheets(df_local.to_dict('records'))
+                    success, msg = google_sheets.save_to_google_sheets(df_local.to_dict('records'))
                     if success: st.success(msg)
                     else: st.error(msg)
         
