@@ -6,6 +6,10 @@ import sys
 import json
 import time
 from datetime import datetime
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 import database
 import google_sheets
@@ -275,7 +279,7 @@ def generation_ui(label_suffix=""):
                             data = json.loads(line.replace("DATA:", "").strip())
                             st.session_state.session_leads.append(data)
                             with table_placeholder.container():
-                                st.dataframe(pd.DataFrame(st.session_state.session_leads).iloc[::-1], use_container_width=True)
+                                st.dataframe(pd.DataFrame(st.session_state.session_leads).iloc[::-1], width="stretch")
                         except: pass
             
             process.wait()
@@ -311,7 +315,7 @@ def show_user_dashboard():
         st.markdown("### ⚡ Batch Results")
         df = pd.DataFrame(st.session_state.session_leads)
         user_cols = ["business_name", "address", "phone", "website", "rating", "review_count", "category", "timestamp"]
-        st.dataframe(df[[c for c in user_cols if c in df.columns]], use_container_width=True)
+        st.dataframe(df[[c for c in user_cols if c in df.columns]], width="stretch")
         
         # Restore missing Export button
         csv = df.to_csv(index=False).encode('utf-8')
@@ -344,20 +348,20 @@ def show_admin_dashboard():
         generation_ui("(Admin)")
         if not st.session_state.is_scraping and st.session_state.session_leads:
             st.markdown("### ⚡ Session Preview")
-            st.dataframe(pd.DataFrame(st.session_state.session_leads), use_container_width=True)
+            st.dataframe(pd.DataFrame(st.session_state.session_leads), width="stretch")
 
     with tabs[1]:
         st.markdown("### Master Lead Repository")
         df_master = database.load_db()
         if not df_master.empty:
-            st.dataframe(df_master, use_container_width=True)
+            st.dataframe(df_master, width="stretch")
             csv_master = df_master.to_csv(index=False).encode('utf-8')
             st.download_button("📥 Export Master Repository", csv_master, "leadpulse_master.csv", "text/csv")
         else: st.info("No leads in database.")
 
     with tabs[2]:
         st.markdown("### User System Logs")
-        st.dataframe(database.get_logs(), use_container_width=True)
+        st.dataframe(database.get_logs(), width="stretch")
 
     with tabs[3]:
         st.markdown("### Advanced Settings")
@@ -368,6 +372,11 @@ def show_admin_dashboard():
                     success, msg = google_sheets.save_to_google_sheets(df_local.to_dict('records'))
                     if success: st.success(msg)
                     else: st.error(msg)
+        
+        # Diagnostic Info
+        if not google_sheets.check_connection():
+            st.error(f"⚠️ Connection Error: {google_sheets.get_last_error()}")
+            st.info("💡 Tip: Ensure GOOGLE_SHEETS_CREDENTIALS in Render is the FULL JSON string from your service account file.")
         
         st.markdown("---")
         if st.button("🚨 Wipe Entire System"):
