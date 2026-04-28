@@ -105,25 +105,27 @@ def run_scraper(query, target_count=100):
                 if panel: break
             except: continue
             
-        while attempts < 15: # More attempts for 100+ leads
+        while attempts < 25: # More attempts for deeper scrolling
             cards = driver.find_elements(By.CSS_SELECTOR, "div.Nv2PK, div[role='article']")
             log(f"Found {len(cards)} cards...")
             
-            # Buffer to ensure at least target_count are high quality
-            if len(cards) >= target_count + 15: break
+            if len(cards) >= target_count + 5: 
+                log(f"Reached target count ({len(cards)}/{target_count}). Starting extraction...")
+                break
             
             if len(cards) == last_count:
                 attempts += 1
-                # Aggressive nudge
-                driver.execute_script("arguments[0].scrollTop -= 500", panel)
-                time.sleep(1.5)
+                # Aggressive wiggle: scroll up a bit then down hard
+                driver.execute_script("arguments[0].scrollTop -= 300", panel)
+                time.sleep(0.5)
                 driver.execute_script("arguments[0].scrollTop = arguments[0].scrollHeight", panel)
+                time.sleep(2)
             else:
                 attempts = 0
                 
             last_count = len(cards)
             driver.execute_script("arguments[0].scrollTop = arguments[0].scrollHeight", panel)
-            time.sleep(3) # Wait for cards to populate
+            time.sleep(2.5)
 
         final_cards = driver.find_elements(By.CSS_SELECTOR, "div.Nv2PK, div[role='article']")
         log(f"Final collection: {len(final_cards)} cards. Extracting details...")
@@ -132,6 +134,7 @@ def run_scraper(query, target_count=100):
         for i in range(len(final_cards)):
             if len(leads) >= target_count: break
             try:
+                log(f"Processing lead {i+1} of {len(final_cards)}...")
                 current_cards = driver.find_elements(By.CSS_SELECTOR, "div.Nv2PK, div[role='article']")
                 if i >= len(current_cards): break
                 card = current_cards[i]
@@ -140,7 +143,7 @@ def run_scraper(query, target_count=100):
                 time.sleep(0.5)
                 try: card.click()
                 except: driver.execute_script("arguments[0].click()", card)
-                time.sleep(4) # Increased wait for data population
+                time.sleep(3.5) # Optimized wait
 
                 def get_val(selectors, attr=None):
                     for sel in selectors:
