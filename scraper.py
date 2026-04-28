@@ -99,33 +99,49 @@ def run_scraper(query, target_count=100):
         attempts = 0
         
         panel = None
-        for sel in ["div[role='feed']", "div.m6QErb.DxyBCb", "div[aria-label*='Results']"]:
+        # Robust list of selectors for the results pane
+        pane_selectors = [
+            "div[role='feed']", 
+            "div.m6QErb.DxyBCb", 
+            "div[aria-label*='Results']",
+            "div.m6QErb.klm32b"
+        ]
+        
+        for sel in pane_selectors:
             try:
-                panel = driver.find_element(By.CSS_SELECTOR, sel)
-                if panel: break
+                elements = driver.find_elements(By.CSS_SELECTOR, sel)
+                if elements:
+                    panel = elements[0]
+                    log(f"Found results pane using: {sel}")
+                    break
             except: continue
             
-        while attempts < 25: # More attempts for deeper scrolling
+        while attempts < 35: # Even more attempts for 100+ leads
             cards = driver.find_elements(By.CSS_SELECTOR, "div.Nv2PK, div[role='article']")
-            log(f"Found {len(cards)} cards...")
+            log(f"Found {len(cards)} leads so far...")
             
-            if len(cards) >= target_count + 5: 
-                log(f"Reached target count ({len(cards)}/{target_count}). Starting extraction...")
+            if len(cards) >= target_count: 
+                log(f"Target reached ({len(cards)}/{target_count}). Moving to extraction.")
                 break
             
             if len(cards) == last_count:
                 attempts += 1
-                # Aggressive wiggle: scroll up a bit then down hard
-                driver.execute_script("arguments[0].scrollTop -= 300", panel)
-                time.sleep(0.5)
-                driver.execute_script("arguments[0].scrollTop = arguments[0].scrollHeight", panel)
+                # Method 1: JS Scroll
+                driver.execute_script("arguments[0].scrollTop = arguments[0].scrollHeight", panel if panel else driver.execute_script("return document.body"))
+                time.sleep(1)
+                # Method 2: Keyboard Nudge (very reliable)
+                try:
+                    if panel:
+                        panel.send_keys(Keys.PAGE_DOWN)
+                        panel.send_keys(Keys.END)
+                except: pass
                 time.sleep(2)
             else:
                 attempts = 0
                 
             last_count = len(cards)
-            driver.execute_script("arguments[0].scrollTop = arguments[0].scrollHeight", panel)
-            time.sleep(2.5)
+            driver.execute_script("arguments[0].scrollTop = arguments[0].scrollHeight", panel if panel else driver.execute_script("return document.body"))
+            time.sleep(2)
 
         final_cards = driver.find_elements(By.CSS_SELECTOR, "div.Nv2PK, div[role='article']")
         log(f"Final collection: {len(final_cards)} cards. Extracting details...")
