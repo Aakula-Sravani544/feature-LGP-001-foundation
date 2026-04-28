@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+
+# Project specific
+creds.json
+data/
+logs/
+exports/
+*.csv
+*.xlsx
+
+# Streamlit
+.streamlit/

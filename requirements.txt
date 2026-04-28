@@ -1,0 +1,9 @@
+streamlit
+pandas
+gspread
+google-auth
+python-dotenv
+selenium
+webdriver-manager
+undetected-chromedriver
+openpyxl
