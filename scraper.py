@@ -157,6 +157,28 @@ def run_scraper(query, target_count=100):
             
             if len(cards) == last_count:
                 attempts += 1
+                
+                # --- NEW: "Map Reset" Strategy ---
+                if attempts == 12 or attempts == 22:
+                    log("Google Maps is stalling. Attempting Map Zoom out...")
+                    try:
+                        # Try to find and click the zoom out button
+                        zoom_out_btns = driver.find_elements(By.CSS_SELECTOR, "button[aria-label='Zoom out'], button#widget-zoom-out")
+                        if zoom_out_btns:
+                            zoom_out_btns[0].click()
+                            time.sleep(1)
+                    except: pass
+                
+                if attempts > 10:
+                    try:
+                        # Look for "Search this area" button and click it to force more results
+                        search_area_btns = driver.find_elements(By.XPATH, "//button[contains(., 'Search this area')]")
+                        if search_area_btns and search_area_btns[0].is_displayed():
+                            log("Clicking 'Search this area' to find more leads...")
+                            search_area_btns[0].click()
+                            time.sleep(3)
+                    except: pass
+
                 # Method 1: JS Scroll
                 driver.execute_script("arguments[0].scrollTop = arguments[0].scrollHeight", panel if panel else driver.execute_script("return document.body"))
                 time.sleep(1)
