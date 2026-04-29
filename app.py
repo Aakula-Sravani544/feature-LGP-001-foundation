@@ -397,24 +397,27 @@ def show_user_dashboard():
     st.markdown("<br><hr><br>", unsafe_allow_html=True)
     generation_ui()
     
-    if not st.session_state.is_scraping and st.session_state.session_leads:
-        st.markdown("### ⚡ My Leads Table (Session Results)")
-        df = pd.DataFrame(st.session_state.session_leads)
-        
-        # Filtering UI
-        col1, col2 = st.columns(2)
-        status_filter = col1.multiselect("Filter by Validation Status", options=df['validation_status'].unique() if 'validation_status' in df.columns else ["Valid"])
-        if status_filter and 'validation_status' in df.columns:
-            df = df[df['validation_status'].isin(status_filter)]
+    if not st.session_state.is_scraping:
+        if st.session_state.session_leads:
+            st.markdown("### ⚡ My Leads Table (Session Results)")
+            df = pd.DataFrame(st.session_state.session_leads)
             
-        user_cols = ["business_name", "address", "phone", "email", "rating", "review_count", "category", "validation_status"]
-        st.dataframe(df[[c for c in user_cols if c in df.columns]], width="stretch")
-        
-        c1, c2, c3 = st.columns([1, 1, 2])
-        csv = df.to_csv(index=False).encode('utf-8')
-        c1.download_button("📥 Export CSV", csv, "session_leads.csv", "text/csv", use_container_width=True)
-        json_data = df.to_json(orient='records').encode('utf-8')
-        c2.download_button("📥 Export JSON", json_data, "session_leads.json", "application/json", use_container_width=True)
+            # Filtering UI
+            col1, col2 = st.columns([2, 2])
+            status_filter = col1.multiselect("Filter by Validation Status", options=df['validation_status'].unique() if 'validation_status' in df.columns else ["Valid"])
+            if status_filter and 'validation_status' in df.columns:
+                df = df[df['validation_status'].isin(status_filter)]
+                
+            user_cols = ["business_name", "address", "phone", "email", "rating", "review_count", "category", "validation_status"]
+            st.dataframe(df[[c for c in user_cols if c in df.columns]], width="stretch", hide_index=True)
+            
+            c1, c2, c3 = st.columns([1, 1, 2])
+            csv = df.to_csv(index=False).encode('utf-8')
+            c1.download_button("📥 Export CSV", csv, "session_leads.csv", "text/csv", use_container_width=True)
+            json_data = df.to_json(orient='records').encode('utf-8')
+            c2.download_button("📥 Export JSON", json_data, "session_leads.json", "application/json", use_container_width=True)
+        else:
+            st.info("💡 Your session results will appear here. Start an extraction above to begin!")
 
 # ==========================================
 # ADMIN DASHBOARD
@@ -447,18 +450,30 @@ def show_admin_dashboard():
         if not df_master.empty:
             # Analytics UI
             c1, c2 = st.columns(2)
-            c1.markdown("**Top Categories**")
-            c1.bar_chart(df_master['category'].value_counts().head(5) if 'category' in df_master.columns else [])
+            with c1:
+                st.markdown("**Top Categories**")
+                cat_counts = df_master['category'].value_counts().head(5)
+                if not cat_counts.empty:
+                    st.bar_chart(cat_counts)
+                else:
+                    st.info("No category data available for charting.")
             
-            c2.markdown("**Validation Status Distribution**")
-            c2.bar_chart(df_master['validation_status'].value_counts() if 'validation_status' in df_master.columns else [])
+            with c2:
+                st.markdown("**Validation Status Distribution**")
+                val_counts = df_master['validation_status'].value_counts()
+                if not val_counts.empty:
+                    st.bar_chart(val_counts)
+                else:
+                    st.info("No validation data available for charting.")
             
-            st.dataframe(df_master, width="stretch")
+            st.markdown("---")
+            st.dataframe(df_master, width="stretch", hide_index=True)
             
-            col1, col2 = st.columns(2)
+            col1, col2 = st.columns([1, 3])
             csv_master = df_master.to_csv(index=False).encode('utf-8')
-            col1.download_button("📥 Export Master Repository (CSV)", csv_master, "leadpulse_master.csv", "text/csv")
-        else: st.info("No leads in database.")
+            col1.download_button("📥 Export Master CSV", csv_master, "leadpulse_master.csv", "text/csv", use_container_width=True)
+        else:
+            st.info("No leads in database yet. Start an extraction to see results here!")
 
     with tabs[2]:
         st.markdown("### User Management")
