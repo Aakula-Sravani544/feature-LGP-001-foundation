@@ -359,6 +359,11 @@ def generation_ui(label_suffix=""):
                                 cols = [c for c in ["business_name", "phone", "email", "validation_status"] if c in df_view.columns]
                                 st.dataframe(df_view[cols] if cols else df_view, width="stretch")
                         except: pass
+                    else:
+                        msg = line.strip()
+                        if msg:
+                            st.session_state.logs += f"[SYS] {msg}\n"
+                            log_placeholder.markdown(f'<div class="log-box">{st.session_state.logs}</div>', unsafe_allow_html=True)
             
             process.wait()
             progress_bar.progress(1.0)

@@ -95,6 +95,7 @@ def get_driver():
         return driver
     except Exception as e:
         log(f"Browser launch failed: {e}")
+        log(traceback.format_exc())
         return None
 
 async def fetch_email_from_website(session, website):
