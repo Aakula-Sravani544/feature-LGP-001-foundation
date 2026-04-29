@@ -52,10 +52,15 @@ def get_driver():
         options.add_argument("--disable-infobars")
         options.add_argument("--disable-notifications")
         options.add_argument("--remote-debugging-port=9222")
-        options.add_argument('--js-flags="--max-old-space-size=256"')
+        options.add_argument('--js-flags="--max-old-space-size=128"') # Ultra-low JS heap
         options.add_argument("--window-size=1280,720")
-        options.add_argument("--blink-settings=imagesEnabled=false") # Block images at engine level
+        options.add_argument("--blink-settings=imagesEnabled=false") 
         options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36")
+        
+        # --- NEW: Offload Memory to Disk to prevent 502 OOM crash ---
+        options.add_argument("--disk-cache-dir=/tmp/chrome-cache")
+        options.add_argument("--user-data-dir=/tmp/chrome-data")
+        options.add_argument("--disable-dev-shm-usage") # Use /tmp instead of /dev/shm
         
         # Extreme RAM savings: Block images, CSS, fonts, etc.
         prefs = {
