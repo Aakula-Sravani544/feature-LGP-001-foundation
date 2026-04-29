@@ -44,18 +44,26 @@ def get_driver():
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-gpu")
-        
-        # Memory Flags for 512MB RAM
+        options.add_argument("--disable-software-rasterizer")
+        options.add_argument("--disable-extensions")
+        options.add_argument("--disable-infobars")
+        options.add_argument("--disable-notifications")
         options.add_argument("--single-process")
         options.add_argument("--no-zygote")
         options.add_argument("--renderer-process-limit=1")
         options.add_argument("--aggressive-cache-discard")
         options.add_argument("--memory-pressure-off")
-        options.add_argument("--js-flags=--max-old-space-size=256 --optimize-for-size --gc-interval=50")
+        options.add_argument("--disable-features=VizDisplayCompositor")
+        options.add_argument("--disable-features=IsolateOrigins,site-per-process")
+        options.add_argument("--force-color-profile=srgb")
+        options.add_argument("--metrics-recording-only")
+        options.add_argument("--mute-audio")
         
         options.add_argument(f"--disk-cache-dir={tmp_dir}/cache")
         options.add_argument(f"--user-data-dir={tmp_dir}/data")
         options.add_argument("--window-size=1280,720")
+        options.add_argument("--blink-settings=imagesEnabled=false")
+        options.add_argument('--js-flags=--max-old-space-size=128')
         options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
         
         prefs = {
@@ -67,8 +75,11 @@ def get_driver():
         options.add_experimental_option("prefs", prefs)
         
         render_path = "/opt/render/project/.render/chrome/opt/google/chrome/google-chrome"
+        docker_path = "/usr/bin/google-chrome"
         if os.path.exists(render_path):
             options.binary_location = render_path
+        elif os.path.exists(docker_path):
+            options.binary_location = docker_path
             
         driver = webdriver.Chrome(options=options)
         driver.set_page_load_timeout(35)
