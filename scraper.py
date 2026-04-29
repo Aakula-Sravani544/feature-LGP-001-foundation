@@ -90,8 +90,8 @@ def get_driver():
             options.binary_location = docker_path
             
         driver = webdriver.Chrome(options=options)
-        driver.set_page_load_timeout(4)
-        driver.set_script_timeout(10)
+        driver.set_page_load_timeout(20)
+        driver.set_script_timeout(20)
         return driver
     except Exception as e:
         log(f"Browser launch failed: {e}")
