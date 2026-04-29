@@ -175,3 +175,22 @@ def clear_sheet_data():
         return True, "Cloud Sheet Reset Success"
     except Exception as e:
         return False, str(e)
+
+def load_from_google_sheets():
+    """Reads all rows from the Google Sheet and returns them as a list of dictionaries"""
+    try:
+        credentials = get_credentials()
+        if not credentials: return None
+        
+        gc = gspread.authorize(credentials)
+        sheet_name = os.environ.get('SHEET_NAME', 'LeadPulse_Data')
+        sh = gc.open(sheet_name)
+        worksheet = sh.sheet1
+        
+        # get_all_records automatically uses the first row as dictionary keys
+        records = worksheet.get_all_records()
+        return records
+    except Exception as e:
+        global LAST_ERROR
+        LAST_ERROR = f"Load Error: {str(e)}"
+        return None

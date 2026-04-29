@@ -52,12 +52,20 @@ def get_driver():
         options.add_argument("--disable-infobars")
         options.add_argument("--disable-notifications")
         options.add_argument("--remote-debugging-port=9222")
-        options.add_argument('--js-flags="--max-old-space-size=128"') # Ultra-low JS heap
+        
+        # --- Extreme memory flags requested ---
+        options.add_argument("--single-process")
+        options.add_argument("--no-zygote")
+        options.add_argument("--renderer-process-limit=1")
+        options.add_argument("--disable-background-timer-throttling")
+        options.add_argument("--disable-backgrounding-occluded-windows")
+        options.add_argument("--memory-pressure-off")
+        options.add_argument("--js-flags=--max-old-space-size=128 --optimize-for-size --gc-interval=100")
+        
         options.add_argument("--window-size=1280,720")
         options.add_argument("--blink-settings=imagesEnabled=false") 
         options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36")
         
-        # --- NEW: Extreme Anti-Crash Flags to prevent Renderer Timeout ---
         options.add_argument("--disable-features=VizDisplayCompositor")
         options.add_argument("--disable-features=IsolateOrigins,site-per-process")
         options.add_argument("--force-color-profile=srgb")
@@ -78,6 +86,9 @@ def get_driver():
         }
         options.add_experimental_option("prefs", prefs)
         
+        # Interceptor
+        options.set_capability('goog:loggingPrefs', {'performance': 'ALL'})
+        
         render_path = "/opt/render/project/.render/chrome/opt/google/chrome/google-chrome"
         docker_path = "/usr/bin/google-chrome"
         
@@ -87,7 +98,14 @@ def get_driver():
             options.binary_location = docker_path
             
         driver = webdriver.Chrome(options=options)
-        # Increase timeouts significantly to prevent the 30.000 renderer timeout
+        
+        # CDP Network Interception
+        driver.execute_cdp_cmd('Network.enable', {})
+        driver.execute_cdp_cmd('Network.setBlockedURLs', {"urls": [
+            "*.png", "*.jpg", "*.jpeg", "*.gif", "*.svg", "*.webp", 
+            "*.css", "*.woff", "*.woff2", "*.mp4", "*.webm"
+        ]})
+        
         driver.set_page_load_timeout(120)
         driver.set_script_timeout(120)
         return driver
@@ -101,10 +119,19 @@ def extract_email(website):
     if not website or website == "" or "google.com" in website:
         return ""
     try:
-        response = requests.get(website, timeout=5, headers={"User-Agent": "Mozilla/5.0"})
-        emails = re.findall(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', response.text)
-        filtered = [e for e in emails if not e.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp'))]
-        return filtered[0] if filtered else ""
+        with requests.Session() as session:
+            response = session.get(
+                website, 
+                timeout=3, 
+                headers={"User-Agent": "Mozilla/5.0"}, 
+                stream=False
+            )
+            text = response.text
+            response.close() # Immediately close to free socket/memory
+            
+            emails = re.findall(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', text)
+            filtered = [e for e in emails if not e.lower().endswith(('.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp'))]
+            return filtered[0] if filtered else ""
     except:
         return ""
 
@@ -303,9 +330,10 @@ def run_scraper(query, target_count=100):
                     driver.execute_script("arguments[0].innerHTML = '';", card)
                 except: pass
                 
-                # Periodically clear network cache
-                if i > 0 and i % 15 == 0:
+                # Periodically clear network cache and force GC
+                if i > 0 and i % 10 == 0:
                     try:
+                        driver.execute_script("window.gc && window.gc()")
                         driver.execute_cdp_cmd('Network.clearBrowserCache', {})
                     except: pass
                 
@@ -333,7 +361,10 @@ def run_scraper(query, target_count=100):
 
     except Exception as e: log(f"CRITICAL ERROR: {str(e)}")
     finally:
-        if driver: driver.quit()
+        if driver: 
+            try: driver.quit()
+            except: pass
+        kill_chrome()
 
 if __name__ == "__main__":
     q = sys.argv[1] if len(sys.argv) > 1 else "Hotels Hyderabad"

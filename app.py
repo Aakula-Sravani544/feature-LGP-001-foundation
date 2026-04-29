@@ -15,6 +15,18 @@ import database
 import google_sheets
 
 # ==========================================
+# STARTUP SYNC
+# ==========================================
+if 'startup_sync_done' not in st.session_state:
+    st.session_state.startup_sync_done = True
+    # Pull leads from Google Sheets -> save to local DB on startup
+    try:
+        leads_from_sheets = google_sheets.load_from_google_sheets()
+        if leads_from_sheets:
+            database.save_to_db(leads_from_sheets)
+    except: pass
+
+# ==========================================
 # PAGE CONFIGURATION
 # ==========================================
 st.set_page_config(
@@ -374,6 +386,9 @@ def show_admin_dashboard():
                     else: st.error(msg)
         
         # Diagnostic Info
+        db_type = "PostgreSQL (Render)" if os.environ.get("DATABASE_URL") else "SQLite (Local)"
+        st.info(f"💾 **Active Database Backend:** {db_type}")
+        
         if not google_sheets.check_connection():
             st.error(f"⚠️ Connection Error: {google_sheets.get_last_error()}")
             st.info("💡 Tip: Ensure GOOGLE_SHEETS_CREDENTIALS in Render is the FULL JSON string from your service account file.")

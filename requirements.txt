@@ -6,3 +6,4 @@ google-auth
 selenium>=4.10.0
 python-dotenv
 webdriver-manager
+psycopg2-binary
