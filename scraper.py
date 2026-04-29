@@ -135,211 +135,149 @@ def extract_email(website):
     except:
         return ""
 
-def scroll_panel(driver, panel):
+def open_business_direct(driver, business_name, partial_address=""):
+    """Open business detail page via direct search URL instead of clicking cards."""
+    query = f"{business_name} {partial_address}".strip()
+    encoded = urllib.parse.quote_plus(query)
+    url = f"https://www.google.com/maps/search/{encoded}"
+    driver.get(url)
+    time.sleep(4)
+    
+    # Wait for either a single result detail page OR a list
     try:
-        if panel:
-            driver.execute_script("""
-                arguments[0].scrollTop += 1500;
-            """, panel)
-        else:
-            driver.execute_script("window.scrollBy(0, 1500)")
-    except:
-        driver.execute_script("window.scrollBy(0, 1500)")
-    time.sleep(3)
-
-def go_back_to_list(driver):
-    """Navigate back to the search results list."""
-    try:
-        back_btns = driver.find_elements(By.CSS_SELECTOR, 
-            "button[aria-label='Back'], button.hYBOP, button[jsaction*='back']")
-        if back_btns:
-            back_btns[0].click()
-            time.sleep(2)
-            return True
-    except: pass
-    try:
-        driver.execute_script("window.history.back()")
-        time.sleep(2)
+        # If single result, detail panel loads directly
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, 
+                "h1.DUwDvf, h1.fontHeadlineLarge, button[data-item-id='address']"))
+        )
         return True
-    except: pass
-    return False
-
-def run_scraper(query, target_count=20):
-    driver = get_driver()
-    if not driver: return
-
-    try:
-        wait = WebDriverWait(driver, 30)
-        log("Opening Maps...")
-        encoded_query = urllib.parse.quote_plus(query)
-        driver.get(f"https://www.google.com/maps/search/{encoded_query}")
-        
-        time.sleep(6)
-        consent_selectors = [
-            "form[action*='consent'] button",
-            "button[aria-label='Accept all']",
-            "button[aria-label='Agree']",
-            ".VfPpkd-LgbsBe[aria-label*='Accept']"
-        ]
-        for sel in consent_selectors:
-            try:
-                btn = driver.find_element(By.CSS_SELECTOR, sel)
-                btn.click()
-                log("Bypassed Cookie Consent.")
-                time.sleep(2)
-                break
-            except: continue
-
-        if "consent" in driver.current_url:
-            driver.get(f"https://www.google.com/maps/search/{encoded_query}")
-            time.sleep(6)
-
-        log("Waiting for results to load...")
+    except:
+        # Multiple results shown — click the first one
         try:
-            wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "div.Nv2PK, div[role='article']")))
+            first_card = WebDriverWait(driver, 8).until(
+                EC.element_to_be_clickable((By.CSS_SELECTOR, "div.Nv2PK, div[role='article']"))
+            )
+            driver.execute_script("arguments[0].click()", first_card)
+            WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, 
+                    "h1.DUwDvf, h1.fontHeadlineLarge"))
+            )
+            return True
         except:
-            log("Timeout waiting for cards. Retrying page load...")
-            driver.refresh()
-            time.sleep(7)
+            return False
 
-        log("Phase 1: Scrolling to collect card names...")
-        attempts = 0
-        MAX_STALL_ATTEMPTS = 8
-        SCROLL_TIMEOUT = 90
-        scroll_start_time = time.time()
+def collect_cards_from_list(driver, panel, target=20):
+    """Collect all visible card data without clicking anything."""
+    seen_names = set()
+    card_data = []
+    scroll_start = time.time()
+    stall_count = 0
+    last_count = 0
+
+    while len(card_data) < target and stall_count < 8 and (time.time() - scroll_start) < 90:
+        cards = driver.find_elements(By.CSS_SELECTOR, "div.Nv2PK, div[role='article']")
         
-        panel = None
-        pane_selectors = [
-            "div[role='feed']", 
-            "div.m6QErb.DxyBCb", 
-            "div[aria-label*='Results']",
-            "div.m6QErb.klm32b"
-        ]
-        for sel in pane_selectors:
+        for card in cards:
             try:
-                elements = driver.find_elements(By.CSS_SELECTOR, sel)
-                if elements:
-                    panel = elements[0]
-                    log(f"Found results pane using: {sel}")
-                    break
-            except: continue
-            
-        all_card_names = []
-            
-        while len(all_card_names) < target_count:
-            if time.time() - scroll_start_time > SCROLL_TIMEOUT:
-                log(f"Hard scroll timeout reached. Found {len(all_card_names)} cards.")
-                break
-                
-            cards = driver.find_elements(By.CSS_SELECTOR, "div.Nv2PK, div[role='article']")
-            new_names = 0
-            
-            for card in cards:
-                try:
-                    n = card.find_element(By.CSS_SELECTOR, "div.qBF1Pd, .fontHeadlineSmall, .NrDZNb, div[class*='fontBody']").text.strip()
-                    if n and n not in all_card_names:
-                        all_card_names.append(n)
-                        new_names += 1
-                        if len(all_card_names) >= target_count: break
-                except: pass
-                
-            log(f"Scrolled: found {len(all_card_names)}/{target_count} unique cards so far...")
-            
-            if new_names == 0:
-                attempts += 1
-                if attempts == 4 or attempts == 6:
-                    log("Google Maps stalling. Zooming out...")
+                # Extract name from card
+                name = ""
+                for sel in ["div.qBF1Pd", ".fontHeadlineSmall", ".NrDZNb", 
+                            "div[class*='fontBody'] span", ".lI9IFe"]:
                     try:
-                        zoom_out_btns = driver.find_elements(By.CSS_SELECTOR, "button[aria-label='Zoom out'], button#widget-zoom-out")
-                        if zoom_out_btns:
-                            zoom_out_btns[0].click()
-                            time.sleep(1)
-                    except: pass
+                        name = card.find_element(By.CSS_SELECTOR, sel).text.strip()
+                        if name: break
+                    except: continue
                 
-                if attempts > 3:
+                if not name or name in seen_names: continue
+                seen_names.add(name)
+
+                # Extract rating from card
+                rating = ""
+                for sel in ["span.MW4etd", "span[aria-hidden='true']"]:
                     try:
-                        search_area_btns = driver.find_elements(By.XPATH, "//button[contains(., 'Search this area')]")
-                        if search_area_btns and search_area_btns[0].is_displayed():
-                            log("Clicking 'Search this area' to find more leads...")
-                            search_area_btns[0].click()
-                            time.sleep(3)
-                    except: pass
-            else:
-                attempts = 0
-                
-            if attempts >= MAX_STALL_ATTEMPTS:
-                log(f"Stalled after {attempts} attempts. Moving to extraction.")
-                break
-                
-            scroll_panel(driver, panel)
+                        rating = card.find_element(By.CSS_SELECTOR, sel).text.strip()
+                        if rating: break
+                    except: continue
 
-        log(f"Snapshot taken: {len(all_card_names)} card names ready for extraction")
+                # Extract review count from card
+                reviews = ""
+                for sel in ["span.UY7F9", "span[aria-label*='review']"]:
+                    try:
+                        reviews = card.find_element(By.CSS_SELECTOR, sel).text.strip()
+                        reviews = reviews.replace("(","").replace(")","").strip()
+                        if reviews: break
+                    except: continue
 
-        log("Phase 2: Extracting leads...")
-        seen = set()
-        leads = []
-        EXTRACT_TIMEOUT = 300
-        extract_start = time.time()
-
-        for idx, card_name in enumerate(all_card_names):
-            if time.time() - extract_start > EXTRACT_TIMEOUT:
-                log("Extraction timeout reached. Stopping.")
-                break
-                
-            if card_name in seen: continue
-            seen.add(card_name)
-            log(f"Extracting lead {idx+1}/{len(all_card_names)}: {card_name}")
-            
-            go_back_to_list(driver)
-            
-            try:
-                # Reset panel scroll to top so we don't miss cards due to DOM virtualization
-                if panel: driver.execute_script("arguments[0].scrollTop = 0;", panel)
-                time.sleep(1)
-                
-                found_card = None
-                scroll_attempts = 0
-                
-                # Scan visible DOM, scroll down if not found (handles lazy-loaded virtual lists)
-                while not found_card and scroll_attempts < 20:
-                    current_cards = driver.find_elements(By.CSS_SELECTOR, "div.Nv2PK, div[role='article']")
-                    for c in current_cards:
-                        try:
-                            n = c.find_element(By.CSS_SELECTOR, "div.qBF1Pd, .fontHeadlineSmall").text.strip()
-                            if n == card_name or card_name in n:
-                                found_card = c
+                # Extract category/type from card
+                category = ""
+                for sel in ["div.W4Efsd span.W4Efsd span", ".W4Efsd:first-child > span"]:
+                    try:
+                        texts = card.find_elements(By.CSS_SELECTOR, sel)
+                        for t in texts:
+                            val = t.text.strip()
+                            if val and "·" not in val and len(val) > 2:
+                                category = val
                                 break
-                        except: pass
-                    
-                    if not found_card:
-                        scroll_panel(driver, panel)
-                        scroll_attempts += 1
+                        if category: break
+                    except: continue
 
-                if not found_card:
-                    log(f"Could not locate '{card_name}' in DOM after scrolling. Skipping.")
-                    continue
+                # Extract partial address from card
+                address_partial = ""
+                for sel in [".W4Efsd .W4Efsd", "div.W4Efsd:last-child span"]:
+                    try:
+                        spans = card.find_elements(By.CSS_SELECTOR, sel)
+                        for s in spans:
+                            val = s.text.strip()
+                            if val and ("·" in val or any(c.isdigit() for c in val)):
+                                address_partial = val.replace("·","").strip()
+                                break
+                        if address_partial: break
+                    except: continue
 
-                # Scroll into center view before clicking
-                driver.execute_script("arguments[0].scrollIntoView({block:'center'})", found_card)
-                time.sleep(0.5)
-                
-                try: 
-                    found_card.click()
-                except: 
-                    driver.execute_script("arguments[0].closest('.Nv2PK, [role=article]').click()", found_card)
-                    
-            except Exception as e:
-                log(f"Could not click card '{card_name}': {e}")
-                continue
-            
-            # Wait for detail panel
-            try:
-                WebDriverWait(driver, 15).until(
-                    EC.presence_of_element_located((By.CSS_SELECTOR, "h1.DUwDvf, h1.fontHeadlineLarge, h1[class*='fontHeadline']"))
-                )
-            except:
-                log(f"Detail panel did not load for '{card_name}', skipping")
-                continue
+                card_data.append({
+                    "name": name,
+                    "rating": rating,
+                    "reviews": reviews,
+                    "category": category,
+                    "address_partial": address_partial
+                })
+                log(f"Collected card: {name}")
+
+            except: continue
+
+        if len(card_data) == last_count:
+            stall_count += 1
+        else:
+            stall_count = 0
+        last_count = len(card_data)
+
+        # Scroll down
+        try:
+            driver.execute_script("arguments[0].scrollTop += 1200", panel)
+        except:
+            driver.execute_script("window.scrollBy(0, 1200)")
+        time.sleep(2.5)
+
+    log(f"Phase 1 complete: {len(card_data)} cards collected")
+    return card_data
+
+def extract_full_details(driver, card_data, query):
+    """For each card, open its detail page directly and extract all fields."""
+    leads = []
+    extract_start = time.time()
+
+    for idx, card in enumerate(card_data):
+        if time.time() - extract_start > 300:
+            log("Extract timeout reached")
+            break
+
+        name = card["name"]
+        log(f"Extracting details {idx+1}/{len(card_data)}: {name}")
+
+        try:
+            success = open_business_direct(driver, name, card.get("address_partial",""))
+            if not success:
+                log(f"Could not open detail page for {name}, saving partial data")
 
             def get_val(selectors, attr=None):
                 for sel in selectors:
@@ -350,114 +288,202 @@ def run_scraper(query, target_count=20):
                     except: continue
                 return ""
 
-            name = get_val([
-                "h1.DUwDvf",
-                "h1.fontHeadlineLarge",
-                "h1[class*='fontHeadline']",
-                "div.x3AX1-LfntMc-header-title-title",
-                "span.fontHeadlineLarge",
-                ".DUwDvf"
-            ])
-            
-            if not name:
-                log(f"No name found for card {idx+1}, skipping")
-                continue
-                
+            # Full address
             address = get_val([
                 "button[data-item-id='address']",
-                "button[aria-label*='Address']",
-                "div[data-item-id='address']",
-                ".rogA2c .Io6YTe",
-                "button[data-tooltip='Copy address']"
-            ], "aria-label")
+                "button[aria-label*='ddress']",
+                "[data-item-id='address'] .Io6YTe"
+            ])
             if not address:
-                address = get_val([
-                    "button[data-item-id='address']",
-                    "div[data-item-id='address'] .Io6YTe"
-                ])
-                
+                address = get_val(["button[data-item-id='address']"], "aria-label")
+            if not address:
+                address = card.get("address_partial", "")
+
+            # Phone
             phone = get_val([
                 "button[data-item-id*='phone']",
-                "button[aria-label*='phone']",
-                "button[aria-label*='Phone']",
-                "a[href^='tel:']",
-                "span[aria-label*='+91']"
-            ], "aria-label")
+                "button[aria-label*='hone']",
+                "a[href^='tel:']"
+            ])
             if not phone:
-                phone = get_val(["button[data-item-id*='phone']", "a[href^='tel:']"])
+                phone = get_val(["button[data-item-id*='phone']"], "aria-label")
 
-            website = get_val(["a[data-item-id='authority']", "div[data-item-id='authority'] .Io6YTe"], "href")
-            category = get_val(["button.D693id", "span.mgr77e", "div.fontBodyMedium .sk06S"])
-            rating = get_val(["span.ceNzR", "div.fontDisplayLarge"], "aria-label")
-            reviews = get_val(["span.F7kY9c", "button.HH6Xqe", "span[aria-label*='reviews']"])
-            hours = get_val(["div[data-item-id='oh']", "table.e07dbf"], "aria-label")
-            description = get_val(["div.PYvS2b", "div.fontBodyMedium.kR997c .Io6YTe"])
-            
+            # Website
+            website = get_val(["a[data-item-id='authority']", "a[data-item-id='website']"], "href")
+
+            # Rating — use card data as fallback
+            rating = get_val(["span.ceNzR", "div.fontDisplayLarge"]) or card.get("rating","")
+
+            # Reviews — use card data as fallback
+            reviews = get_val(["span.F7kY9c", "button.HH6Xqe"]) or card.get("reviews","")
             if reviews:
-                reviews = reviews.replace("(", "").replace(")", "").split()[0]
+                reviews = reviews.replace("(","").replace(")","").split()[0]
 
+            # Category — use card data as fallback
+            category = get_val(["button.DkEaL","button.D693id","span.mgr77e"]) or card.get("category","")
+
+            # Hours
+            hours = get_val(["div[data-item-id='oh']"], "aria-label")
+
+            # Description
+            description = get_val(["div.PYvS2b", "div.fontBodyMedium .Io6YTe"])
+
+            # Lat/Lng
             lat, lng = "", ""
             try:
-                url = driver.current_url
-                match = re.search(r'@([\d\.\-]+),([\d\.\-]+)', url)
+                match = re.search(r'@([\d\.\-]+),([\d\.\-]+)', driver.current_url)
                 if match: lat, lng = match.group(1), match.group(2)
             except: pass
 
+            # Maps URL
+            maps_url = driver.current_url
+
+            # Email from website
+            email = ""
+            if website and "google.com" not in website:
+                email = extract_email(website)
+
+            import hashlib
             uid = hashlib.md5(f"{name}{phone}{address}".encode()).hexdigest()
-            
+
             lead = {
                 "lead_id": uid,
                 "business_name": name,
                 "address": address,
                 "phone": phone,
                 "website": website,
-                "email": extract_email(website),
+                "email": email,
                 "rating": rating,
                 "review_count": reviews,
                 "category": category,
-                "maps_url": driver.current_url,
+                "maps_url": maps_url,
                 "business_hours": hours,
-                "social_media": "", 
+                "social_media": "",
                 "description": description,
                 "latitude": lat,
                 "longitude": lng,
                 "query": query,
                 "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             }
-            
+
             leads.append(lead)
             data_out(lead)
+            log(f"✓ Lead {len(leads)} saved: {name} | {phone} | {address}")
             
             # Periodically force GC
-            if idx > 0 and idx % 10 == 0:
+            if len(leads) > 0 and len(leads) % 10 == 0:
                 try:
                     driver.execute_script("window.gc && window.gc()")
                     driver.execute_cdp_cmd('Network.clearBrowserCache', {})
                 except: pass
 
-        log(f"Extraction complete. Found {len(leads)} valid leads.")
+        except Exception as e:
+            log(f"Error extracting {name}: {e}")
+            continue
+
+    return leads
+
+def save_leads(leads, query):
+    if not leads:
+        log("No leads to save.")
+        return
+
+    # Save to local DB first (always works)
+    try:
         database.save_to_db(leads)
-        
-        log("Connected to Google Sheets...")
-        success, msg = google_sheets.save_to_google_sheets(leads)
-        if success:
-            log(f"Sync Result: {msg}")
-        else:
-            log(f"Sheets Sync Warning: {msg}")
+        log(f"✓ Saved {len(leads)} leads to local database")
+    except Exception as e:
+        log(f"DB save error: {e}")
 
+    # Save to Google Sheets with retry
+    for attempt in range(3):
         try:
-            if not os.path.exists("data"): os.makedirs("data")
-            pd.DataFrame(leads).to_csv("data/leads.csv", index=False)
-            log("CSV Backup saved.")
-        except: pass
+            success, msg = google_sheets.save_to_google_sheets(leads)
+            if success:
+                log(f"✓ Google Sheets synced: {msg}")
+                break
+            else:
+                log(f"Sheets attempt {attempt+1} failed: {msg}")
+                time.sleep(4)
+        except Exception as e:
+            log(f"Sheets error attempt {attempt+1}: {e}")
+            time.sleep(4)
 
-        log(f"Completed {len(leads)} leads")
+    # CSV backup
+    try:
+        if not os.path.exists("data"): os.makedirs("data")
+        pd.DataFrame(leads).to_csv("data/leads.csv", index=False)
+        log("✓ CSV backup saved")
+    except: pass
 
-    except Exception as e: log(f"CRITICAL ERROR: {str(e)}")
+    log(f"COMPLETE — {len(leads)} leads extracted and saved")
+
+def run_scraper(query, target_count=20):
+    driver = get_driver()
+    if not driver:
+        log("FATAL: Browser failed to launch")
+        return
+
+    try:
+        # Load Google Maps
+        log("Opening Maps...")
+        encoded_query = urllib.parse.quote_plus(query)
+        driver.get(f"https://www.google.com/maps/search/{encoded_query}")
+        time.sleep(5)
+
+        # Handle consent popup
+        for sel in ["button[aria-label='Accept all']", "form[action*='consent'] button"]:
+            try:
+                driver.find_element(By.CSS_SELECTOR, sel).click()
+                time.sleep(2)
+                break
+            except: continue
+
+        # Wait for results
+        log("Waiting for results to load...")
+        try:
+            WebDriverWait(driver, 20).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, "div.Nv2PK, div[role='article']"))
+            )
+        except:
+            log("Results did not load. Retrying...")
+            driver.refresh()
+            time.sleep(7)
+
+        # Find scroll panel
+        panel = None
+        for sel in ["div[role='feed']", "div.m6QErb.DxyBCb", "div[aria-label*='Results']"]:
+            try:
+                el = driver.find_element(By.CSS_SELECTOR, sel)
+                if el:
+                    panel = el
+                    log(f"Panel found: {sel}")
+                    break
+            except: continue
+
+        # PHASE 1: Collect card names from list
+        log("Phase 1: Collecting card names...")
+        card_data = collect_cards_from_list(driver, panel, target=target_count)
+
+        if not card_data:
+            log("No cards collected. Exiting.")
+            return
+
+        # PHASE 2: Extract full details for each card
+        log(f"Phase 2: Extracting details for {len(card_data)} businesses...")
+        leads = extract_full_details(driver, card_data, query)
+
+        # PHASE 3: Save everything
+        save_leads(leads, query)
+
+    except Exception as e:
+        log(f"CRITICAL ERROR: {e}")
+        import traceback
+        log(traceback.format_exc())
     finally:
-        if driver: 
-            try: driver.quit()
-            except: pass
+        try:
+            driver.quit()
+        except: pass
         kill_chrome()
 
 if __name__ == "__main__":
