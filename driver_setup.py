@@ -39,17 +39,9 @@ def get_driver():
         print(f"Error launching Chrome: {e}")
         return None
 
-def safe_get(driver, url, retries=2):
+def safe_get(driver, url):
     """
-    Safely get a URL with retries.
+    Direct get. Let scraper.py handle retries and restarts.
     """
-    for attempt in range(retries + 1):
-        try:
-            driver.get(url)
-            return True
-        except Exception as e:
-            print(f"Attempt {attempt + 1} failed for {url}: {e}")
-            if attempt == retries:
-                return False
-            time.sleep(2)
-    return False
+    driver.get(url)
+    return True

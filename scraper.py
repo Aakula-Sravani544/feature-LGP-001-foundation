@@ -125,20 +125,22 @@ def main():
         q_idx += 1
         
         batch = []
-        if driver:
-            try:
+        try:
+            if not driver: driver = get_driver()
+            if driver:
                 batch = scrape_google_maps(driver, current_q, target_count=15)
-            except:
-                log("Chrome encountered an issue. Restarting...")
-                try: driver.quit()
+        except Exception as e:
+            log(f"Browser error: {str(e)[:40]}...")
+            log("Restarting Chrome to recover memory...")
+            try: driver.quit()
+            except: pass
+            driver = get_driver()
+            if driver:
+                try: batch = scrape_google_maps(driver, current_q, target_count=5)
                 except: pass
-                driver = get_driver()
-                if driver:
-                    try: batch = scrape_google_maps(driver, current_q, target_count=10)
-                    except: pass
             
         if len(batch) < 3:
-            log(f"Low yield from Selenium. Running Multi-Source Fallback for '{current_q}'...")
+            log(f"Low yield. Switching to Multi-Source Fallback for '{current_q}'...")
             fb_batch = search_fallback(current_q)
             batch.extend(fb_batch)
             
