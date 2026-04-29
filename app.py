@@ -255,23 +255,50 @@ def login_page():
 # ==========================================
 def generation_ui(label_suffix=""):
     st.markdown(f"### 🔍 Start New Extraction {label_suffix}")
-    col1, col2 = st.columns([4, 1])
-    query = col1.text_input(f"Target Keywords", placeholder="e.g. Real Estate Hyderabad", label_visibility="collapsed", key=f"q_{label_suffix}")
     
-    if col2.button(f"Generate Leads", disabled=st.session_state.is_scraping, key=f"b_{label_suffix}"):
+    with st.container():
+        st.markdown('<div class="metric-card" style="text-align: left; padding: 20px;">', unsafe_allow_html=True)
+        c1, c2, c3 = st.columns([2, 2, 1])
+        with c1:
+            keyword = st.text_input("Target Keyword", placeholder="e.g. Real Estate", key=f"kw_{label_suffix}")
+        with c2:
+            location = st.text_input("Location", placeholder="e.g. Hyderabad", key=f"loc_{label_suffix}")
+        with c3:
+            source = st.selectbox("Source", ["Google Maps", "LinkedIn", "Website"], key=f"src_{label_suffix}")
+            
+        c4, c5, c6 = st.columns([2, 1, 1])
+        with c4:
+            max_leads = st.slider("Max Leads / Session", min_value=10, max_value=1000, value=100, step=10, key=f"max_{label_suffix}")
+        with c5:
+            st.markdown("<br>", unsafe_allow_html=True)
+            use_ai = st.toggle("🤖 Enable AI Scoring", value=False, key=f"ai_{label_suffix}")
+        with c6:
+            st.markdown("<br>", unsafe_allow_html=True)
+            btn_generate = st.button("🚀 Generate Leads", disabled=st.session_state.is_scraping, key=f"btn_{label_suffix}", use_container_width=True)
+        st.markdown('</div><br>', unsafe_allow_html=True)
+        
+    if btn_generate:
+        query = f"{keyword} in {location}" if keyword and location else keyword or location
         if not query:
-            st.warning("Please enter target keywords first.")
+            st.warning("Please enter at least a Keyword or Location.")
+        elif source != "Google Maps":
+            st.info(f"{source} scraper is scheduled for Phase 2. Currently using Google Maps engine.")
         else:
             st.session_state.is_scraping = True
             st.session_state.session_leads = []
             st.session_state.logs = ""
             database.log_action(st.session_state.username, f"Started Scraping: {query}")
             
+            # Progress bar
+            progress_bar = st.progress(0)
+            status_text = st.empty()
+            
             log_placeholder = st.empty()
+            metrics_placeholder = st.empty()
             table_placeholder = st.empty()
             
             process = subprocess.Popen(
-                [sys.executable, "scraper.py", query],
+                [sys.executable, "scraper.py", query, str(max_leads)],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
@@ -279,23 +306,65 @@ def generation_ui(label_suffix=""):
                 universal_newlines=True
             )
             
+            duplicates_skipped = 0
+            extracted_so_far = 0
+            
+            with metrics_placeholder.container():
+                m1, m2, m3 = st.columns(3)
+                m1_metric = m1.empty()
+                m2_metric = m2.empty()
+                m3_metric = m3.empty()
+                m1_metric.metric("Total Scraped", 0)
+                m2_metric.metric("Valid Leads", 0)
+                m3_metric.metric("Duplicates Skipped", 0)
+            
             while True:
                 line = process.stdout.readline()
                 if not line and process.poll() is not None: break
                 if line:
                     if line.startswith("LOG:"):
-                        st.session_state.logs += line.replace("LOG:", "").strip() + "\n"
+                        msg = line.replace("LOG:", "").strip()
+                        st.session_state.logs += msg + "\n"
                         log_placeholder.markdown(f'<div class="log-box">{st.session_state.logs}</div>', unsafe_allow_html=True)
+                        status_text.text(msg)
+                        
+                        # Real progress parsing
+                        if "Extracting" in msg and "/" in msg:
+                            try:
+                                nums = re.findall(r'(\d+)/(\d+)', msg)
+                                if nums:
+                                    extracted_so_far = int(nums[0][0])
+                                    total_in_batch = int(nums[0][1])
+                                    m1_metric.metric("Total Scraped", extracted_so_far)
+                                    progress_bar.progress(min(extracted_so_far / max_leads, 1.0))
+                            except: pass
+                        if "Skipping" in msg or "Timeout" in msg:
+                            duplicates_skipped += 1
+                            m3_metric.metric("Duplicates Skipped", duplicates_skipped)
+                            
                     elif line.startswith("DATA:"):
                         try:
                             data = json.loads(line.replace("DATA:", "").strip())
                             st.session_state.session_leads.append(data)
+                            
+                            valid_count = len([x for x in st.session_state.session_leads if x.get('validation_status') == 'Valid'])
+                            m1_metric.metric("Total Scraped", len(st.session_state.session_leads))
+                            m2_metric.metric("Valid Leads", valid_count)
+                            m3_metric.metric("Duplicates Skipped", duplicates_skipped)
+                            
+                            progress_bar.progress(1.0)
+                            
                             with table_placeholder.container():
-                                st.dataframe(pd.DataFrame(st.session_state.session_leads).iloc[::-1], width="stretch")
+                                df_view = pd.DataFrame(st.session_state.session_leads).iloc[::-1]
+                                cols = [c for c in ["business_name", "phone", "email", "validation_status"] if c in df_view.columns]
+                                st.dataframe(df_view[cols] if cols else df_view, width="stretch")
                         except: pass
             
             process.wait()
+            progress_bar.progress(1.0)
+            status_text.text("Extraction Complete!")
             st.session_state.is_scraping = False
+            time.sleep(1)
             st.rerun()
 
 # ==========================================
@@ -303,10 +372,9 @@ def generation_ui(label_suffix=""):
 # ==========================================
 def show_user_dashboard():
     st.markdown('<h1 class="main-title">User Workspace</h1>', unsafe_allow_html=True)
-    st.markdown('<p class="sub-title">Session results and lead monitoring</p>', unsafe_allow_html=True)
+    st.markdown('<p class="sub-title">Session results, filtering, and lead monitoring</p>', unsafe_allow_html=True)
     
     total_db, today_db, quality_pct = get_stats()
-    gs_connected = google_sheets.check_connection()
     
     c1, c2, c3, c4 = st.columns(4)
     with c1: st.markdown(f'<div class="metric-card"><div class="metric-label">Session Leads</div><div class="metric-value">{len(st.session_state.session_leads)}</div></div>', unsafe_allow_html=True)
@@ -316,6 +384,7 @@ def show_user_dashboard():
     status_badge = "badge-success" if st.session_state.is_scraping else "badge-idle"
     with c3: st.markdown(f'<div class="metric-card"><div class="metric-label">Engine Status</div><div class="metric-value"><span class="badge {status_badge}">{status_text}</span></div></div>', unsafe_allow_html=True)
     
+    gs_connected = google_sheets.check_connection()
     gs_color = "#22C55E" if gs_connected else "#EF4444"
     gs_text = "Connected" if gs_connected else "Offline"
     with c4: st.markdown(f'<div class="metric-card"><div class="metric-label">Cloud Sync</div><div class="metric-value" style="color: {gs_color}; font-size: 1.4rem;">{gs_text}</div></div>', unsafe_allow_html=True)
@@ -324,37 +393,42 @@ def show_user_dashboard():
     generation_ui()
     
     if not st.session_state.is_scraping and st.session_state.session_leads:
-        st.markdown("### ⚡ Batch Results")
+        st.markdown("### ⚡ My Leads Table (Session Results)")
         df = pd.DataFrame(st.session_state.session_leads)
-        user_cols = ["business_name", "address", "phone", "website", "rating", "review_count", "category", "timestamp"]
+        
+        # Filtering UI
+        col1, col2 = st.columns(2)
+        status_filter = col1.multiselect("Filter by Validation Status", options=df['validation_status'].unique() if 'validation_status' in df.columns else ["Valid"])
+        if status_filter and 'validation_status' in df.columns:
+            df = df[df['validation_status'].isin(status_filter)]
+            
+        user_cols = ["business_name", "address", "phone", "email", "rating", "review_count", "category", "validation_status"]
         st.dataframe(df[[c for c in user_cols if c in df.columns]], width="stretch")
         
-        # Restore missing Export button
+        c1, c2, c3 = st.columns([1, 1, 2])
         csv = df.to_csv(index=False).encode('utf-8')
-        st.download_button("📥 Export Current Session Leads", csv, "session_leads.csv", "text/csv")
+        c1.download_button("📥 Export CSV", csv, "session_leads.csv", "text/csv", use_container_width=True)
+        json_data = df.to_json(orient='records').encode('utf-8')
+        c2.download_button("📥 Export JSON", json_data, "session_leads.json", "application/json", use_container_width=True)
 
 # ==========================================
 # ADMIN DASHBOARD
 # ==========================================
 def show_admin_dashboard():
     st.markdown('<h1 class="main-title">Admin Dashboard</h1>', unsafe_allow_html=True)
-    st.markdown('<p class="sub-title">Full system access and master database control</p>', unsafe_allow_html=True)
+    st.markdown('<p class="sub-title">Full system access, user management, and master database control</p>', unsafe_allow_html=True)
     
     total_db, today_db, quality_pct = get_stats()
-    gs_connected = google_sheets.check_connection()
     
     c1, c2, c3, c4 = st.columns(4)
     with c1: st.markdown(f'<div class="metric-card"><div class="metric-label">Total Leads</div><div class="metric-value">{total_db}</div></div>', unsafe_allow_html=True)
-    with c2: st.markdown(f'<div class="metric-card"><div class="metric-label">Today\'s Fresh</div><div class="metric-value">{today_db}</div></div>', unsafe_allow_html=True)
+    with c2: st.markdown(f'<div class="metric-card"><div class="metric-label">Active Users</div><div class="metric-value">2</div></div>', unsafe_allow_html=True)
     with c3: st.markdown(f'<div class="metric-card"><div class="metric-label">Global Quality</div><div class="metric-value">{quality_pct}%</div></div>', unsafe_allow_html=True)
-    
-    gs_color = "#22C55E" if gs_connected else "#EF4444"
-    gs_text = "Connected" if gs_connected else "Offline"
-    with c4: st.markdown(f'<div class="metric-card"><div class="metric-label">Google Sheets</div><div class="metric-value" style="color: {gs_color}; font-size: 1.4rem;">{gs_text}</div></div>', unsafe_allow_html=True)
+    with c4: st.markdown(f'<div class="metric-card"><div class="metric-label">Active Subscriptions</div><div class="metric-value">0</div></div>', unsafe_allow_html=True)
     
     st.markdown("<br><hr><br>", unsafe_allow_html=True)
     
-    tabs = st.tabs(["🚀 Generate", "🗄️ Master Database", "📜 Activity Logs", "🛠️ System"])
+    tabs = st.tabs(["🚀 Generate", "🗄️ Master Database", "👥 User Management", "📜 Activity Logs", "🛠️ System Settings"])
     
     with tabs[0]:
         generation_ui("(Admin)")
@@ -366,16 +440,42 @@ def show_admin_dashboard():
         st.markdown("### Master Lead Repository")
         df_master = database.load_db()
         if not df_master.empty:
+            # Analytics UI
+            c1, c2 = st.columns(2)
+            c1.markdown("**Top Categories**")
+            c1.bar_chart(df_master['category'].value_counts().head(5) if 'category' in df_master.columns else [])
+            
+            c2.markdown("**Validation Status Distribution**")
+            c2.bar_chart(df_master['validation_status'].value_counts() if 'validation_status' in df_master.columns else [])
+            
             st.dataframe(df_master, width="stretch")
+            
+            col1, col2 = st.columns(2)
             csv_master = df_master.to_csv(index=False).encode('utf-8')
-            st.download_button("📥 Export Master Repository", csv_master, "leadpulse_master.csv", "text/csv")
+            col1.download_button("📥 Export Master Repository (CSV)", csv_master, "leadpulse_master.csv", "text/csv")
         else: st.info("No leads in database.")
 
     with tabs[2]:
+        st.markdown("### User Management")
+        st.markdown("Manage roles, subscriptions, and access.")
+        df_users = pd.DataFrame([
+            {"username": "admin", "role": "admin", "plan": "Enterprise", "status": "Active"},
+            {"username": "user", "role": "user", "plan": "Starter", "status": "Active"}
+        ])
+        st.dataframe(df_users, width="stretch")
+        with st.expander("+ Create New User"):
+            u_name = st.text_input("Username")
+            u_pass = st.text_input("Password", type="password")
+            u_role = st.selectbox("Role", ["user", "admin"])
+            u_plan = st.selectbox("Subscription Plan", ["Free", "Starter", "Pro", "Enterprise"])
+            if st.button("Create User"):
+                st.success(f"User {u_name} created successfully! (Mocked)")
+
+    with tabs[3]:
         st.markdown("### User System Logs")
         st.dataframe(database.get_logs(), width="stretch")
 
-    with tabs[3]:
+    with tabs[4]:
         st.markdown("### Advanced Settings")
         if st.button("🔄 Force Cloud Sync"):
             with st.spinner("Syncing..."):
@@ -385,14 +485,12 @@ def show_admin_dashboard():
                     if success: st.success(msg)
                     else: st.error(msg)
         
-        # Diagnostic Info
         db_type = "PostgreSQL (Render)" if os.environ.get("DATABASE_URL") else "SQLite (Local)"
         st.info(f"💾 **Active Database Backend:** {db_type}")
         
         if not google_sheets.check_connection():
             st.error(f"⚠️ Connection Error: {google_sheets.get_last_error()}")
-            st.info("💡 Tip: Ensure GOOGLE_SHEETS_CREDENTIALS in Render is the FULL JSON string from your service account file.")
-        
+            
         st.markdown("---")
         if st.button("🚨 Wipe Entire System"):
             database.clear_all_leads()
@@ -407,26 +505,22 @@ def show_admin_dashboard():
 if not st.session_state.authenticated:
     login_page()
 else:
-    # --- MODERN SIDEBAR ---
     with st.sidebar:
-        # 1. Professional Logo
         st.markdown("""
             <div class="sidebar-logo">
                 🚀 LeadPulse <span>Pro</span>
             </div>
             <div class="user-info">
-                Logged in as: <strong>{un}</strong>
+                Logged in as: <strong>{un}</strong><br>
+                Plan: <span style="color:#22C55E">Enterprise</span>
             </div>
             <div class="sidebar-divider"></div>
         """.format(un=st.session_state.username), unsafe_allow_html=True)
         
-        # 2. Navigation / Active Item Highlight
         role_label = "Admin Workspace" if st.session_state.role == "admin" else "User Workspace"
         st.markdown(f'<div class="nav-item-active">🏠 {role_label}</div>', unsafe_allow_html=True)
-        
         st.markdown("<br><br><br>", unsafe_allow_html=True)
         
-        # 3. Status Info
         st.markdown(f"""
             <div style="padding: 1rem; background: rgba(255,255,255,0.03); border-radius: 8px;">
                 <p style="margin:0; font-size: 0.7rem; color: #94A3B8 !important;">ENGINE STATUS</p>
@@ -435,14 +529,11 @@ else:
                 </p>
             </div>
         """, unsafe_allow_html=True)
-        
         st.markdown("<br>", unsafe_allow_html=True)
         
-        # 4. Logout Button (Styled)
-        if st.button("Sign Out Session"):
+        if st.button("Sign Out Session", use_container_width=True):
             logout()
 
-    # Dashboard Routing
     if st.session_state.role == "admin":
         show_admin_dashboard()
     else:

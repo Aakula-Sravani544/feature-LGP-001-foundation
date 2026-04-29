@@ -97,7 +97,8 @@ def save_to_google_sheets(leads_data):
         headers = [
             "lead_id", "business_name", "address", "phone", "website", "email",
             "rating", "review_count", "category", "maps_url", "business_hours",
-            "social_media", "description", "latitude", "longitude", "query", "timestamp"
+            "social_media", "description", "latitude", "longitude", "query", "timestamp",
+            "validation_status", "validation_notes", "sub_region", "ai_analysis", "additional_data"
         ]
         
         if not all_values:
@@ -106,6 +107,7 @@ def save_to_google_sheets(leads_data):
             for row in all_values[1:]:
                 if row: existing_ids.add(str(row[0]).strip())
         
+        # Batch collect rows
         rows_to_append = []
         for lead in leads_data:
             def clean(key):
@@ -123,11 +125,14 @@ def save_to_google_sheets(leads_data):
                 clean("website"), clean("email"), clean("rating"), clean("review_count"),
                 clean("category"), clean("maps_url"), clean("business_hours"),
                 clean("social_media"), clean("description"), clean("latitude"),
-                clean("longitude"), clean("query"), clean("timestamp")
+                clean("longitude"), clean("query"), clean("timestamp"),
+                clean("validation_status"), clean("validation_notes"),
+                clean("sub_region"), clean("ai_analysis"), clean("additional_data")
             ]
             rows_to_append.append(row_data)
             existing_ids.add(l_id)
             
+        # Write batch of rows (max 100 at a time or however many we have)
         if rows_to_append:
             worksheet.append_rows(rows_to_append)
             print(f"DEBUG: Appended {len(rows_to_append)} rows")

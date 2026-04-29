@@ -21,7 +21,7 @@ def init_db():
     conn = get_connection()
     cursor = conn.cursor()
     
-    # 17-Field Leads table
+    # 19-Field Leads table
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS leads (
             lead_id TEXT PRIMARY KEY,
@@ -40,9 +40,35 @@ def init_db():
             latitude TEXT,
             longitude TEXT,
             query TEXT,
-            timestamp TEXT
+            timestamp TEXT,
+            validation_status TEXT,
+            validation_notes TEXT,
+            sub_region TEXT,
+            ai_analysis TEXT,
+            additional_data TEXT
         )
     ''')
+    
+    # Try to add new columns to existing SQLite table gracefully
+    if not USE_POSTGRES:
+        try: cursor.execute("ALTER TABLE leads ADD COLUMN validation_status TEXT")
+        except: pass
+        try: cursor.execute("ALTER TABLE leads ADD COLUMN validation_notes TEXT")
+        except: pass
+        try: cursor.execute("ALTER TABLE leads ADD COLUMN sub_region TEXT")
+        except: pass
+        try: cursor.execute("ALTER TABLE leads ADD COLUMN ai_analysis TEXT")
+        except: pass
+        try: cursor.execute("ALTER TABLE leads ADD COLUMN additional_data TEXT")
+        except: pass
+    else:
+        try:
+            cursor.execute("ALTER TABLE leads ADD COLUMN IF NOT EXISTS validation_status TEXT")
+            cursor.execute("ALTER TABLE leads ADD COLUMN IF NOT EXISTS validation_notes TEXT")
+            cursor.execute("ALTER TABLE leads ADD COLUMN IF NOT EXISTS sub_region TEXT")
+            cursor.execute("ALTER TABLE leads ADD COLUMN IF NOT EXISTS ai_analysis TEXT")
+            cursor.execute("ALTER TABLE leads ADD COLUMN IF NOT EXISTS additional_data TEXT")
+        except: pass
     
     # Users table
     cursor.execute('''
