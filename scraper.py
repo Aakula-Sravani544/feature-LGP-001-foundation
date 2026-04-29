@@ -13,11 +13,9 @@ def log(msg):
 
 def clean_text(text):
     if not text: return ""
-    # Senior Dev Hack: Fix encoding issues for Render/Linux
     return text.encode("utf-8", errors="ignore").decode("utf-8")
 
 def get_full_structure():
-    """Returns the exact 17-field structure requested."""
     return {
         "name": "",
         "address": "",
@@ -41,7 +39,7 @@ def get_full_structure():
 
 def scrape_google_maps(driver, query, target_count=10):
     leads = []
-    log(f"Running Google Maps query: {query}")
+    log(f"Phase 1: Searching for '{query}'...")
     
     encoded = query.replace(" ", "+")
     url = f"https://www.google.com/maps/search/{encoded}"
@@ -49,44 +47,53 @@ def scrape_google_maps(driver, query, target_count=10):
     if not safe_get(driver, url):
         return []
         
-    time.sleep(3)
+    time.sleep(4)
     
     try:
         from selenium.webdriver.common.by import By
-        # Only scroll a tiny bit to stay within 60s limit
-        driver.execute_script("window.scrollBy(0, 400);")
-        time.sleep(1)
+        # More robust selector for results
+        selectors = ["div.Nv2Ygc", "div.UaMeTe", "a.hfpxzc", "div.m67q60-V67S5c", ".fontHeadlineSmall"]
         
-        containers = driver.find_elements(By.CSS_SELECTOR, "div.Nv2Ygc, div.UaMeTe, a.hfpxzc")
+        containers = []
+        for s in selectors:
+            containers = driver.find_elements(By.CSS_SELECTOR, s)
+            if containers: break
+            
+        if not containers:
+            # Try one more scroll
+            driver.execute_script("window.scrollBy(0, 800);")
+            time.sleep(2)
+            for s in selectors:
+                containers = driver.find_elements(By.CSS_SELECTOR, s)
+                if containers: break
+
+        log(f"Detected {len(containers)} potential results. Extracting...")
         
         for container in containers[:target_count]:
             try:
                 lead = get_full_structure()
-                
-                # Extract name
+                # Extraction logic
                 try:
-                    name_el = container.find_element(By.CSS_SELECTOR, ".qBF1Pd, .fontHeadlineSmall")
-                    lead["name"] = clean_text(name_el.text)
-                except:
-                    # Fallback to aria-label if link element
-                    lead["name"] = clean_text(container.get_attribute("aria-label"))
-                
+                    name = container.text.split('\n')[0] if container.text else container.get_attribute("aria-label")
+                    if not name:
+                        name = container.find_element(By.CSS_SELECTOR, ".qBF1Pd, .fontHeadlineSmall").text
+                    lead["name"] = clean_text(name)
+                except: continue
+
                 if not lead["name"]: continue
                 
-                # Basic data
                 lead["google_maps_url"] = driver.current_url
-                lead["category"] = "Google Maps Business"
                 lead["validation_status"] = "Valid"
                 
-                # Output immediately
+                log(f"✅ Found: {lead['name']}")
                 print(f"DATA:{json.dumps(lead)}", flush=True)
                 leads.append(lead)
-                time.sleep(random.uniform(0.5, 1.0))
+                time.sleep(0.5)
                 
             except: continue
                 
     except Exception as e:
-        log(f"Maps extraction error: {e}")
+        log(f"Maps Error: {e}")
         
     return leads
 
@@ -97,67 +104,56 @@ def main():
     target_leads = int(sys.argv[2]) if len(sys.argv) > 2 else 50
     start_time = time.time()
     
-    log(f"LeadPulse Engine Started | Target: {target_leads}")
+    log(f"🚀 LeadPulse Engine Started | Target: {target_leads}")
     
     unique_leads = []
     seen_names = set()
     
-    # Guarantee leads with multiple query variations
+    # Variations to guarantee yield
     queries = [main_query]
     if " in " in main_query:
-        parts = main_query.split(" in ")
-        queries.append(f"top {parts[0]} in {parts[1]}")
-        queries.append(f"best {parts[0]} near {parts[1]}")
+        b, l = main_query.split(" in ")
+        queries += [f"{b} in North {l}", f"{b} in South {l}", f"best {b} in {l}"]
     
     driver = get_driver()
-    if driver:
-        log("Chrome initialized on Render successfully.")
     
     q_idx = 0
     while len(unique_leads) < target_leads and q_idx < len(queries):
-        # 60 second hard limit
-        if time.time() - start_time > 58:
-            log("Hard timeout reached (60s).")
-            break
+        if time.time() - start_time > 58: break
             
         current_q = queries[q_idx]
         q_idx += 1
         
-        # 1. Try Selenium with auto-restart logic
         batch = []
         if driver:
             try:
                 batch = scrape_google_maps(driver, current_q, target_count=15)
-            except Exception as e:
-                log(f"Selenium session failed: {e}. Attempting driver restart...")
+            except:
+                log("Chrome encountered an issue. Restarting...")
                 try: driver.quit()
                 except: pass
-                driver = get_driver() # Restart driver
+                driver = get_driver()
                 if driver:
                     try: batch = scrape_google_maps(driver, current_q, target_count=10)
                     except: pass
             
-        # 2. Try Fallback if batch small or failed
         if len(batch) < 3:
-            log(f"Low yield from Selenium. Running Fallback for '{current_q}'...")
-            fallback_batch = search_fallback(current_q)
-            batch.extend(fallback_batch)
+            log(f"Low yield from Selenium. Running Multi-Source Fallback for '{current_q}'...")
+            fb_batch = search_fallback(current_q)
+            batch.extend(fb_batch)
             
-        # Process batch
         for l in batch:
             if l["name"] and l["name"] not in seen_names:
                 unique_leads.append(l)
                 seen_names.add(l["name"])
-                # Fallback data is already printed in search_fallback if needed, 
-                # but we print it here if it wasn't.
-                if l.get("additional_data") == "Generated via Fallback":
+                if l.get("additional_data", "").startswith("Source:"):
                     print(f"DATA:{json.dumps(l)}", flush=True)
         
-        log(f"Yield: {len(unique_leads)} unique leads collected.")
+        log(f"Engine Progress: {len(unique_leads)}/{target_leads} leads")
         time.sleep(1)
 
     if driver: driver.quit()
-    log(f"Done! {len(unique_leads)} leads generated in {int(time.time() - start_time)}s")
+    log(f"Extraction Finished. Total: {len(unique_leads)} leads in {int(time.time() - start_time)}s")
 
 if __name__ == "__main__":
     main()
