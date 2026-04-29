@@ -297,6 +297,18 @@ def run_scraper(query, target_count=100):
                 leads.append(lead)
                 data_out(lead)
                 
+                # --- NEW: Extreme Memory Management (DOM Pruning) ---
+                # Clear the contents of the card we just processed to free up RAM on Render
+                try:
+                    driver.execute_script("arguments[0].innerHTML = '';", card)
+                except: pass
+                
+                # Periodically clear network cache
+                if i > 0 and i % 15 == 0:
+                    try:
+                        driver.execute_cdp_cmd('Network.clearBrowserCache', {})
+                    except: pass
+                
             except Exception as e: continue
 
         log(f"Extraction complete. Processing {len(leads)} leads...")
