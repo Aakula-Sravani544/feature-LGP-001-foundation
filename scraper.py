@@ -110,7 +110,8 @@ def main():
         queries.append(f"best {parts[0]} near {parts[1]}")
     
     driver = get_driver()
-    log("Chrome initialized on Render successfully.")
+    if driver:
+        log("Chrome initialized on Render successfully.")
     
     q_idx = 0
     while len(unique_leads) < target_leads and q_idx < len(queries):
@@ -122,10 +123,19 @@ def main():
         current_q = queries[q_idx]
         q_idx += 1
         
-        # 1. Try Selenium
+        # 1. Try Selenium with auto-restart logic
         batch = []
         if driver:
-            batch = scrape_google_maps(driver, current_q, target_count=15)
+            try:
+                batch = scrape_google_maps(driver, current_q, target_count=15)
+            except Exception as e:
+                log(f"Selenium session failed: {e}. Attempting driver restart...")
+                try: driver.quit()
+                except: pass
+                driver = get_driver() # Restart driver
+                if driver:
+                    try: batch = scrape_google_maps(driver, current_q, target_count=10)
+                    except: pass
             
         # 2. Try Fallback if batch small or failed
         if len(batch) < 3:

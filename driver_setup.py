@@ -18,13 +18,18 @@ def get_driver():
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--disable-gpu")
-    options.add_argument("--window-size=1920,1080")
+    options.add_argument("--window-size=1280,720")
     options.add_argument("--single-process")
     options.add_argument("--disable-blink-features=AutomationControlled")
     
-    # Additional memory optimizations
+    # Critical Memory Optimizations for Render Free Tier
     options.add_argument("--disable-extensions")
     options.add_argument("--no-zygote")
+    options.add_argument("--memory-pressure-off")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--disable-software-rasterizer")
+    options.add_argument("--renderer-process-limit=1")
+    options.add_argument("--js-flags=--max-old-space-size=64")
     
     try:
         driver = webdriver.Chrome(options=options)
