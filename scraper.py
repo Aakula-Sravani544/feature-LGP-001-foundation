@@ -83,8 +83,8 @@ def get_driver():
             options.binary_location = docker_path
 
         driver = webdriver.Chrome(options=options)
-        driver.set_page_load_timeout(60)
-        driver.set_script_timeout(60)
+        driver.set_page_load_timeout(45)
+        driver.set_script_timeout(45)
         return driver
     except Exception as e:
         log(f"Browser launch failed: {e}")
@@ -119,7 +119,7 @@ def collect_place_urls(driver, panel, target=20):
     last_count = 0
     scroll_start = time.time()
 
-    while len(collected) < target and stall < 12 and (time.time() - scroll_start) < 90:
+    while len(collected) < target and stall < 20 and (time.time() - scroll_start) < 180:
         cards = driver.find_elements(By.CSS_SELECTOR, "div.Nv2PK, div[role='article']")
 
         for card in cards:
@@ -183,7 +183,7 @@ def collect_place_urls(driver, panel, target=20):
 def extract_from_urls(place_urls, query):
     leads = []
     items = list(place_urls.items())
-    BATCH = 5
+    BATCH = 3  # 3 per batch = safer on Render 512MB
 
     for batch_start in range(0, len(items), BATCH):
         batch = items[batch_start: batch_start + BATCH]
@@ -198,8 +198,19 @@ def extract_from_urls(place_urls, query):
             for name, url in batch:
                 log(f"Opening: {name}")
                 try:
-                    driver.get(url)
-                    time.sleep(5)
+                    # Try loading URL, retry once on timeout
+                    for load_attempt in range(2):
+                        try:
+                            driver.get(url)
+                            time.sleep(5)
+                            break
+                        except Exception as te:
+                            if load_attempt == 0:
+                                log(f"Load timeout for {name}, retrying...")
+                                time.sleep(3)
+                            else:
+                                log(f"Failed to load {name} after retry, skipping")
+                                raise
 
                     # If we landed on a search-results page, click the first card
                     if "/search/" in driver.current_url or "search?" in driver.current_url:
@@ -350,7 +361,7 @@ def extract_from_urls(place_urls, query):
 # ─────────────────────────────────────────────
 # MAIN ENTRY POINT
 # ─────────────────────────────────────────────
-def run_scraper(query, target_count=20):
+def run_scraper(query, target_count=100):
     log("=== LeadPulse Pro — Starting extraction ===")
     place_urls = {}
 
@@ -407,6 +418,7 @@ def run_scraper(query, target_count=20):
 
         log("Phase 1: Collecting place URLs from card list...")
         place_urls = collect_place_urls(driver, panel, target=target_count)
+
 
     except Exception as e:
         log(f"Phase 1 error: {e}")
