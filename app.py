@@ -7,6 +7,7 @@ import json
 import time
 from datetime import datetime
 from dotenv import load_dotenv
+import re
 
 # Load environment variables
 load_dotenv()
