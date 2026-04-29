@@ -347,6 +347,7 @@ def generation_ui(label_suffix=""):
                         try:
                             data = json.loads(line.replace("DATA:", "").strip())
                             st.session_state.session_leads.append(data)
+                            database.save_to_db([data]) # Save to permanent DB
                             
                             valid_count = len([x for x in st.session_state.session_leads if x.get('validation_status') == 'Valid'])
                             m1_metric.metric("Total Scraped", len(st.session_state.session_leads))
