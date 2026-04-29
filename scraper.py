@@ -293,15 +293,41 @@ def run_scraper(query, target_count=20):
             go_back_to_list(driver)
             
             try:
-                if "'" in card_name:
-                    xpath_expr = f"//div[contains(@class,'Nv2PK')]//div[text()=\"{card_name}\"] | //div[@role='article']//div[text()=\"{card_name}\"]"
-                else:
-                    xpath_expr = f"//div[contains(@class,'Nv2PK')]//div[text()='{card_name}'] | //div[@role='article']//div[text()='{card_name}']"
+                # Reset panel scroll to top so we don't miss cards due to DOM virtualization
+                if panel: driver.execute_script("arguments[0].scrollTop = 0;", panel)
+                time.sleep(1)
                 
-                clickable = driver.find_element(By.XPATH, xpath_expr)
-                driver.execute_script("arguments[0].scrollIntoView({block:'center'})", clickable)
+                found_card = None
+                scroll_attempts = 0
+                
+                # Scan visible DOM, scroll down if not found (handles lazy-loaded virtual lists)
+                while not found_card and scroll_attempts < 20:
+                    current_cards = driver.find_elements(By.CSS_SELECTOR, "div.Nv2PK, div[role='article']")
+                    for c in current_cards:
+                        try:
+                            n = c.find_element(By.CSS_SELECTOR, "div.qBF1Pd, .fontHeadlineSmall").text.strip()
+                            if n == card_name or card_name in n:
+                                found_card = c
+                                break
+                        except: pass
+                    
+                    if not found_card:
+                        scroll_panel(driver, panel)
+                        scroll_attempts += 1
+
+                if not found_card:
+                    log(f"Could not locate '{card_name}' in DOM after scrolling. Skipping.")
+                    continue
+
+                # Scroll into center view before clicking
+                driver.execute_script("arguments[0].scrollIntoView({block:'center'})", found_card)
                 time.sleep(0.5)
-                driver.execute_script("arguments[0].closest('.Nv2PK, [role=article]').click()", clickable)
+                
+                try: 
+                    found_card.click()
+                except: 
+                    driver.execute_script("arguments[0].closest('.Nv2PK, [role=article]').click()", found_card)
+                    
             except Exception as e:
                 log(f"Could not click card '{card_name}': {e}")
                 continue
