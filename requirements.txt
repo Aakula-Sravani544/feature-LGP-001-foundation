@@ -11,3 +11,4 @@ phonenumbers
 email-validator
 aiohttp
 fake-useragent
+sqlalchemy

@@ -4,9 +4,12 @@ from psycopg2.extras import DictCursor
 import pandas as pd
 import os
 from datetime import datetime
+from sqlalchemy import create_engine
 
 DB_NAME = "data/leadpulse.db"
 DATABASE_URL = os.environ.get("DATABASE_URL")
+if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 USE_POSTGRES = DATABASE_URL is not None
 
 def get_connection():
@@ -16,6 +19,11 @@ def get_connection():
         if not os.path.exists("data"):
             os.makedirs("data")
         return sqlite3.connect(DB_NAME)
+
+def get_engine():
+    if USE_POSTGRES:
+        return create_engine(DATABASE_URL)
+    return None
 
 def init_db():
     conn = get_connection()
@@ -123,9 +131,13 @@ def log_action(username, action):
 
 def get_logs():
     init_db()
-    conn = get_connection()
-    df = pd.read_sql_query("SELECT * FROM session_logs ORDER BY timestamp DESC", conn)
-    conn.close()
+    if USE_POSTGRES:
+        engine = get_engine()
+        df = pd.read_sql_query("SELECT * FROM session_logs ORDER BY timestamp DESC", engine)
+    else:
+        conn = get_connection()
+        df = pd.read_sql_query("SELECT * FROM session_logs ORDER BY timestamp DESC", conn)
+        conn.close()
     return df
 
 def save_to_db(leads_data):
@@ -161,9 +173,13 @@ def save_to_db(leads_data):
 
 def load_db():
     init_db()
-    conn = get_connection()
-    df = pd.read_sql_query("SELECT * FROM leads", conn)
-    conn.close()
+    if USE_POSTGRES:
+        engine = get_engine()
+        df = pd.read_sql_query("SELECT * FROM leads", engine)
+    else:
+        conn = get_connection()
+        df = pd.read_sql_query("SELECT * FROM leads", conn)
+        conn.close()
     return df
 
 def verify_user(username, password):
