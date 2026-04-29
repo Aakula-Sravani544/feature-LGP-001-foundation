@@ -57,7 +57,14 @@ def get_driver():
         options.add_argument("--blink-settings=imagesEnabled=false") 
         options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36")
         
-        # --- NEW: Offload Memory to Disk to prevent 502 OOM crash ---
+        # --- NEW: Extreme Anti-Crash Flags to prevent Renderer Timeout ---
+        options.add_argument("--disable-features=VizDisplayCompositor")
+        options.add_argument("--disable-features=IsolateOrigins,site-per-process")
+        options.add_argument("--force-color-profile=srgb")
+        options.add_argument("--metrics-recording-only")
+        options.add_argument("--mute-audio")
+        
+        # Offload Memory to Disk
         options.add_argument("--disk-cache-dir=/tmp/chrome-cache")
         options.add_argument("--user-data-dir=/tmp/chrome-data")
         options.add_argument("--disable-dev-shm-usage") # Use /tmp instead of /dev/shm
@@ -80,10 +87,14 @@ def get_driver():
             options.binary_location = docker_path
             
         driver = webdriver.Chrome(options=options)
-        driver.set_page_load_timeout(30)
+        # Increase timeouts significantly to prevent the 30.000 renderer timeout
+        driver.set_page_load_timeout(120)
+        driver.set_script_timeout(120)
         return driver
     except Exception as e:
         log(f"Browser launch failed: {str(e)}")
+        import traceback
+        log(f"Error Details: {traceback.format_exc()}")
         return None
 
 def extract_email(website):
