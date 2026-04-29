@@ -45,7 +45,7 @@ def get_driver():
         log("Launching Chrome with Fake User-Agent...")
         options = webdriver.ChromeOptions()
         options.page_load_strategy = 'eager'
-        options.add_argument("--headless=new")
+        options.add_argument("--headless")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-gpu")
@@ -53,7 +53,6 @@ def get_driver():
         options.add_argument("--disable-extensions")
         options.add_argument("--disable-infobars")
         options.add_argument("--disable-notifications")
-        options.add_argument("--single-process")
         options.add_argument("--no-zygote")
         options.add_argument("--renderer-process-limit=1")
         options.add_argument("--aggressive-cache-discard")
