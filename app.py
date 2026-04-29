@@ -357,8 +357,8 @@ def generation_ui(label_suffix=""):
                             
                             with table_placeholder.container():
                                 df_view = pd.DataFrame(st.session_state.session_leads).iloc[::-1]
-                                cols = [c for c in ["business_name", "phone", "email", "validation_status"] if c in df_view.columns]
-                                st.dataframe(df_view[cols] if cols else df_view, width="stretch")
+                                cols = [c for c in ["name", "business_name", "phone", "email", "validation_status"] if c in df_view.columns]
+                                st.dataframe(df_view[cols] if cols else df_view, width="stretch", hide_index=True)
                         except: pass
                     else:
                         msg = line.strip()
@@ -409,7 +409,7 @@ def show_user_dashboard():
             if status_filter and 'validation_status' in df.columns:
                 df = df[df['validation_status'].isin(status_filter)]
                 
-            user_cols = ["business_name", "address", "phone", "email", "rating", "review_count", "category", "validation_status"]
+            user_cols = ["name", "business_name", "address", "phone", "email", "rating", "reviews", "review_count", "category", "validation_status"]
             st.dataframe(df[[c for c in user_cols if c in df.columns]], width="stretch", hide_index=True)
             
             c1, c2, c3 = st.columns([1, 1, 2])

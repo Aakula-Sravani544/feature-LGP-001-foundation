@@ -145,27 +145,53 @@ def save_to_db(leads_data):
     init_db()
     conn = get_connection()
     cursor = conn.cursor()
-    df = pd.DataFrame(leads_data)
     
-    for idx, row in df.iterrows():
-        row_dict = row.to_dict()
-        columns = ', '.join(row_dict.keys())
+    # Mapping for new scraper fields to DB columns
+    MAPPING = {
+        "name": "business_name",
+        "google_maps_url": "maps_url",
+        "reviews": "review_count",
+        "hours": "business_hours",
+        "scraped_date": "timestamp"
+    }
+    
+    for row_dict in leads_data:
+        # 1. Map fields
+        final_dict = {}
+        for k, v in row_dict.items():
+            db_key = MAPPING.get(k, k)
+            final_dict[db_key] = v
+            
+        # 2. Ensure lead_id exists
+        if "lead_id" not in final_dict or not final_dict["lead_id"]:
+            import uuid
+            final_dict["lead_id"] = str(uuid.uuid4())[:8]
+            
+        # 3. Clean for DB schema (keep only existing columns)
+        # We'll just filter keys that we know are in the table
+        valid_cols = ["lead_id", "business_name", "address", "phone", "website", "email", 
+                     "rating", "review_count", "category", "maps_url", "business_hours", 
+                     "social_media", "description", "latitude", "longitude", "query", 
+                     "timestamp", "validation_status", "validation_notes", "sub_region", 
+                     "ai_analysis", "additional_data"]
+        
+        db_row = {k: v for k, v in final_dict.items() if k in valid_cols}
+        columns = ', '.join(db_row.keys())
         
         if USE_POSTGRES:
-            placeholders = ', '.join(['%s'] * len(row_dict))
+            placeholders = ', '.join(['%s'] * len(db_row))
             query = f"INSERT INTO leads ({columns}) VALUES ({placeholders}) ON CONFLICT (lead_id) DO NOTHING"
             try:
-                cursor.execute(query, tuple(row_dict.values()))
+                cursor.execute(query, tuple(db_row.values()))
             except Exception as e:
                 print(f"DB Insert Error: {e}")
         else:
-            placeholders = ', '.join(['?'] * len(row_dict))
-            # SQLite deduplication
-            cursor.execute("SELECT 1 FROM leads WHERE lead_id = ?", (row.get('lead_id', ''),))
+            placeholders = ', '.join(['?'] * len(db_row))
+            cursor.execute("SELECT 1 FROM leads WHERE lead_id = ?", (db_row.get('lead_id', ''),))
             if not cursor.fetchone():
                 query = f"INSERT INTO leads ({columns}) VALUES ({placeholders})"
                 try:
-                    cursor.execute(query, tuple(row_dict.values()))
+                    cursor.execute(query, tuple(db_row.values()))
                 except: pass
                 
     conn.commit()

@@ -6,9 +6,10 @@ google-auth
 selenium>=4.10.0
 python-dotenv
 webdriver-manager
+beautifulsoup4
+sqlalchemy
 psycopg2-binary
 phonenumbers
 email-validator
 aiohttp
 fake-useragent
-sqlalchemy
