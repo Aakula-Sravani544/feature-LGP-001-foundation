@@ -105,6 +105,7 @@ def main():
         queries += [f"best {b} in {l}", f"top {b} near {l}"]
     
     driver = get_driver()
+    chrome_failures = 0
     
     q_idx = 0
     while len(unique_leads) < target_leads and q_idx < len(queries):
@@ -114,19 +115,33 @@ def main():
         
         batch = []
         try:
-            if not driver: driver = get_driver()
-            if driver: batch = scrape_google_maps(driver, current_q, target_count=15)
-        except:
-            log("OOM Recovery: Restarting Chrome...")
+            if chrome_failures >= 2:
+                driver = None # Force fallback for the rest of the session
+                
+            if driver:
+                batch = scrape_google_maps(driver, current_q, target_count=15)
+            else:
+                log("Chrome disabled due to memory issues. Using Fallback mode.")
+        except Exception as e:
+            chrome_failures += 1
+            log(f"Browser error: {str(e)[:40]}...")
+            log(f"Restarting Chrome ({chrome_failures}/2)...")
             try: driver.quit()
             except: pass
-            driver = get_driver()
-            if driver:
-                try: batch = scrape_google_maps(driver, current_q, target_count=5)
-                except: pass
+            
+            if chrome_failures < 2:
+                driver = get_driver()
+                if driver:
+                    try: batch = scrape_google_maps(driver, current_q, target_count=5)
+                    except: 
+                        chrome_failures += 1
+                        driver = None
+            else:
+                driver = None
+                log("Switching to 100% Fallback mode to guarantee results.")
             
         if len(batch) < 3:
-            log(f"Low yield. Using Fallback Engine for '{current_q}'...")
+            log(f"Low yield. Switching to Multi-Source Fallback for '{current_q}'...")
             fb_batch = search_fallback(current_q)
             batch.extend(fb_batch)
             
