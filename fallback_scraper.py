@@ -8,85 +8,98 @@ import urllib.parse
 
 def search_fallback(query):
     """
-    Ultimate fallback using multiple engines and longer timeouts for Render.
+    Robust fallback to get REAL business data without being blocked.
+    Uses Google Lite and DuckDuckGo Lite.
     """
     leads = []
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+        "User-Agent": "Mozilla/5.0 (Linux; Android 10; SM-G960F) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.6167.164 Mobile Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.5",
+        "Referer": "https://www.google.com/"
     }
     
     q = urllib.parse.quote(query)
     
-    # Engine 1: Ask.com (Very bot friendly)
+    # Source 1: Google GBV=1 (Low-bandwidth, high-compatibility)
     try:
-        url = f"https://www.ask.com/web?q={q}"
-        resp = requests.get(url, headers=headers, timeout=15)
+        url = f"https://www.google.com/search?q={q}&gbv=1&tbs=qdr:y"
+        resp = requests.get(url, headers=headers, timeout=12)
         if resp.status_code == 200:
             soup = BeautifulSoup(resp.text, "html.parser")
-            for res in soup.select('.PartialSearchResults-item'):
-                title = res.select_one('.PartialSearchResults-item-title')
-                link = res.select_one('.PartialSearchResults-item-title a')
-                if title and link:
+            # In GBV=1 mode, results are in simple divs
+            for g in soup.select('div.ZIN69d, div.kCrYT'):
+                link = g.find('a')
+                title = g.find('h3')
+                snippet = g.find('div.BNeawe')
+                
+                if link and title:
                     name = title.get_text().strip()
-                    url = link.get('href', "")
-                    if name and url.startswith('http'):
-                        leads.append(create_lead(name, url, "", "Ask.com"))
-    except: pass
+                    website = link.get('href', "")
+                    # Clean Google redirect links
+                    if "/url?q=" in website:
+                        website = website.split("/url?q=")[1].split("&")[0]
+                        website = urllib.parse.unquote(website)
+                    
+                    if name and website.startswith('http') and "google.com" not in website:
+                        leads.append(create_lead(name, website, snippet.get_text() if snippet else "", "Google Global"))
+    except Exception as e:
+        print(f"DEBUG: Google Global Failed: {e}")
 
-    # Engine 2: Mojeek (Privacy engine, rarely blocks)
+    # Source 2: DuckDuckGo Lite
     if len(leads) < 5:
         try:
-            url = f"https://www.mojeek.com/search?q={q}"
-            resp = requests.get(url, headers=headers, timeout=15)
-            if resp.status_code == 200:
-                soup = BeautifulSoup(resp.text, "html.parser")
-                for res in soup.select('.result'):
-                    a = res.select_one('a.t')
-                    s = res.select_one('.s')
-                    if a:
-                        name = a.get_text().strip()
-                        url = a.get('href', "")
-                        txt = s.get_text().strip() if s else ""
-                        leads.append(create_lead(name, url, txt, "Mojeek"))
-        except: pass
-
-    # Engine 3: DuckDuckGo Lite (Try with longer timeout)
-    if len(leads) < 3:
-        try:
             url = f"https://lite.duckduckgo.com/lite/?q={q}"
-            resp = requests.get(url, headers=headers, timeout=20)
+            resp = requests.get(url, headers=headers, timeout=12)
             if resp.status_code == 200:
                 soup = BeautifulSoup(resp.text, "html.parser")
                 for table in soup.select('table'):
                     links = table.select('a.result-link')
-                    for link_el in links:
-                        name = link_el.get_text().strip()
-                        website = link_el.get('href', "")
-                        if name and website.startswith('http') and "duckduckgo.com" not in website:
-                            leads.append(create_lead(name, website, "", "DDG Lite"))
+                    snippets = table.select('td.result-snippet')
+                    for l_el, s_el in zip(links, snippets):
+                        name = l_el.get_text().strip()
+                        url = l_el.get('href', "")
+                        txt = s_el.get_text().strip()
+                        if name and url.startswith('http') and "duckduckgo.com" not in url:
+                            leads.append(create_lead(name, url, txt, "DDG Lite"))
         except: pass
 
     return leads
 
 def create_lead(name, website, snippet, source):
+    # Sanitize and format
     name = name.encode("utf-8", errors="ignore").decode("utf-8")
+    snippet = snippet.encode("utf-8", errors="ignore").decode("utf-8")
+    
+    # Phone extraction from snippet
+    phone = "Check Website"
+    phone_match = re.search(r'(\+?\d{1,4}[\s-]?)?\(?\d{3}\)?[\s-]?\d{3}[\s-]?\d{4}', snippet)
+    if phone_match: phone = phone_match.group(0)
+    
+    # Address extraction hint
+    address = "Multiple Locations"
+    if "," in snippet and any(c.isdigit() for c in snippet):
+        parts = snippet.split(",")
+        if len(parts) > 1:
+            address = f"{parts[-2].strip()}, {parts[-1].strip()}"[:100]
+
     return {
         "name": name,
-        "address": f"Located via {source}",
-        "phone": "Check Website",
+        "address": address,
+        "phone": phone,
         "email": "Use Website Contact",
         "website": website,
         "rating": "N/A",
         "reviews": "0",
-        "category": "Verified Lead",
+        "category": "Verified Result",
         "google_maps_url": website,
-        "description": f"Source: {source} Engine",
+        "description": snippet[:200],
         "hours": "N/A",
         "social_media": "",
-        "additional_data": f"Provider: {source}",
+        "additional_data": f"Engine: {source}",
         "scraped_date": datetime.now().strftime("%Y-%m-%d"),
         "ai_analysis": "N/A",
         "validation_status": "Candidate",
-        "validation_notes": f"Generated via {source} fallback due to Render timeout",
+        "validation_notes": f"Scraped via {source} engine",
         "sub_region": ""
     }
