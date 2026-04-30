@@ -4,6 +4,7 @@ import os
 import json
 import ast
 from datetime import datetime
+from validation import validate_lead
 
 # Global variable to store the last error for diagnostics
 LAST_ERROR = None
@@ -83,10 +84,9 @@ def save_to_google_sheets(leads_data):
         existing_ids = set()
         
         headers = [
-            "lead_id", "business_name", "address", "phone", "website", "email",
-            "rating", "review_count", "category", "maps_url", "business_hours",
-            "social_media", "description", "latitude", "longitude", "query", "timestamp",
-            "validation_status", "validation_notes", "sub_region", "ai_analysis", "additional_data"
+            "lead_id", "business_name", "address", "phone", "email", "website",
+            "rating", "reviews", "category", "maps_url", "scraped_date",
+            "validation_status", "validation_notes"
         ]
         
         if not all_values:
@@ -108,14 +108,23 @@ def save_to_google_sheets(leads_data):
             if not l_id or l_id in existing_ids:
                 continue
                 
+            # Apply Validation before syncing to cloud (Requirement 4)
+            lead = validate_lead(lead)
+
             row_data = [
-                l_id, clean("business_name"), clean("address"), clean("phone"),
-                clean("website"), clean("email"), clean("rating"), clean("review_count"),
-                clean("category"), clean("maps_url"), clean("business_hours"),
-                clean("social_media"), clean("description"), clean("latitude"),
-                clean("longitude"), clean("query"), clean("timestamp"),
-                clean("validation_status"), clean("validation_notes"),
-                clean("sub_region"), clean("ai_analysis"), clean("additional_data")
+                l_id, 
+                clean("business_name") or clean("name"), 
+                clean("address"), 
+                clean("phone"),
+                clean("email"),
+                clean("website"), 
+                clean("rating"), 
+                clean("reviews") or clean("review_count"),
+                clean("category"), 
+                clean("maps_url") or clean("google_maps_url"), 
+                clean("scraped_date") or clean("timestamp"),
+                clean("validation_status") or "Pending", 
+                clean("validation_notes")
             ]
             rows_to_append.append(row_data)
             existing_ids.add(l_id)
@@ -159,9 +168,9 @@ def clear_sheet_data():
         sh = gc.open(sheet_name)
         worksheet = sh.sheet1
         headers = [
-            "lead_id", "business_name", "address", "phone", "website", "email",
-            "rating", "review_count", "category", "maps_url", "business_hours",
-            "social_media", "description", "latitude", "longitude", "query", "timestamp"
+            "lead_id", "business_name", "address", "phone", "email", "website",
+            "rating", "reviews", "category", "maps_url", "scraped_date",
+            "validation_status", "validation_notes"
         ]
         worksheet.clear()
         worksheet.append_row(headers)
