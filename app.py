@@ -298,80 +298,69 @@ def generation_ui(label_suffix=""):
             metrics_placeholder = st.empty()
             table_placeholder = st.empty()
             
-            process = subprocess.Popen(
-                [sys.executable, "scraper.py", query, str(max_leads)],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=True,
-                bufsize=1,
-                universal_newlines=True
-            )
-            
-            duplicates_skipped = 0
-            extracted_so_far = 0
+            target_total = max_leads
+            batch_size = 10
+            collected_count = 0
             
             with metrics_placeholder.container():
                 m1, m2, m3 = st.columns(3)
                 m1_metric = m1.empty()
                 m2_metric = m2.empty()
                 m3_metric = m3.empty()
-                m1_metric.metric("Total Scraped", 0)
-                m2_metric.metric("Valid Leads", 0)
-                m3_metric.metric("Duplicates Skipped", 0)
             
-            while True:
-                line = process.stdout.readline()
-                if not line and process.poll() is not None: break
-                if line:
-                    if line.startswith("LOG:"):
-                        msg = line.replace("LOG:", "").strip()
-                        st.session_state.logs += msg + "\n"
-                        log_placeholder.markdown(f'<div class="log-box">{st.session_state.logs}</div>', unsafe_allow_html=True)
-                        status_text.text(msg)
-                        
-                        # Real progress parsing
-                        if "Extracting" in msg and "/" in msg:
-                            try:
-                                nums = re.findall(r'(\d+)/(\d+)', msg)
-                                if nums:
-                                    extracted_so_far = int(nums[0][0])
-                                    total_in_batch = int(nums[0][1])
-                                    m1_metric.metric("Total Scraped", extracted_so_far)
-                                    progress_bar.progress(min(extracted_so_far / max_leads, 1.0))
-                            except: pass
-                        if "Skipping" in msg or "Timeout" in msg:
-                            duplicates_skipped += 1
-                            m3_metric.metric("Duplicates Skipped", duplicates_skipped)
-                            
-                    elif line.startswith("DATA:"):
+            while collected_count < target_total:
+                batch_target = min(batch_size, target_total - collected_count)
+                status_text.text(f"🔄 Batch Extraction: {collected_count}/{target_total} leads collected...")
+                
+                process = subprocess.Popen(
+                    [sys.executable, "scraper.py", query, str(batch_target)],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    bufsize=1,
+                    universal_newlines=True
+                )
+                
+                duplicates_skipped = 0
+                for line in process.stdout:
+                    if line.startswith("DATA:"):
                         try:
                             data = json.loads(line.replace("DATA:", "").strip())
-                            st.session_state.session_leads.append(data)
-                            database.save_to_db([data]) # Save to permanent DB
+                            # Unique by name check
+                            if not any(l.get('name') == data.get('name') for l in st.session_state.session_leads):
+                                st.session_state.session_leads.append(data)
+                                database.save_to_db([data])
+                                collected_count = len(st.session_state.session_leads)
+                            else:
+                                duplicates_skipped += 1
                             
                             valid_count = len([x for x in st.session_state.session_leads if x.get('validation_status') == 'Valid'])
-                            m1_metric.metric("Total Scraped", len(st.session_state.session_leads))
+                            m1_metric.metric("Total Scraped", collected_count)
                             m2_metric.metric("Valid Leads", valid_count)
                             m3_metric.metric("Duplicates Skipped", duplicates_skipped)
                             
-                            progress_bar.progress(1.0)
+                            progress_bar.progress(min(collected_count / target_total, 1.0))
                             
                             with table_placeholder.container():
                                 df_view = pd.DataFrame(st.session_state.session_leads).iloc[::-1]
-                                cols = [c for c in ["name", "business_name", "phone", "email", "validation_status"] if c in df_view.columns]
+                                cols = [c for c in ["name", "phone", "email", "validation_status"] if c in df_view.columns]
                                 st.dataframe(df_view[cols] if cols else df_view, width="stretch", hide_index=True)
                         except: pass
-                    else:
-                        msg = line.strip()
-                        if msg:
-                            st.session_state.logs += f"[SYS] {msg}\n"
-                            log_placeholder.markdown(f'<div class="log-box">{st.session_state.logs}</div>', unsafe_allow_html=True)
+                    elif line.startswith("LOG:"):
+                        msg = line.replace("LOG:", "").strip()
+                        st.session_state.logs += f"[SYS] {msg}\n"
+                        log_placeholder.markdown(f'<div class="log-box">{st.session_state.logs[-3000:]}</div>', unsafe_allow_html=True)
+                
+                process.wait()
+                if collected_count >= target_total: break
+                time.sleep(3) # Memory cooldown for Render
             
-            process.wait()
-            progress_bar.progress(1.0)
-            status_text.text("Extraction Complete!")
+            status_text.text("✅ Extraction Complete! Syncing to Cloud...")
+            success, msg = google_sheets.save_to_google_sheets(st.session_state.session_leads)
+            if success: st.success(msg)
+            
             st.session_state.is_scraping = False
-            time.sleep(1)
+            time.sleep(2)
             st.rerun()
 
 # ==========================================
