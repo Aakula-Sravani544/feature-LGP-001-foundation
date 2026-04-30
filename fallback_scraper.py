@@ -8,85 +8,105 @@ import urllib.parse
 
 def search_fallback(query):
     """
-    Highly resilient fallback using Google, DuckDuckGo and Bing.
+    Highly resilient fallback using DuckDuckGo Lite and Bing.
+    These are less likely to block Render IPs than Google.
     """
     leads = []
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.5",
+        "DNT": "1",
+        "Connection": "keep-alive",
+        "Upgrade-Insecure-Requests": "1"
     }
     
-    # Encode query
     q = urllib.parse.quote(query)
     
-    # 1. Google (Try first, but usually blocked on Render)
+    # Source 1: DuckDuckGo Lite (Extremely bot-friendly, no JS)
     try:
-        resp = requests.get(f"https://www.google.com/search?q={q}", headers=headers, timeout=8)
+        url = f"https://lite.duckduckgo.com/lite/?q={q}"
+        resp = requests.get(url, headers=headers, timeout=10)
         if resp.status_code == 200:
             soup = BeautifulSoup(resp.text, "html.parser")
-            # Multiple possible result selectors
-            for g in soup.select('div.g, div.tF2Cxc, div.v7W7u, div.jS778'):
-                link_el = g.find('a')
-                title_el = g.find('h3')
-                if link_el and title_el:
-                    name = title_el.get_text().strip()
+            # DDG Lite uses a table structure
+            for table in soup.select('table'):
+                links = table.select('a.result-link')
+                snippets = table.select('td.result-snippet')
+                
+                for link_el, snippet_el in zip(links, snippets):
+                    name = link_el.get_text().strip()
                     website = link_el.get('href', "")
-                    if name and website.startswith('http') and "google.com" not in website:
-                        leads.append(create_lead(name, website, "Google Search"))
-    except: pass
+                    snippet = snippet_el.get_text().strip()
+                    
+                    if name and website.startswith('http') and "duckduckgo.com" not in website:
+                        leads.append(create_lead(name, website, snippet, "DuckDuckGo Lite"))
+    except Exception as e:
+        print(f"DEBUG: DDG Lite Failed: {e}")
 
-    # 2. DuckDuckGo (Much more bot-friendly)
+    # Source 2: Bing (Standard)
     if len(leads) < 5:
         try:
-            resp = requests.get(f"https://html.duckduckgo.com/html/?q={q}", headers=headers, timeout=8)
+            url = f"https://www.bing.com/search?q={q}"
+            resp = requests.get(url, headers=headers, timeout=10)
             if resp.status_code == 200:
                 soup = BeautifulSoup(resp.text, "html.parser")
-                for res in soup.select('.result__body'):
-                    a = res.find('a', class_='result__a')
+                for li in soup.select('li.b_algo'):
+                    a = li.find('a')
+                    snippet = li.find('p')
                     if a:
                         name = a.get_text().strip()
                         url = a.get('href', "")
-                        # Handle DDG redirect
-                        if "duckduckgo.com/l/?" in url:
-                            parsed = urllib.parse.parse_qs(urllib.parse.urlparse(url).query)
-                            url = parsed.get('uddg', [url])[0]
-                        leads.append(create_lead(name, url, "DuckDuckGo"))
+                        txt = snippet.get_text().strip() if snippet else ""
+                        if name and url.startswith('http'):
+                            leads.append(create_lead(name, url, txt, "Bing"))
         except: pass
 
-    # 3. Bing
-    if len(leads) < 5:
+    # Source 3: Google (Last resort, often blocks)
+    if len(leads) < 3:
         try:
-            resp = requests.get(f"https://www.bing.com/search?q={q}", headers=headers, timeout=8)
+            url = f"https://www.google.com/search?q={q}"
+            resp = requests.get(url, headers=headers, timeout=10)
             soup = BeautifulSoup(resp.text, "html.parser")
-            for li in soup.select('li.b_algo'):
-                h2 = li.find('h2')
-                a = h2.find('a') if h2 else li.find('a')
-                if a:
-                    name = a.get_text().strip()
+            for g in soup.select('div.g, div.tF2Cxc'):
+                a = g.find('a')
+                h3 = g.find('h3')
+                if a and h3:
+                    name = h3.get_text().strip()
                     url = a.get('href', "")
-                    leads.append(create_lead(name, url, "Bing Search"))
+                    if name and url.startswith('http'):
+                        leads.append(create_lead(name, url, "", "Google"))
         except: pass
 
     return leads
 
-def create_lead(name, website, source):
+def create_lead(name, website, snippet, source):
+    # Senior Dev: Fix encoding and structure
     name = name.encode("utf-8", errors="ignore").decode("utf-8")
+    snippet = snippet.encode("utf-8", errors="ignore").decode("utf-8")
+    
+    # Try to find phone in snippet
+    phone = "Check Website"
+    phone_match = re.search(r'(\+?\d{1,4}[\s-]?)?\(?\d{3}\)?[\s-]?\d{3}[\s-]?\d{4}', snippet)
+    if phone_match: phone = phone_match.group(0)
+
     return {
         "name": name,
-        "address": f"Identified via {source}",
-        "phone": "Visit Website",
-        "email": "Visit Website",
+        "address": "Multiple Locations" if len(snippet) < 5 else snippet[:100],
+        "phone": phone,
+        "email": "Contact via Website",
         "website": website,
         "rating": "N/A",
         "reviews": "0",
-        "category": "Web Search Result",
+        "category": "Lead Result",
         "google_maps_url": website,
-        "description": f"Source: {source} Fallback",
+        "description": snippet[:200],
         "hours": "N/A",
         "social_media": "",
-        "additional_data": f"Engine: {source}",
+        "additional_data": f"Source: {source}",
         "scraped_date": datetime.now().strftime("%Y-%m-%d"),
         "ai_analysis": "N/A",
         "validation_status": "Candidate",
-        "validation_notes": f"Scraped via {source} fallback due to Chrome OOM",
+        "validation_notes": f"Generated via {source} fallback",
         "sub_region": ""
     }
