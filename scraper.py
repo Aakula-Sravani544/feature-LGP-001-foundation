@@ -6,6 +6,7 @@ import re
 from datetime import datetime
 from driver_setup import get_driver, safe_get
 from fallback_scraper import search_fallback
+from validation import validate_lead
 
 def log(msg):
     print(f"LOG: {msg}", flush=True)
@@ -72,6 +73,10 @@ def scrape_google_maps(driver, query, target_count=10):
                 lead["validation_status"] = "Valid"
                 
                 log(f"✅ Extracted: {lead['name']}")
+                
+                # Apply Day 4 Validation
+                lead = validate_lead(lead)
+                
                 print(f"DATA:{json.dumps(lead)}", flush=True)
                 leads.append(lead)
                 time.sleep(0.3)
@@ -131,7 +136,13 @@ def main():
                 seen_names.add(l["name"])
                 # Fallback data is printed here if not already printed
                 if l.get("additional_data") == "Generated via Fallback":
+                    # Apply Day 4 Validation
+                    l = validate_lead(l)
                     print(f"DATA:{json.dumps(l)}", flush=True)
+                else:
+                    # If it came from scrape_google_maps it's already validated there,
+                    # but we can validate again to be 100% sure for requirement 8
+                    l = validate_lead(l)
         
         log(f"Status: {len(unique_leads)}/{target_leads} leads")
         time.sleep(1)
