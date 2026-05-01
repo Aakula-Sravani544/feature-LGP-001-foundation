@@ -21,13 +21,12 @@ def search_fallback(query):
     
     q = urllib.parse.quote(query)
     
-    # Source 1: Google GBV=1 (Low-bandwidth, high-compatibility)
+    # Source 1: Google GBV=1
     try:
         url = f"https://www.google.com/search?q={q}&gbv=1&tbs=qdr:y"
         resp = requests.get(url, headers=headers, timeout=12)
         if resp.status_code == 200:
             soup = BeautifulSoup(resp.text, "html.parser")
-            # In GBV=1 mode, results are in simple divs
             for g in soup.select('div.ZIN69d, div.kCrYT'):
                 link = g.find('a')
                 title = g.find('h3')
@@ -36,7 +35,6 @@ def search_fallback(query):
                 if link and title:
                     name = title.get_text().strip()
                     website = link.get('href', "")
-                    # Clean Google redirect links
                     if "/url?q=" in website:
                         website = website.split("/url?q=")[1].split("&")[0]
                         website = urllib.parse.unquote(website)
@@ -59,7 +57,7 @@ def search_fallback(query):
                     for l_el, s_el in zip(links, snippets):
                         name = l_el.get_text().strip()
                         url = l_el.get('href', "")
-                        txt = s_el.get_text().strip()
+                        txt = s_el.get_text().strip() if s_el else ""
                         if name and url.startswith('http') and "duckduckgo.com" not in url:
                             leads.append(create_lead(name, url, txt, "DDG Lite"))
         except: pass
@@ -67,16 +65,15 @@ def search_fallback(query):
     return leads
 
 def create_lead(name, website, snippet, source):
-    # Sanitize and format
-    name = name.encode("utf-8", errors="ignore").decode("utf-8")
-    snippet = snippet.encode("utf-8", errors="ignore").decode("utf-8")
+    # Sanitize
+    name = name.encode("utf-8", errors="ignore").decode("utf-8").strip()
+    snippet = snippet.encode("utf-8", errors="ignore").decode("utf-8").strip()
     
-    # Phone extraction from snippet
-    phone = "Check Website"
+    # Phone extraction from snippet (Requirement 2)
+    phone = ""
     phone_match = re.search(r'(\+?\d{1,4}[\s-]?)?\(?\d{3}\)?[\s-]?\d{3}[\s-]?\d{4}', snippet)
     if phone_match: phone = phone_match.group(0)
     
-    # Address extraction hint
     address = "Multiple Locations"
     if "," in snippet and any(c.isdigit() for c in snippet):
         parts = snippet.split(",")
@@ -87,7 +84,7 @@ def create_lead(name, website, snippet, source):
         "name": name,
         "address": address,
         "phone": phone,
-        "email": "Use Website Contact",
+        "email": "", # Will be extracted from website in main scraper
         "website": website,
         "rating": "N/A",
         "reviews": "0",
@@ -99,7 +96,7 @@ def create_lead(name, website, snippet, source):
         "additional_data": f"Engine: {source}",
         "scraped_date": datetime.now().strftime("%Y-%m-%d"),
         "ai_analysis": "N/A",
-        "validation_status": "Candidate",
-        "validation_notes": f"Scraped via {source} engine",
+        "validation_status": "Pending",
+        "validation_notes": "",
         "sub_region": ""
     }
