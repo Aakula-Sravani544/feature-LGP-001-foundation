@@ -27,14 +27,13 @@ def main():
     query = sys.argv[1]
     target_leads = 5
     
-    log(f"🚀 LeadPulse Smart Scraper | Query: {query}")
+    log(f"🚀 LeadPulse Deep Scraper | Query: {query}")
     
     unique_leads = []
     seen_names = set()
     
     driver = get_driver()
     
-    # 1. Main Search Phase
     try:
         encoded = query.replace(" ", "+")
         url = f"https://www.google.com/maps/search/{encoded}"
@@ -43,48 +42,59 @@ def main():
             time.sleep(6)
             from selenium.webdriver.common.by import By
             
-            containers = driver.find_elements(By.CSS_SELECTOR, "a.hfpxzc, div.qBF1Pd")
-            log(f"Analyzing {len(containers)} potential leads...")
+            # Find lead cards
+            cards = driver.find_elements(By.CSS_SELECTOR, "a.hfpxzc")
+            if not cards:
+                cards = driver.find_elements(By.CSS_SELECTOR, "div.qBF1Pd")
             
-            for container in containers:
+            log(f"Found {len(cards)} candidates. Extracting deep details...")
+            
+            for i, card in enumerate(cards[:10]): # Check first 10
                 try:
+                    # 1. Basic Extract
                     lead = get_full_structure()
-                    name = container.get_attribute("aria-label") or container.text.split('\n')[0]
+                    name = card.get_attribute("aria-label") or card.text.split('\n')[0]
                     if not name or name in seen_names: continue
-                    
                     lead["name"] = name.strip()
                     
-                    # Extract info from text
-                    full_text = container.text
-                    phone_match = re.search(r'(\+?\d{1,4}[\s-]?)?\(?\d{3}\)?[\s-]?\d{3}[\s-]?\d{4}', full_text)
-                    if phone_match: lead["phone"] = phone_match.group(0)
+                    # 2. CLICK to open sidebar (Guarantee details)
+                    try:
+                        driver.execute_script("arguments[0].click();", card)
+                        time.sleep(2.5) # Wait for sidebar
+                        
+                        # Extract from sidebar
+                        sidebar_text = driver.find_element(By.CSS_SELECTOR, "div.m67q60").text
+                        
+                        # Phone
+                        phone_match = re.search(r'(\+?\d{1,4}[\s-]?)?\(?\d{3}\)?[\s-]?\d{3}[\s-]?\d{4}', sidebar_text)
+                        if phone_match: lead["phone"] = phone_match.group(0)
+                        
+                        # Website
+                        try:
+                            web_el = driver.find_element(By.CSS_SELECTOR, "a[data-item-id='authority']")
+                            lead["website"] = web_el.get_attribute("href")
+                        except: pass
+                        
+                        # Address
+                        try:
+                            addr_el = driver.find_element(By.CSS_SELECTOR, "button[data-item-id='address']")
+                            lead["address"] = addr_el.text
+                        except: pass
+                        
+                    except Exception as e:
+                        log(f"Sidebar error for {name}: {str(e)[:30]}")
                     
-                    lead["google_maps_url"] = container.get_attribute("href") or driver.current_url
-                    
-                    # Apply Validation
+                    lead["google_maps_url"] = driver.current_url
                     lead = validate_lead(lead)
                     
-                    # --- IMPROVEMENT: If Pending, try Fallback Search for this specific lead ---
-                    if lead["validation_status"] == "Pending":
-                        log(f"Searching for details for: {name}...")
-                        fb_leads = search_fallback(f"{name} {query.split(' in ')[-1]}")
-                        if fb_leads:
-                            match = fb_leads[0]
-                            lead["phone"] = match.get("phone") or lead["phone"]
-                            lead["website"] = match.get("website") or lead["website"]
-                            lead = validate_lead(lead)
-                    
-                    # If still Pending, we might have to skip or keep searching
                     if lead["validation_status"] != "Pending":
                         unique_leads.append(lead)
                         seen_names.add(name)
                         print(f"DATA:{json.dumps(lead)}", flush=True)
-                        log(f"✅ Found Lead with Details: {name}")
-                    else:
-                        # Don't skip permanently, just log it
-                        log(f"⚠️ Could not find details for {name}, trying next...")
+                        log(f"✅ Extracted: {name}")
                     
                     if len(unique_leads) >= target_leads: break
+                    
                 except: continue
                 
     except Exception as e:
@@ -92,9 +102,9 @@ def main():
     finally:
         if driver: driver.quit()
 
-    # 2. Final Fallback (if still under target)
+    # Final Fallback if still under 5
     if len(unique_leads) < target_leads:
-        log(f"Still need {target_leads - len(unique_leads)} more leads. Running Global Fallback...")
+        log("Yield low. Running Emergency Web Fallback...")
         fb_batch = search_fallback(query)
         for lead in fb_batch:
             if lead.get("name") not in seen_names:
