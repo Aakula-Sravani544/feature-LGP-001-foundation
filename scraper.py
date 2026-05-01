@@ -26,143 +26,133 @@ def get_full_structure():
         "validation_notes": "", "sub_region": ""
     }
 
-def scrape_google_maps(driver, query, target_count=5):
-    if not driver: return []
+def scrape_google_maps(driver, query, target_count=10):
+    """
+    Stabilized Maps scraper with automatic restart logic.
+    """
     leads = []
+    if driver is None: return leads # Requirement 4
+    
     log(f"Searching Google Maps for '{query}'...")
     try:
         encoded = query.replace(" ", "+")
         url = f"https://www.google.com/maps/search/{encoded}"
-        if not safe_get(driver, url): return []
-        time.sleep(6)
+        
+        # Requirement 3: Add delay
+        time.sleep(2)
+        
+        if not safe_get(driver, url): return leads
+        time.sleep(5)
         
         from selenium.webdriver.common.by import By
-        # Multi-selector strategy
-        selectors = ["a.hfpxzc", "div.qBF1Pd", "div.Nv2Ygc"]
-        containers = []
-        for s in selectors:
-            containers = driver.find_elements(By.CSS_SELECTOR, s)
-            if containers: break
-            
-        for container in containers[:target_count]:
+        # Stop scrolling early to limit load (Requirement 3)
+        containers = driver.find_elements(By.CSS_SELECTOR, "a.hfpxzc, div.qBF1Pd")
+        
+        # Requirement 6: Log collection
+        log(f"Detected {len(containers)} results.")
+        
+        for container in containers[:target_count]: # Limit to 10 (Requirement 3)
             try:
                 lead = get_full_structure()
                 name = container.get_attribute("aria-label") or container.text.split('\n')[0]
                 lead["name"] = clean_text(name)
                 
-                # Skip if name empty (Requirement 1)
-                if not lead["name"] or len(lead["name"]) < 2: continue
-                
-                # Enhanced extraction from text
-                full_text = container.text
-                lead["phone"] = extract_phone(full_text)
-                
-                # Address extraction
-                info = full_text.split('\n')
-                if len(info) > 1: lead["address"] = clean_text(info[1])
+                if not lead["name"]: continue
                 
                 lead["google_maps_url"] = container.get_attribute("href") or driver.current_url
                 
-                # Extract website if possible
-                if lead["google_maps_url"] and "/place/" in lead["google_maps_url"]:
-                    # Deep extraction usually requires clicking, but we skip to stay fast
-                    pass
+                # Basic detail extraction without heavy interaction
+                full_text = container.text
+                match = re.search(r'(\+?\d{1,4}[\s-]?)?\(?\d{3}\)?[\s-]?\d{3}[\s-]?\d{4}', full_text)
+                if match: lead["phone"] = match.group(0)
                 
+                lead["validation_status"] = "Valid"
+                log(f"✅ Extracted: {lead['name']}")
                 leads.append(lead)
-            except: continue
+                
+                # Stop if we hit 10 (Requirement 3)
+                if len(leads) >= 10: break
+                
+            except Exception as e:
+                # Catch invalid session within loop
+                if "invalid session id" in str(e).lower():
+                    raise e # Bubbles up to main loop for restart
+                continue
+                
     except Exception as e:
-        log(f"Maps Warning: {e}")
+        log(f"Maps Warning: {str(e)[:50]}...")
+        if "invalid session id" in str(e).lower():
+            raise e # Bubbles up to main loop for restart
+            
+    # Requirement 5: Return partial leads
     return leads
-
-def extract_phone(text):
-    """Requirement 2: Extract phone from text if missing"""
-    match = re.search(r'(\+?\d{1,4}[\s-]?)?\(?\d{3}\)?[\s-]?\d{3}[\s-]?\d{4}', text)
-    if match:
-        return match.group(0)
-    return ""
 
 def main():
     if len(sys.argv) < 2: return
     main_query = sys.argv[1]
-    target_leads = int(sys.argv[2]) if len(sys.argv) > 2 else 50
+    target_leads = int(sys.argv[2]) if len(sys.argv) > 2 else 10
     
-    log(f"🚀 LeadPulse Pro Backend | Query: {main_query}")
+    log(f"🚀 LeadPulse Pro v4.0 | Target: {target_leads}")
     
     unique_leads = []
     seen_names = set()
-    seen_phones = set()
-    seen_websites = set()
     
-    # Requirement 8: Multiple search queries if yield is low
-    base_query = main_query.split(" in ")[0] if " in " in main_query else main_query
-    location = main_query.split(" in ")[1] if " in " in main_query else ""
-    
-    queries = [main_query]
-    if location:
-        # Rotation: restaurants, hotels, cafes, shops (Requirement 8)
-        rotation = ["restaurants", "hotels", "cafes", "shops", "services"]
-        for r in rotation:
-            if r not in base_query.lower():
-                queries.append(f"{r} in {location}")
-    
+    # Requirement 2: Restart logic
     driver = get_driver()
-    q_idx = 0
+    restart_count = 0
+    max_restarts = 2
     
-    while len(unique_leads) < target_leads and q_idx < len(queries):
-        current_q = queries[q_idx]
-        q_idx += 1
-        
-        batch = []
-        if driver:
-            batch = scrape_google_maps(driver, current_q, target_count=15)
-        
-        if not batch:
-            log(f"Trying Fallback for {current_q}...")
-            batch = search_fallback(current_q)
-            
-        for l in batch:
-            # --- Requirement 1 & 9: Strict Filtering & Deduplication ---
-            name = l.get("name", "").strip()
-            phone = l.get("phone", "").strip()
-            web = l.get("website", "").strip()
-            
-            if not name: continue
-            if name.lower() in seen_names: continue
-            if phone and phone in seen_phones: continue
-            if web and web in seen_websites: continue
-            
-            # --- Requirement 2: Email Extraction from Website ---
-            if web and not l.get("email"):
-                l["email"] = extract_email_from_web(web)
-            
-            # --- Requirement 1: Skip if no contact info ---
-            if not any([phone, web, l.get("email")]):
-                continue
-            
-            # --- Requirement 6: Apply Validation Layer ---
-            l = validate_lead(l)
-            
-            # Final check after normalization (Requirement 1)
-            if not any([l["phone"], l["email"], l["website"]]):
-                continue
+    try:
+        while len(unique_leads) < target_leads and restart_count <= max_restarts:
+            try:
+                # Requirement 4: Safe driver handling
+                if driver is None:
+                    driver = get_driver()
+                    if driver is None: break
                 
-            unique_leads.append(l)
-            seen_names.add(name.lower())
-            if l["phone"]: seen_phones.add(l["phone"])
-            if l["website"]: seen_websites.add(l["website"])
-            
-            # Requirement 10: Debug Log
-            print(f"Lead: {l['name']} | {l['validation_status']}")
-            print(f"DATA:{json.dumps(l)}", flush=True)
-            
-            if len(unique_leads) >= target_leads: break
-            
-        # Stop early if we have enough and it's not the first query (Requirement 8 logic)
-        if len(unique_leads) >= 10 and q_idx > 0:
-            break
+                batch = scrape_google_maps(driver, main_query, target_count=10)
+                
+                for l in batch:
+                    if l["name"] and l["name"].lower() not in seen_names:
+                        l = validate_lead(l)
+                        unique_leads.append(l)
+                        seen_names.add(l["name"].lower())
+                        print(f"DATA:{json.dumps(l)}", flush=True)
+                
+                # If we got leads or finished, break the restart loop
+                if unique_leads: break
+                
+                # If no leads found, try fallback
+                log("Low yield. Switching to fallback...")
+                fb_batch = search_fallback(main_query)
+                for l in fb_batch:
+                    if l["name"] and l["name"].lower() not in seen_names:
+                        l = validate_lead(l)
+                        unique_leads.append(l)
+                        seen_names.add(l["name"].lower())
+                        print(f"DATA:{json.dumps(l)}", flush=True)
+                break # Exit while loop after fallback
+                
+            except Exception as e:
+                if "invalid session id" in str(e).lower():
+                    log("Driver restarted") # Requirement 6
+                    restart_count += 1
+                    try: driver.quit()
+                    except: pass
+                    driver = get_driver()
+                    continue
+                else:
+                    log(f"Fatal Error: {e}")
+                    break
+                    
+    finally:
+        if driver:
+            try: driver.quit()
+            except: pass
 
-    if driver: driver.quit()
-    log(f"Done. Total Unique Leads: {len(unique_leads)}")
+    # Requirement 5 & 6: Fail safe return and log count
+    log(f"Leads collected: {len(unique_leads)}")
+    log("Done.")
 
 if __name__ == "__main__":
     main()
