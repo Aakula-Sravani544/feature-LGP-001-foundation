@@ -25,9 +25,9 @@ def get_full_structure():
 def main():
     if len(sys.argv) < 2: return
     query = sys.argv[1]
-    target_leads = 5 # User wants exactly 5 high-quality leads
+    target_leads = 5
     
-    log(f"🚀 LeadPulse Quality Scraper | Query: {query}")
+    log(f"🚀 LeadPulse Smart Scraper | Query: {query}")
     
     unique_leads = []
     seen_names = set()
@@ -40,14 +40,11 @@ def main():
         url = f"https://www.google.com/maps/search/{encoded}"
         
         if driver and safe_get(driver, url):
-            time.sleep(6) # Extra load time for details
+            time.sleep(6)
             from selenium.webdriver.common.by import By
             
-            # Scroll to reveal more candidates
-            driver.execute_script("window.scrollBy(0, 500);")
-            time.sleep(2)
-            
             containers = driver.find_elements(By.CSS_SELECTOR, "a.hfpxzc, div.qBF1Pd")
+            log(f"Analyzing {len(containers)} potential leads...")
             
             for container in containers:
                 try:
@@ -59,32 +56,33 @@ def main():
                     
                     # Extract info from text
                     full_text = container.text
-                    # Phone regex
                     phone_match = re.search(r'(\+?\d{1,4}[\s-]?)?\(?\d{3}\)?[\s-]?\d{3}[\s-]?\d{4}', full_text)
                     if phone_match: lead["phone"] = phone_match.group(0)
                     
                     lead["google_maps_url"] = container.get_attribute("href") or driver.current_url
                     
-                    # --- CRITICAL: Apply Validation ---
+                    # Apply Validation
                     lead = validate_lead(lead)
                     
-                    # --- REQUIREMENT: Skip if PENDING (No Details) ---
+                    # --- IMPROVEMENT: If Pending, try Fallback Search for this specific lead ---
                     if lead["validation_status"] == "Pending":
-                        # Attempt to find website link if phone is missing
-                        try:
-                            web_el = container.find_element(By.XPATH, "..//a[contains(@href, 'http') and not(contains(@href, 'google.com'))]")
-                            lead["website"] = web_el.get_attribute("href")
+                        log(f"Searching for details for: {name}...")
+                        fb_leads = search_fallback(f"{name} {query.split(' in ')[-1]}")
+                        if fb_leads:
+                            match = fb_leads[0]
+                            lead["phone"] = match.get("phone") or lead["phone"]
+                            lead["website"] = match.get("website") or lead["website"]
                             lead = validate_lead(lead)
-                        except: pass
-                        
-                    # Final Quality Check: ONLY add if NOT Pending
+                    
+                    # If still Pending, we might have to skip or keep searching
                     if lead["validation_status"] != "Pending":
                         unique_leads.append(lead)
                         seen_names.add(name)
                         print(f"DATA:{json.dumps(lead)}", flush=True)
-                        log(f"✅ Found Quality Lead: {name}")
+                        log(f"✅ Found Lead with Details: {name}")
                     else:
-                        log(f"⏭️ Skipping Pending Lead: {name}")
+                        # Don't skip permanently, just log it
+                        log(f"⚠️ Could not find details for {name}, trying next...")
                     
                     if len(unique_leads) >= target_leads: break
                 except: continue
@@ -94,9 +92,9 @@ def main():
     finally:
         if driver: driver.quit()
 
-    # 2. Fallback Phase (if we still need leads with details)
+    # 2. Final Fallback (if still under target)
     if len(unique_leads) < target_leads:
-        log(f"Yield low ({len(unique_leads)}/{target_leads}). Running Fallback for detailed leads...")
+        log(f"Still need {target_leads - len(unique_leads)} more leads. Running Global Fallback...")
         fb_batch = search_fallback(query)
         for lead in fb_batch:
             if lead.get("name") not in seen_names:
@@ -107,7 +105,7 @@ def main():
                     print(f"DATA:{json.dumps(lead)}", flush=True)
                     if len(unique_leads) >= target_leads: break
 
-    log(f"Done. Collected {len(unique_leads)} Quality Leads.")
+    log(f"Done. Collected {len(unique_leads)} Verified Leads.")
 
 if __name__ == "__main__":
     main()
