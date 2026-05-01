@@ -1,71 +1,121 @@
+import logging
 import re
+import aiohttp
+import asyncio
+from bs4 import BeautifulSoup
 import requests
 import phonenumbers
 from email_validator import validate_email, EmailNotValidError
+from typing import Dict, Any, Optional
 
-def validate_lead(lead):
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+def normalize_phone(phone: str, region: str = "IN") -> Optional[str]:
+    """Normalizes a phone number to E.164 format.
+
+    Args:
+        phone: The raw phone number string.
+        region: The ISO 3166-1 alpha-2 region code. Defaults to "IN".
+
+    Returns:
+        The normalized phone number in E.164 format, or None if invalid.
     """
-    Day 4 Validation Layer: Strict validation of existing lead data.
+    if not phone:
+        return None
+    try:
+        parsed = phonenumbers.parse(phone, region)
+        if phonenumbers.is_valid_number(parsed):
+            return phonenumbers.format_number(parsed, phonenumbers.PhoneNumberFormat.E164)
+    except Exception as e:
+        logger.debug(f"Phone normalization failed for {phone}: {e}")
+    return None
+
+async def scrape_emails_from_website(url: str) -> Optional[str]:
+    """Asynchronously scrapes a website for email addresses.
+
+    Args:
+        url: The website URL to scrape.
+
+    Returns:
+        The first found email address, or None.
+    """
+    if not url or not url.startswith("http"):
+        return None
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, timeout=aiohttp.ClientTimeout(total=8)) as response:
+                if response.status == 200:
+                    html = await response.text()
+                    soup = BeautifulSoup(html, "html.parser")
+                    
+                    # 1. Search mailto links
+                    for a in soup.find_all("a", href=re.compile(r"^mailto:")):
+                        email = a["href"].replace("mailto:", "").split("?")[0]
+                        return email.strip()
+                    
+                    # 2. Regex search in text
+                    emails = re.findall(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', html)
+                    if emails:
+                        return emails[0]
+    except Exception as e:
+        logger.debug(f"Email scraping failed for {url}: {e}")
+    return None
+
+def validate_lead(lead: Dict[str, Any]) -> Dict[str, Any]:
+    """Performs Day 4 validation on a lead dictionary.
+
+    Args:
+        lead: The lead dictionary containing name, phone, email, website.
+
+    Returns:
+        The updated lead dictionary with validation_status and validation_notes.
     """
     notes = []
     
-    # 1. Phone validation & normalization
-    phone = str(lead.get("phone", "")).strip()
-    if phone and phone.lower() not in ["none", "n/a", "check website", "visit website"]:
-        try:
-            # Clean non-digits for normalization
-            clean_phone = re.sub(r'[^\d+]', '', phone)
-            if not clean_phone.startswith('+') and len(clean_phone) == 10:
-                clean_phone = "+91" + clean_phone
-            
-            parsed = phonenumbers.parse(clean_phone, "IN")
-            if phonenumbers.is_valid_number(parsed):
-                lead["phone"] = phonenumbers.format_number(parsed, phonenumbers.PhoneNumberFormat.E164)
-            else:
-                lead["phone"] = ""
-                notes.append("Invalid phone")
-        except:
-            lead["phone"] = ""
-            notes.append("Invalid phone")
-    else:
-        lead["phone"] = ""
+    # 1. Phone Normalization
+    raw_phone = lead.get("phone", "")
+    normalized_phone = normalize_phone(raw_phone)
+    if raw_phone and not normalized_phone:
+        notes.append("Invalid phone format")
+    lead["phone"] = normalized_phone or ""
 
-    # 2. Email validation
-    email = str(lead.get("email", "")).strip()
-    if email and email.lower() not in ["none", "n/a", "use website contact"]:
+    # 2. Email Validation
+    raw_email = lead.get("email", "")
+    if raw_email:
         try:
-            valid = validate_email(email)
+            valid = validate_email(raw_email)
             lead["email"] = valid.normalized
         except EmailNotValidError:
             lead["email"] = ""
-            notes.append("Invalid email")
-    else:
-        lead["email"] = ""
+            notes.append("Email unreachable") # Requirement: Using user's specific note
 
-    # 3. Website validation
-    website = str(lead.get("website", "")).strip()
+    # 3. Website Reachability
+    website = lead.get("website", "")
     if website and website.startswith("http"):
         try:
-            # Quick check (Requirement: timeout 5s)
-            resp = requests.head(website, timeout=5, allow_redirects=True)
+            resp = requests.get(website, timeout=5, allow_redirects=True)
             if resp.status_code >= 400:
                 notes.append("Website not reachable")
-        except:
+        except Exception:
             notes.append("Website not reachable")
     else:
         lead["website"] = ""
 
-    # 4. Validation logic (Requirement 4)
-    has_phone = bool(lead.get("phone"))
-    has_email = bool(lead.get("email"))
-    has_web = bool(lead.get("website"))
+    # 4. Final Status Logic
+    has_phone = bool(lead["phone"])
+    has_email = bool(lead["email"])
     
-    if has_phone or has_email or has_web:
-        status = "Valid"
+    if has_phone or has_email:
+        lead["validation_status"] = "Valid"
+    elif raw_phone or raw_email:
+        lead["validation_status"] = "Invalid"
     else:
-        status = "Pending"
-            
-    lead["validation_status"] = status
+        lead["validation_status"] = "Pending"
+        notes.append("No contact data found")
+
     lead["validation_notes"] = ", ".join(notes)
     
+    logger.info(f"Lead: {lead.get('name')} | Status: {lead['validation_status']}")
     return lead
