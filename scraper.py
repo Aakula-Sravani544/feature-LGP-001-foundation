@@ -6,22 +6,24 @@ import re
 import asyncio
 import logging
 from datetime import datetime
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
+from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException, NoSuchElementException
 
 from driver_setup import get_driver, safe_get
 from fallback_scraper import search_fallback
-from validation import validate_lead, scrape_emails_from_website
+from validation import validate_lead, extract_email_from_website
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 def get_full_structure() -> Dict[str, Any]:
-    """Returns a fresh lead dictionary with default fields."""
+    """Returns a standardized lead dictionary."""
     return {
         "lead_id": f"lp-{random.randint(100000, 999999)}",
         "name": "", "address": "", "phone": "", "email": "", "website": "",
@@ -32,33 +34,17 @@ def get_full_structure() -> Dict[str, Any]:
         "validation_notes": "", "sub_region": ""
     }
 
-async def process_lead_details(lead: Dict[str, Any]) -> Dict[str, Any]:
-    """Enriches lead with email if website is found.
-
-    Args:
-        lead: The lead dictionary.
-
-    Returns:
-        The enriched lead dictionary.
-    """
+async def enrich_lead_with_email(lead: Dict[str, Any]) -> Dict[str, Any]:
+    """Calls the async website scraper to find emails."""
     if lead.get("website"):
-        logger.info(f"Scanning website for emails: {lead['website']}")
-        email = await scrape_emails_from_website(lead["website"])
+        logger.info(f"Scanning {lead['website']} for emails...")
+        email = await extract_email_from_website(lead["website"])
         if email:
             lead["email"] = email
-            logger.info(f"Found email: {email}")
     return lead
 
-def scrape_maps(query: str, target_count: int = 5) -> List[Dict[str, Any]]:
-    """Scrapes Google Maps by clicking into detail pages.
-
-    Args:
-        query: Search query string.
-        target_count: Number of leads to collect.
-
-    Returns:
-        A list of validated lead dictionaries.
-    """
+def scrape_maps_deep(query: str, target_count: int = 5) -> List[Dict[str, Any]]:
+    """Deep scraper that clicks into each listing detail panel."""
     leads = []
     driver = get_driver()
     if not driver:
@@ -70,96 +56,132 @@ def scrape_maps(query: str, target_count: int = 5) -> List[Dict[str, Any]]:
         if not safe_get(driver, url):
             return leads
 
-        # Wait for results
-        WebDriverWait(driver, 15).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, "a.hfpxzc"))
-        )
+        # Wait for search results panel to load
+        try:
+            WebDriverWait(driver, 15).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, "a.hfpxzc"))
+            )
+        except TimeoutException:
+            logger.error("Timeout waiting for search results.")
+            return leads
+
+        # Scroll a bit to ensure elements are present
+        driver.execute_script("window.scrollBy(0, 500);")
+        time.sleep(2)
 
         cards = driver.find_elements(By.CSS_SELECTOR, "a.hfpxzc")
-        logger.info(f"Found {len(cards)} listings. Processing detail pages...")
+        logger.info(f"Found {len(cards)} results. Starting deep extraction...")
 
         for i, card in enumerate(cards[:target_count]):
             try:
                 lead = get_full_structure()
-                name = card.get_attribute("aria-label")
-                lead["name"] = name if name else f"Business {i+1}"
+                lead["name"] = card.get_attribute("aria-label") or f"Lead {i+1}"
                 lead["google_maps_url"] = card.get_attribute("href")
 
-                # --- STEP: CLICK INTO DETAIL PAGE ---
+                # Step 1: Click the listing to open detail panel
+                logger.info(f"Opening details for: {lead['name']}")
+                driver.execute_script("arguments[0].click();", card)
+                
+                # Step 2: Wait for detail panel and extract (Requirement 2)
                 try:
-                    driver.execute_script("arguments[0].click();", card)
-                    # Use a slightly longer wait for detail panel to load
-                    time.sleep(3)
+                    # Wait for sidebar detail content
+                    WebDriverWait(driver, 10).until(
+                        EC.presence_of_element_located((By.CSS_SELECTOR, "div.m67q60"))
+                    )
                     
-                    # 1. Extract Phone from detail page
-                    # Selector for phone: data-item-id="phone:..."
+                    # Phone
                     try:
-                        phone_el = driver.find_element(By.CSS_SELECTOR, "button[data-item-id*='phone:']")
+                        phone_el = driver.find_element(By.CSS_SELECTOR, "button[data-item-id^='phone:']")
                         lead["phone"] = phone_el.get_attribute("data-item-id").split("phone:tel:")[1]
-                    except:
-                        # Fallback to general text search in sidebar
-                        sidebar = driver.find_element(By.CSS_SELECTOR, "div.m67q60")
-                        phone_match = re.search(r'\+?\d{1,4}[\s-]?)?\(?\d{3}\)?[\s-]?\d{3}[\s-]?\d{4}', sidebar.text)
-                        if phone_match:
-                            lead["phone"] = phone_match.group(0)
+                    except NoSuchElementException:
+                        try:
+                            # Alternative: look for aria-label containing Phone
+                            phone_alt = driver.find_element(By.XPATH, "//*[contains(@aria-label, 'Phone')]")
+                            lead["phone"] = phone_alt.text
+                        except: pass
 
-                    # 2. Extract Website
+                    # Website
                     try:
                         web_el = driver.find_element(By.CSS_SELECTOR, "a[data-item-id='authority']")
                         lead["website"] = web_el.get_attribute("href")
-                    except:
-                        pass
-                except Exception as click_e:
-                    logger.warning(f"Failed to click/scrape detail page for {lead['name']}: {click_e}")
+                    except NoSuchElementException:
+                        try:
+                            web_alt = driver.find_element(By.XPATH, "//*[contains(@aria-label, 'Website')]")
+                            lead["website"] = web_alt.get_attribute("href")
+                        except: pass
 
-                # --- STEP: ASYNC EMAIL SCRAPING ---
+                    # Address
+                    try:
+                        addr_el = driver.find_element(By.CSS_SELECTOR, "button[data-item-id='address']")
+                        lead["address"] = addr_el.text
+                    except: pass
+
+                    # Rating & Reviews
+                    try:
+                        rating_el = driver.find_element(By.CSS_SELECTOR, "span[aria-label*='stars']")
+                        lead["rating"] = rating_el.get_attribute("aria-label").split()[0]
+                        review_el = driver.find_element(By.CSS_SELECTOR, "span[aria-label*='reviews']")
+                        lead["reviews"] = re.sub(r'\D', '', review_el.get_attribute("aria-label"))
+                    except: pass
+
+                    # Category
+                    try:
+                        cat_el = driver.find_element(By.CSS_SELECTOR, "button[jsaction*='category']")
+                        lead["category"] = cat_el.text
+                    except: pass
+
+                except TimeoutException:
+                    logger.warning(f"Timeout loading details for {lead['name']}")
+
+                # Step 3: Async Website Scraper for email
                 if lead["website"]:
-                    lead = asyncio.run(process_lead_details(lead))
+                    lead = asyncio.run(enrich_lead_with_email(lead))
 
-                # --- STEP: VALIDATION ---
+                # Step 4: Validation (Day 4)
                 lead = validate_lead(lead)
                 
-                # Output immediately for Streamlit streaming
+                # Output for real-time Streamlit updates
                 print(f"DATA:{json.dumps(lead)}", flush=True)
                 leads.append(lead)
 
+                # Delay between listing clicks (Requirement: random 2-4s)
+                time.sleep(random.uniform(2, 4))
+                
                 if len(leads) >= target_count:
                     break
 
             except Exception as e:
-                logger.error(f"Error processing card {i}: {e}")
+                logger.error(f"Error processing {lead.get('name', 'Unknown')}: {e}")
                 continue
 
     except Exception as e:
-        logger.error(f"Scraper encountered a critical error: {e}")
+        logger.error(f"Fatal error in Deep Scraper: {e}")
     finally:
         if driver:
             driver.quit()
-    
+
     return leads
 
 def main():
-    if len(sys.argv) < 2:
-        return
-    
+    if len(sys.argv) < 2: return
     query = sys.argv[1]
     limit = int(sys.argv[2]) if len(sys.argv) > 2 else 5
     
-    logger.info(f"Engine starting for query: {query} (Limit: {limit})")
+    logger.info(f"Starting Deep Generation for: {query} (Target: {limit})")
     
-    # Run primary scraper
-    results = scrape_maps(query, target_count=limit)
+    # Run Deep Scraper
+    results = scrape_maps_deep(query, target_count=limit)
     
-    # Fallback if primary yielded zero (e.g. Chrome block)
+    # Fallback if primary yields 0
     if not results:
-        logger.warning("Primary scraper yielded zero results. Switching to fallback...")
-        fallback_results = search_fallback(query)
-        for lead in fallback_results[:limit]:
-            lead = validate_lead(lead)
-            print(f"DATA:{json.dumps(lead)}", flush=True)
-            results.append(lead)
-            
-    logger.info(f"Task complete. Total leads collected: {len(results)}")
+        logger.warning("Deep scraper yielded 0. Switching to Emergency Fallback...")
+        fallback = search_fallback(query)
+        for l in fallback[:limit]:
+            l = validate_lead(l)
+            print(f"DATA:{json.dumps(l)}", flush=True)
+            results.append(l)
+
+    logger.info(f"Scraping complete. Total: {len(results)} leads.")
 
 if __name__ == "__main__":
     main()
