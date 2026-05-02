@@ -3,234 +3,201 @@ import json
 import time
 import random
 import re
+import os
+import hashlib
 import logging
-from datetime import datetime
-from typing import List, Dict, Any, Optional
-
 import requests
+from datetime import datetime
 from bs4 import BeautifulSoup
 from email_validator import validate_email
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException, NoSuchElementException
+from typing import List, Dict, Any
 
-from driver_setup import get_driver, safe_get
-from fallback_scraper import search_fallback
 from validation import validate_lead
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+# API Keys from Environment
+GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY", "")
+SERPAPI_KEY = os.environ.get("SERPAPI_KEY", "")
+
+def get_full_structure() -> Dict[str, Any]:
+    """Returns a standardized lead dictionary with zero-Selenium defaults."""
+    return {
+        "lead_id": "",
+        "name": "", "address": "", "phone": "", "email": "", "website": "",
+        "rating": "", "reviews": "", "category": "", "google_maps_url": "N/A",
+        "description": "N/A", "hours": "N/A", "social_media": "N/A", "additional_data": "",
+        "scraped_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "ai_analysis": "N/A", "validation_status": "Pending",
+        "validation_notes": "", "sub_region": ""
+    }
+
 def extract_email_sync(url: str) -> str:
-    """Synchronously scrapes a website for email addresses."""
-    if not url or not url.startswith("http"):
+    """Lightweight synchronous website email extractor."""
+    if not url or not url.startswith("http") or "google.com" in url:
         return ""
     try:
-        headers = {"User-Agent": "Mozilla/5.0"}
-        resp = requests.get(url, timeout=8, headers=headers)
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+        resp = requests.get(url, timeout=6, headers=headers)
+        if resp.status_code != 200:
+            return ""
+            
         soup = BeautifulSoup(resp.text, "html.parser")
+        
+        # 1. Check mailto links
         for a in soup.find_all("a", href=re.compile(r"^mailto:")):
             email = a["href"].replace("mailto:", "").split("?")[0].strip()
             try:
                 validate_email(email)
                 return email
-            except:
-                continue
-        for email in re.findall(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', resp.text):
+            except: continue
+            
+        # 2. Regex scan text
+        email_pattern = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
+        emails = re.findall(email_pattern, resp.text)
+        for email in emails:
             try:
                 validate_email(email)
                 return email
-            except:
-                continue
-    except Exception as e:
-        logger.debug(f"Email sync extraction failed for {url}: {e}")
+            except: continue
+    except:
+        pass
     return ""
 
-def get_full_structure() -> Dict[str, Any]:
-    """Returns a standardized lead dictionary."""
-    return {
-        "lead_id": f"lp-{random.randint(100000, 999999)}",
-        "name": "", "address": "", "phone": "", "email": "", "website": "",
-        "rating": "", "reviews": "", "category": "", "google_maps_url": "",
-        "description": "", "hours": "", "social_media": "", "additional_data": "",
-        "scraped_date": datetime.now().strftime("%Y-%m-%d"),
-        "ai_analysis": "N/A", "validation_status": "Pending",
-        "validation_notes": "", "sub_region": ""
-    }
+def generate_lead_id(name: str, address: str) -> str:
+    """Generates a unique hash-based lead ID."""
+    raw = f"{name}{address}".lower().encode()
+    return hashlib.md5(raw).hexdigest()
 
-def scrape_maps_deep(query: str, target_count: int = 5) -> List[Dict[str, Any]]:
-    """Deep scraper that clicks into each listing detail panel."""
+# --- METHOD 1: GOOGLE PLACES API ---
+def search_places_api(query: str, limit: int = 5) -> List[Dict[str, Any]]:
+    """Use Google Places API for high-fidelity structured data."""
+    logger.info(f"Method 1: Google Places API | Query: {query}")
     leads = []
-    driver = get_driver()
-    if not driver:
-        return leads
-
+    
     try:
-        encoded = query.replace(" ", "+")
-        url = f"https://www.google.com/maps/search/{encoded}"
-        if not safe_get(driver, url):
-            return leads
+        search_url = "https://maps.googleapis.com/maps/api/place/textsearch/json"
+        params = {"query": query, "key": GOOGLE_API_KEY}
+        resp = requests.get(search_url, params=params, timeout=10)
+        data = resp.json()
+        
+        results = data.get("results", [])[:limit]
+        for place in results:
+            place_id = place.get("place_id")
+            
+            # Get deep details (phone, website)
+            detail_url = "https://maps.googleapis.com/maps/api/place/details/json"
+            detail_params = {
+                "place_id": place_id,
+                "fields": "name,formatted_phone_number,website,formatted_address,rating,user_ratings_total,types",
+                "key": GOOGLE_API_KEY
+            }
+            d_resp = requests.get(detail_url, params=detail_params, timeout=10)
+            detail = d_resp.json().get("result", {})
+            
+            lead = get_full_structure()
+            lead["name"] = detail.get("name", place.get("name", ""))
+            lead["address"] = detail.get("formatted_address", place.get("formatted_address", ""))
+            lead["phone"] = detail.get("formatted_phone_number", "")
+            lead["website"] = detail.get("website", "")
+            lead["rating"] = str(detail.get("rating", ""))
+            lead["reviews"] = str(detail.get("user_ratings_total", ""))
+            lead["category"] = ", ".join(detail.get("types", []))
+            lead["lead_id"] = generate_lead_id(lead["name"], lead["address"])
+            
+            if lead["website"]:
+                lead["email"] = extract_email_sync(lead["website"])
+                
+            leads.append(lead)
+    except Exception as e:
+        logger.error(f"Places API Error: {e}")
+        
+    return leads
 
-        # Wait for search results panel to load
-        try:
-            WebDriverWait(driver, 15).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, "a.hfpxzc"))
-            )
-        except TimeoutException:
-            logger.error("Timeout waiting for search results.")
-            return leads
+# --- METHOD 2: SERPAPI ---
+def search_serpapi(query: str, limit: int = 5) -> List[Dict[str, Any]]:
+    """Use SerpAPI to scrape Google Maps via API proxy."""
+    logger.info(f"Method 2: SerpAPI | Query: {query}")
+    leads = []
+    
+    try:
+        url = "https://serpapi.com/search"
+        params = {
+            "engine": "google_maps",
+            "q": query,
+            "api_key": SERPAPI_KEY,
+            "num": limit
+        }
+        resp = requests.get(url, params=params, timeout=15)
+        data = resp.json()
+        
+        for r in data.get("local_results", [])[:limit]:
+            lead = get_full_structure()
+            lead["name"] = r.get("title", "")
+            lead["address"] = r.get("address", "")
+            lead["phone"] = r.get("phone", "")
+            lead["website"] = r.get("website", "")
+            lead["rating"] = str(r.get("rating", ""))
+            lead["reviews"] = str(r.get("reviews", ""))
+            lead["category"] = r.get("type", "")
+            lead["lead_id"] = generate_lead_id(lead["name"], lead["address"])
+            
+            if lead["website"]:
+                lead["email"] = extract_email_sync(lead["website"])
+            leads.append(lead)
+    except Exception as e:
+        logger.error(f"SerpAPI Error: {e}")
+        
+    return leads
 
-        # Scroll a bit to ensure elements are present
-        driver.execute_script("window.scrollBy(0, 500);")
-        time.sleep(2)
-
-        cards = driver.find_elements(By.CSS_SELECTOR, "a.hfpxzc")
-        logger.info(f"Found {len(cards)} results. Starting deep extraction...")
-
-        for i, card in enumerate(cards[:target_count]):
+# --- METHOD 3: PURE REQUESTS FALLBACK ---
+def search_no_api(query: str, limit: int = 5) -> List[Dict[str, Any]]:
+    """Zero-API scraping via requests and BeautifulSoup snippets."""
+    logger.info(f"Method 3: Pure Requests Fallback | Query: {query}")
+    leads = []
+    
+    try:
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+        search_url = f"https://www.google.com/search?q={query.replace(' ', '+')}+phone+email+address"
+        resp = requests.get(search_url, headers=headers, timeout=10)
+        soup = BeautifulSoup(resp.text, "html.parser")
+        
+        # Selectors for common business listing blocks
+        cards = soup.select("div.VkpGBb, div.rllt__details, div[data-rc]")[:limit]
+        for div in cards:
             try:
                 lead = get_full_structure()
-                lead["name"] = card.get_attribute("aria-label") or f"Lead {i+1}"
-                lead["google_maps_url"] = card.get_attribute("href")
-
-                # Step 1: Click the listing to open detail panel
-                logger.info(f"Opening details for: {lead['name']}")
-                driver.execute_script("arguments[0].click();", card)
+                name_el = div.select_one("span.OSrXXb, div.dbg0pd, div.OSrXXb")
+                lead["name"] = name_el.get_text() if name_el else ""
                 
-                # Step 2: Wait for detail panel (FIX 1)
-                detail_selectors = [
-                    "h1.DUwDvf",
-                    "h1[class*='fontHeadlineLarge']",
-                    "div[class*='rogA2c']",
-                    "div[class*='TIHn2']",
-                    "div.bJzME"
-                ]
-                panel_loaded = False
-                for sel in detail_selectors:
-                    try:
-                        WebDriverWait(driver, 8).until(
-                            EC.presence_of_element_located((By.CSS_SELECTOR, sel))
-                        )
-                        panel_loaded = True
+                text_content = div.get_text()
+                # Phone extraction from snippet
+                phones = re.findall(r'[\+]?[0-9]{1}[\s-][0-9]{4,5}[\s-][0-9]{4,6}', text_content)
+                if not phones:
+                    phones = re.findall(r'[\+]?[0-9]{10,13}', text_content)
+                lead["phone"] = phones[0] if phones else ""
+                
+                # Email extraction from snippet
+                emails = re.findall(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', text_content)
+                lead["email"] = emails[0] if emails else ""
+                
+                # Try to find website link in the snippet card
+                links = div.find_all("a", href=True)
+                for a in links:
+                    href = a["href"]
+                    if "http" in href and "google" not in href:
+                        lead["website"] = href
                         break
-                    except TimeoutException:
-                        continue
-                if not panel_loaded:
-                    time.sleep(3)  # last resort wait
                 
-                # Extraction (FIX 2 & FIX 3)
-                # Phone extraction with 5 fallback methods (FIX 2)
-                phone = ""
-                phone_methods = [
-                    ("CSS", "button[data-item-id^='phone:']", "data-item-id"),
-                    ("CSS", "a[href^='tel:']", "href"),
-                    ("XPATH", "//button[contains(@aria-label,'Phone')]", "aria-label"),
-                    ("XPATH", "//span[contains(@aria-label,'phone')]", "aria-label"),
-                ]
-                for method, selector, attr in phone_methods:
-                    try:
-                        if method == "CSS":
-                            el = driver.find_element(By.CSS_SELECTOR, selector)
-                        else:
-                            el = driver.find_element(By.XPATH, selector)
-                        raw = el.get_attribute(attr) or el.text or ""
-                        # Clean: keep only +, digits, spaces
-                        phone = re.sub(r'[^\d\+\s\-]', '', raw).strip()
-                        if phone and len(phone) >= 7:
-                            break
-                    except: continue
-                lead["phone"] = phone
-
-                # Website extraction with fallback (FIX 3)
-                website = ""
-                web_methods = [
-                    ("CSS", "a[data-item-id='authority']", "href"),
-                    ("CSS", "a[href*='http'][aria-label*='ebsite']", "href"),
-                    ("XPATH", "//a[contains(@aria-label,'Website')]", "href"),
-                    ("XPATH", "//a[contains(@data-item-id,'authority')]", "href"),
-                ]
-                for method, selector, attr in web_methods:
-                    try:
-                        if method == "CSS":
-                            el = driver.find_element(By.CSS_SELECTOR, selector)
-                        else:
-                            el = driver.find_element(By.XPATH, selector)
-                        url_attr = el.get_attribute(attr) or ""
-                        if url_attr.startswith("http") and "google" not in url_attr:
-                            website = url_attr
-                            break
-                    except: continue
-                lead["website"] = website
-
-                # Address
-                try:
-                    addr_el = driver.find_element(By.CSS_SELECTOR, "button[data-item-id='address']")
-                    lead["address"] = addr_el.text
-                except: pass
-
-                # Rating & Reviews
-                try:
-                    rating_el = driver.find_element(By.CSS_SELECTOR, "span[aria-label*='stars']")
-                    lead["rating"] = rating_el.get_attribute("aria-label").split()[0]
-                    review_el = driver.find_element(By.CSS_SELECTOR, "span[aria-label*='reviews']")
-                    lead["reviews"] = re.sub(r'\D', '', review_el.get_attribute("aria-label"))
-                except: pass
-
-                # Category
-                try:
-                    cat_el = driver.find_element(By.CSS_SELECTOR, "button[jsaction*='category']")
-                    lead["category"] = cat_el.text
-                except: pass
-
-                # Page source regex as last resort for phone (FIX 4)
-                if not lead["phone"]:
-                    try:
-                        page_src = driver.page_source
-                        phone_matches = re.findall(r'[\+]?[0-9]{1}[\s-][0-9]{4,5}[\s-][0-9]{4,6}', page_src)
-                        if phone_matches:
-                            lead["phone"] = phone_matches[0].strip()
-                    except: pass
-
-                # Step 3: Sync Website Scraper for email (FIX 5)
-                if lead.get("website"):
-                    lead["email"] = extract_email_sync(lead["website"])
-
-                # Step 4: Validation (Day 4)
-                lead = validate_lead(lead)
-                
-                # Output for real-time Streamlit updates
-                print(f"DATA:{json.dumps(lead)}", flush=True)
-                leads.append(lead)
-
-                # Add back button after each listing click
-                try:
-                    back_btn = driver.find_element(By.CSS_SELECTOR, "button[aria-label='Back']")
-                    back_btn.click()
-                    time.sleep(1.5)
-                    cards = driver.find_elements(By.CSS_SELECTOR, "a.hfpxzc")
-                except Exception:
-                    driver.back()
-                    time.sleep(2)
-
-                # Delay between listing clicks (Requirement: random 2-4s)
-                time.sleep(random.uniform(2, 4))
-                
-                if len(leads) >= target_count:
-                    break
-
-            except Exception as e:
-                logger.error(f"Error processing {lead.get('name', 'Unknown')}: {e}")
-                continue
-
+                if lead["name"]:
+                    lead["lead_id"] = generate_lead_id(lead["name"], str(random.random()))
+                    leads.append(lead)
+            except: continue
     except Exception as e:
-        logger.error(f"Fatal error in Deep Scraper: {e}")
-    finally:
-        if driver:
-            driver.quit()
-
+        logger.error(f"Requests Fallback Error: {e}")
+        
     return leads
 
 def main():
@@ -238,21 +205,24 @@ def main():
     query = sys.argv[1]
     limit = int(sys.argv[2]) if len(sys.argv) > 2 else 5
     
-    logger.info(f"Starting Deep Generation for: {query} (Target: {limit})")
+    leads = []
     
-    # Run Deep Scraper
-    results = scrape_maps_deep(query, target_count=limit)
+    # Priority order
+    if GOOGLE_API_KEY:
+        leads = search_places_api(query, limit)
+    elif SERPAPI_KEY:
+        leads = search_serpapi(query, limit)
+    else:
+        leads = search_no_api(query, limit)
     
-    # Fallback if primary yields 0
-    if not results:
-        logger.warning("Deep scraper yielded 0. Switching to Emergency Fallback...")
-        fallback = search_fallback(query)
-        for l in fallback[:limit]:
-            l = validate_lead(l)
-            print(f"DATA:{json.dumps(l)}", flush=True)
-            results.append(l)
-
-    logger.info(f"Scraping complete. Total: {len(results)} leads.")
+    # Final processing and output
+    for lead in leads:
+        try:
+            # Re-validate with the Day 4 logic
+            lead = validate_lead(lead)
+            print(f"DATA:{json.dumps(lead)}", flush=True)
+        except Exception as e:
+            logger.error(f"Final lead processing error: {e}")
 
 if __name__ == "__main__":
     main()
