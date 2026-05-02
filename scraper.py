@@ -12,6 +12,7 @@ from email_validator import validate_email
 from typing import Dict, Any, List
 
 from validation import validate_lead
+from website_scraper import run_website_enrichment
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -113,49 +114,6 @@ def search_duckduckgo(query: str, limit: int = 5) -> list:
 
                 lead["lead_id"] = hashlib.md5(name.lower().encode()).hexdigest()
 
-                # 3. Deep Scan: Visit website for phone + email + address
-                if lead["website"]:
-                    try:
-                        logger.info(f"Deep scanning official site: {lead['website']}")
-                        site_resp = requests.get(lead["website"], timeout=6, headers=HEADERS)
-                        site_soup = BeautifulSoup(site_resp.text, "html.parser")
-
-                        # Extract Email
-                        for a in site_soup.find_all("a", href=re.compile(r"^mailto:")):
-                            email = a["href"].replace("mailto:", "").split("?")[0].strip()
-                            try:
-                                validate_email(email)
-                                lead["email"] = email
-                                break
-                            except:
-                                continue
-                        
-                        if not lead.get("email"):
-                            emails = re.findall(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', site_resp.text)
-                            if emails:
-                                lead["email"] = emails[0]
-
-                        # Extract Phone
-                        if not lead["phone"]:
-                            phones = re.findall(r'[\+]?[0-9]{10,13}', site_resp.text)
-                            if phones:
-                                lead["phone"] = phones[0]
-
-                        # Extract Address
-                        if not lead["address"]:
-                            # Look for common address patterns
-                            addr = re.search(
-                                r'\d+[,\s]+[A-Za-z\s]+(?:Road|Street|Nagar|Colony|Sector|Phase|Building|Avenue|Lane)[,\s]+[A-Za-z\s]+',
-                                site_resp.text
-                            )
-                            if addr:
-                                lead["address"] = addr.group()[:150]
-
-                    except Exception as e:
-                        logger.debug(f"Website visit failed for {lead['name']}: {e}")
-
-                time.sleep(0.5)
-
                 if lead["name"] and len(lead["name"]) > 3:
                     leads.append(lead)
 
@@ -174,6 +132,11 @@ def main():
     logger.info(f"🚀 Smart Scrape: {query} | Target: {limit}")
     leads = search_duckduckgo(query, limit)
 
+    # Day 5 — Website Enrichment
+    if leads:
+        logger.info("Running Day 5 website enrichment...")
+        leads = run_website_enrichment(leads)
+
     for lead in leads:
         try:
             # Apply Day 4 Validation
@@ -184,5 +147,5 @@ def main():
 
     logger.info(f"Done. Successfully provided {len(leads)} leads.")
 
-if __name__ == "__main__":
+ if __name__ == "__main__":
     main()
