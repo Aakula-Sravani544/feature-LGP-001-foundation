@@ -9,7 +9,7 @@ import time
 from datetime import datetime
 from bs4 import BeautifulSoup
 from email_validator import validate_email
-from typing import Dict, Any
+from typing import Dict, Any, List
 
 from validation import validate_lead
 
@@ -35,112 +35,135 @@ def get_full_structure() -> Dict[str, Any]:
         "validation_notes": "", "sub_region": ""
     }
 
-def extract_email_sync(url: str) -> str:
-    """Synchronously extracts emails from a website."""
-    try:
-        resp = requests.get(url, timeout=6, headers=HEADERS)
-        if resp.status_code != 200:
-            return ""
-            
-        soup = BeautifulSoup(resp.text, "html.parser")
-        
-        # 1. Search mailto links
-        for a in soup.find_all("a", href=re.compile(r"^mailto:")):
-            email = a["href"].replace("mailto:", "").split("?")[0].strip()
-            try:
-                validate_email(email)
-                return email
-            except:
-                continue
-        
-        # 2. Regex search in page text
-        email_pattern = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
-        emails = re.findall(email_pattern, resp.text)
-        for email in emails:
-            try:
-                validate_email(email)
-                # Filter out garbage
-                if not any(x in email.lower() for x in ['.png','.jpg','.gif','.woff','css','js']):
-                    return email
-            except:
-                continue
-    except Exception as e:
-        logger.debug(f"Email extraction failed for {url}: {e}")
-    return ""
+def build_smart_queries(query: str) -> list:
+    """Build queries that return actual business contact pages instead of aggregators."""
+    base = query.strip()
+    return [
+        f"{base} official website phone number email contact",
+        f"{base} contact us phone email address site:.in",
+        f'"{base}" phone "+91" email contact',
+    ]
 
 def search_duckduckgo(query: str, limit: int = 5) -> list:
-    """Search DuckDuckGo HTML — more reliable for cloud server IPs."""
+    """Smart DuckDuckGo search that filters out aggregators and finds official sites."""
     leads = []
-    try:
-        # Use DuckDuckGo HTML version which is very lightweight and less prone to blocks
-        url = f"https://html.duckduckgo.com/html/?q={query.replace(' ', '+')}"
-        resp = requests.get(url, headers=HEADERS, timeout=12)
-        if resp.status_code != 200:
-            logger.error(f"DuckDuckGo returned status {resp.status_code}")
-            return []
-            
-        soup = BeautifulSoup(resp.text, "html.parser")
-        results = soup.select("div.result__body")
-        logger.info(f"DuckDuckGo returned {len(results)} raw results")
+    seen_names = set()
+    queries = build_smart_queries(query)
 
-        for result in results[:limit*3]:
-            lead = get_full_structure()
-
-            # 1. Name
-            title_el = result.select_one("a.result__a")
-            if not title_el:
+    for smart_query in queries:
+        if len(leads) >= limit:
+            break
+        try:
+            logger.info(f"Trying smart query: {smart_query}")
+            url = f"https://html.duckduckgo.com/html/?q={smart_query.replace(' ', '+')}"
+            resp = requests.get(url, headers=HEADERS, timeout=12)
+            if resp.status_code != 200:
                 continue
-            lead["name"] = title_el.get_text(strip=True)
+                
+            soup = BeautifulSoup(resp.text, "html.parser")
+            results = soup.select("div.result__body")
 
-            # 2. Website
-            href = title_el.get("href", "")
-            if href and href.startswith("http") and "duckduckgo" not in href:
-                lead["website"] = href
+            for result in results:
+                if len(leads) >= limit:
+                    break
 
-            # 3. Snippet — extract phone and address
-            snippet_el = result.select_one("a.result__snippet")
-            if snippet_el:
-                text = snippet_el.get_text()
-                lead["description"] = text[:300]
-                # Improved phone regex
-                phones = re.findall(r'[\+]?[0-9]{10,13}|[0-9]{4,5}[\s\-][0-9]{6,8}', text)
-                if phones:
-                    lead["phone"] = phones[0].strip()
+                title_el = result.select_one("a.result__a")
+                if not title_el:
+                    continue
 
-            # 4. Lead ID
-            lead["lead_id"] = hashlib.md5(
-                lead["name"].lower().encode()
-            ).hexdigest()
+                name = title_el.get_text(strip=True)
 
-            if lead["name"] and len(lead["name"]) > 3:
-                leads.append(lead)
+                # 1. Skip aggregator/directory domains
+                skip_domains = [
+                    "booking.com", "tripadvisor", "makemytrip", "goibibo",
+                    "agoda", "kayak", "expedia", "holidify", "oyo",
+                    "hotels.com", "yatra", "cleartrip", "trivago", "justdial",
+                    "indiamart", "yellowpages", "facebook.com", "instagram.com"
+                ]
+                href = title_el.get("href", "")
+                if any(skip in href.lower() for skip in skip_domains):
+                    continue
+                
+                # 2. Skip listicle titles
+                if any(skip in name.lower() for skip in ["best hotels", "top 10", "list of", "10 best"]):
+                    continue
 
-            if len(leads) >= limit:
-                break
+                if name in seen_names:
+                    continue
+                seen_names.add(name)
 
-    except Exception as e:
-        logger.error(f"DuckDuckGo search error: {e}")
+                lead = get_full_structure()
+                lead["name"] = name
+                lead["website"] = href if href.startswith("http") else ""
+                lead["category"] = query.split()[0].title()
 
-    # Deep Scan: Visit each website to find email + phone
-    for lead in leads:
-        if lead.get("website"):
-            logger.info(f"Deep scanning: {lead['website']}")
-            # Recover Email
-            if not lead.get("email"):
-                lead["email"] = extract_email_sync(lead["website"])
-            
-            # Recover Phone if missing from snippet
-            if not lead.get("phone"):
-                try:
-                    resp = requests.get(lead["website"], timeout=6, headers=HEADERS)
-                    phones = re.findall(r'[\+]?[0-9]{10,13}', resp.text)
+                # Extract info from snippet
+                snippet_el = result.select_one("a.result__snippet")
+                if snippet_el:
+                    text = snippet_el.get_text()
+                    lead["description"] = text[:300]
+                    # Phone extraction
+                    phones = re.findall(r'[\+]?[0-9]{10,13}', text)
                     if phones:
                         lead["phone"] = phones[0]
-                except:
-                    pass
-        time.sleep(0.5)
+                    # Attempt address extraction from snippet
+                    addr_match = re.search(r'[A-Z][a-z]+(?:\s[A-Z][a-z]+)*,\s*[A-Za-z]+', text)
+                    if addr_match:
+                        lead["address"] = addr_match.group()
 
-    return leads
+                lead["lead_id"] = hashlib.md5(name.lower().encode()).hexdigest()
+
+                # 3. Deep Scan: Visit website for phone + email + address
+                if lead["website"]:
+                    try:
+                        logger.info(f"Deep scanning official site: {lead['website']}")
+                        site_resp = requests.get(lead["website"], timeout=6, headers=HEADERS)
+                        site_soup = BeautifulSoup(site_resp.text, "html.parser")
+
+                        # Extract Email
+                        for a in site_soup.find_all("a", href=re.compile(r"^mailto:")):
+                            email = a["href"].replace("mailto:", "").split("?")[0].strip()
+                            try:
+                                validate_email(email)
+                                lead["email"] = email
+                                break
+                            except:
+                                continue
+                        
+                        if not lead.get("email"):
+                            emails = re.findall(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', site_resp.text)
+                            if emails:
+                                lead["email"] = emails[0]
+
+                        # Extract Phone
+                        if not lead["phone"]:
+                            phones = re.findall(r'[\+]?[0-9]{10,13}', site_resp.text)
+                            if phones:
+                                lead["phone"] = phones[0]
+
+                        # Extract Address
+                        if not lead["address"]:
+                            # Look for common address patterns
+                            addr = re.search(
+                                r'\d+[,\s]+[A-Za-z\s]+(?:Road|Street|Nagar|Colony|Sector|Phase|Building|Avenue|Lane)[,\s]+[A-Za-z\s]+',
+                                site_resp.text
+                            )
+                            if addr:
+                                lead["address"] = addr.group()[:150]
+
+                    except Exception as e:
+                        logger.debug(f"Website visit failed for {lead['name']}: {e}")
+
+                time.sleep(0.5)
+
+                if lead["name"] and len(lead["name"]) > 3:
+                    leads.append(lead)
+
+        except Exception as e:
+            logger.error(f"Search error for query '{smart_query}': {e}")
+            time.sleep(2)
+
+    return leads[:limit]
 
 def main():
     if len(sys.argv) < 2:
@@ -148,7 +171,7 @@ def main():
     query = sys.argv[1]
     limit = int(sys.argv[2]) if len(sys.argv) > 2 else 5
 
-    logger.info(f"🚀 DuckDuckGo Smart Scrape: {query} | Target: {limit}")
+    logger.info(f"🚀 Smart Scrape: {query} | Target: {limit}")
     leads = search_duckduckgo(query, limit)
 
     for lead in leads:
