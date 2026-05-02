@@ -3,11 +3,13 @@ import json
 import time
 import random
 import re
-import asyncio
 import logging
 from datetime import datetime
 from typing import List, Dict, Any, Optional
 
+import requests
+from bs4 import BeautifulSoup
+from email_validator import validate_email
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -16,11 +18,36 @@ from selenium.common.exceptions import TimeoutException, NoSuchElementException
 
 from driver_setup import get_driver, safe_get
 from fallback_scraper import search_fallback
-from validation import validate_lead, extract_email_from_website
+from validation import validate_lead
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+def extract_email_sync(url: str) -> str:
+    """Synchronously scrapes a website for email addresses."""
+    if not url or not url.startswith("http"):
+        return ""
+    try:
+        headers = {"User-Agent": "Mozilla/5.0"}
+        resp = requests.get(url, timeout=8, headers=headers)
+        soup = BeautifulSoup(resp.text, "html.parser")
+        for a in soup.find_all("a", href=re.compile(r"^mailto:")):
+            email = a["href"].replace("mailto:", "").split("?")[0].strip()
+            try:
+                validate_email(email)
+                return email
+            except:
+                continue
+        for email in re.findall(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', resp.text):
+            try:
+                validate_email(email)
+                return email
+            except:
+                continue
+    except Exception as e:
+        logger.debug(f"Email sync extraction failed for {url}: {e}")
+    return ""
 
 def get_full_structure() -> Dict[str, Any]:
     """Returns a standardized lead dictionary."""
@@ -33,15 +60,6 @@ def get_full_structure() -> Dict[str, Any]:
         "ai_analysis": "N/A", "validation_status": "Pending",
         "validation_notes": "", "sub_region": ""
     }
-
-async def enrich_lead_with_email(lead: Dict[str, Any]) -> Dict[str, Any]:
-    """Calls the async website scraper to find emails."""
-    if lead.get("website"):
-        logger.info(f"Scanning {lead['website']} for emails...")
-        email = await extract_email_from_website(lead["website"])
-        if email:
-            lead["email"] = email
-    return lead
 
 def scrape_maps_deep(query: str, target_count: int = 5) -> List[Dict[str, Any]]:
     """Deep scraper that clicks into each listing detail panel."""
@@ -82,17 +100,19 @@ def scrape_maps_deep(query: str, target_count: int = 5) -> List[Dict[str, Any]]:
                 logger.info(f"Opening details for: {lead['name']}")
                 driver.execute_script("arguments[0].click();", card)
                 
-                # Step 2: Wait for detail panel and extract (Requirement 2)
+                # Step 2: Wait for detail panel and extract (FIX 1)
                 try:
-                    # Wait for sidebar detail content
-                    WebDriverWait(driver, 10).until(
-                        EC.presence_of_element_located((By.CSS_SELECTOR, "div.m67q60"))
+                    # Wait for sidebar detail content (FIX 1)
+                    WebDriverWait(driver, 12).until(
+                        EC.presence_of_element_located((By.CSS_SELECTOR, "h1.DUwDvf, h1[class*='fontHeadlineLarge']"))
                     )
+                    time.sleep(1.5)
                     
-                    # Phone
+                    # Phone (FIX 2)
                     try:
                         phone_el = driver.find_element(By.CSS_SELECTOR, "button[data-item-id^='phone:']")
-                        lead["phone"] = phone_el.get_attribute("data-item-id").split("phone:tel:")[1]
+                        raw = phone_el.get_attribute("data-item-id")
+                        lead["phone"] = raw.replace("phone:", "").strip()
                     except NoSuchElementException:
                         try:
                             # Alternative: look for aria-label containing Phone
@@ -133,9 +153,9 @@ def scrape_maps_deep(query: str, target_count: int = 5) -> List[Dict[str, Any]]:
                 except TimeoutException:
                     logger.warning(f"Timeout loading details for {lead['name']}")
 
-                # Step 3: Async Website Scraper for email
-                if lead["website"]:
-                    lead = asyncio.run(enrich_lead_with_email(lead))
+                # Step 3: Sync Website Scraper for email (FIX 3)
+                if lead.get("website"):
+                    lead["email"] = extract_email_sync(lead["website"])
 
                 # Step 4: Validation (Day 4)
                 lead = validate_lead(lead)
@@ -143,6 +163,16 @@ def scrape_maps_deep(query: str, target_count: int = 5) -> List[Dict[str, Any]]:
                 # Output for real-time Streamlit updates
                 print(f"DATA:{json.dumps(lead)}", flush=True)
                 leads.append(lead)
+
+                # Step 4: Add back button after each listing click (FIX 4)
+                try:
+                    back_btn = driver.find_element(By.CSS_SELECTOR, "button[aria-label='Back']")
+                    back_btn.click()
+                    time.sleep(1.5)
+                    cards = driver.find_elements(By.CSS_SELECTOR, "a.hfpxzc")
+                except Exception:
+                    driver.back()
+                    time.sleep(2)
 
                 # Delay between listing clicks (Requirement: random 2-4s)
                 time.sleep(random.uniform(2, 4))
