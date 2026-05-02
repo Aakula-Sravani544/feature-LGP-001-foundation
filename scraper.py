@@ -5,6 +5,7 @@ import hashlib
 import os
 import sys
 import logging
+import time
 from datetime import datetime
 from bs4 import BeautifulSoup
 from email_validator import validate_email
@@ -16,25 +17,28 @@ from validation import validate_lead
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+}
+
 def get_full_structure() -> Dict[str, Any]:
-    """Returns a standardized lead dictionary with zero-Selenium defaults."""
+    """Returns a standardized lead dictionary."""
     return {
-        "lead_id": "",
-        "name": "", "address": "", "phone": "", "email": "", "website": "",
-        "rating": "", "reviews": "", "category": "", "google_maps_url": "",
-        "description": "", "hours": "", "social_media": "", "additional_data": "",
+        "lead_id": "", "name": "", "address": "", "phone": "",
+        "email": "", "website": "", "rating": "", "reviews": "",
+        "category": "", "google_maps_url": "", "description": "",
+        "hours": "", "social_media": "", "additional_data": "",
         "scraped_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "ai_analysis": "N/A", "validation_status": "Pending",
         "validation_notes": "", "sub_region": ""
     }
 
 def extract_email_sync(url: str) -> str:
-    """Synchronously scrapes a website for email addresses."""
-    if not url or not url.startswith("http"):
-        return ""
+    """Synchronously extracts emails from a website."""
     try:
-        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
-        resp = requests.get(url, timeout=6, headers=headers)
+        resp = requests.get(url, timeout=6, headers=HEADERS)
         if resp.status_code != 200:
             return ""
             
@@ -55,61 +59,57 @@ def extract_email_sync(url: str) -> str:
         for email in emails:
             try:
                 validate_email(email)
-                return email
+                # Filter out garbage
+                if not any(x in email.lower() for x in ['.png','.jpg','.gif','.woff','css','js']):
+                    return email
             except:
                 continue
     except Exception as e:
-        logger.debug(f"Email sync extraction failed for {url}: {e}")
+        logger.debug(f"Email extraction failed for {url}: {e}")
     return ""
 
-def search_google_free(query: str, limit: int = 5) -> list:
-    """Scrape Google search for business contacts - no API or Selenium needed."""
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
-        "Accept-Language": "en-US,en;q=0.9"
-    }
+def search_duckduckgo(query: str, limit: int = 5) -> list:
+    """Search DuckDuckGo HTML — more reliable for cloud server IPs."""
     leads = []
-
-    # Search: Get business names and snippets
-    search_url = f"https://www.google.com/search?q={query.replace(' ', '+')}+contact+phone+email&num=20"
     try:
-        resp = requests.get(search_url, headers=headers, timeout=10)
+        # Use DuckDuckGo HTML version which is very lightweight and less prone to blocks
+        url = f"https://html.duckduckgo.com/html/?q={query.replace(' ', '+')}"
+        resp = requests.get(url, headers=HEADERS, timeout=12)
         if resp.status_code != 200:
-            logger.error(f"Google search returned status {resp.status_code}")
+            logger.error(f"DuckDuckGo returned status {resp.status_code}")
             return []
             
         soup = BeautifulSoup(resp.text, "html.parser")
+        results = soup.select("div.result__body")
+        logger.info(f"DuckDuckGo returned {len(results)} raw results")
 
-        # Extract business cards/blocks from organic results
-        for block in soup.select("div.g, div.tF2Cxc, div.MjjYud div.g")[:limit*2]:
+        for result in results[:limit*3]:
             lead = get_full_structure()
 
-            # 1. Name from heading
-            title = block.select_one("h3")
-            if not title:
+            # 1. Name
+            title_el = result.select_one("a.result__a")
+            if not title_el:
                 continue
-            lead["name"] = title.get_text(strip=True)
+            lead["name"] = title_el.get_text(strip=True)
 
-            # 2. Website link
-            link = block.select_one("a[href^='http']")
-            if link:
-                url = link.get("href", "")
-                if url and "google" not in url:
-                    lead["website"] = url
+            # 2. Website
+            href = title_el.get("href", "")
+            if href and href.startswith("http") and "duckduckgo" not in href:
+                lead["website"] = href
 
-            # 3. Snippet for address/phone
-            snippet = block.select_one("div.VwiC3b, span.aCOpRe, div.IsZvec")
-            if snippet:
-                text = snippet.get_text()
-                # Phone extraction
-                phones = re.findall(r'[\+]?[0-9]{10,13}|[0-9]{3,5}[\s\-][0-9]{6,8}', text)
+            # 3. Snippet — extract phone and address
+            snippet_el = result.select_one("a.result__snippet")
+            if snippet_el:
+                text = snippet_el.get_text()
+                lead["description"] = text[:300]
+                # Improved phone regex
+                phones = re.findall(r'[\+]?[0-9]{10,13}|[0-9]{4,5}[\s\-][0-9]{6,8}', text)
                 if phones:
                     lead["phone"] = phones[0].strip()
-                lead["description"] = text[:200]
 
-            # 4. Generate lead_id using hashlib MD5
+            # 4. Lead ID
             lead["lead_id"] = hashlib.md5(
-                (lead["name"] + lead.get("address","")).lower().encode()
+                lead["name"].lower().encode()
             ).hexdigest()
 
             if lead["name"] and len(lead["name"]) > 3:
@@ -119,13 +119,26 @@ def search_google_free(query: str, limit: int = 5) -> list:
                 break
 
     except Exception as e:
-        logger.error(f"Google search failed: {e}")
+        logger.error(f"DuckDuckGo search error: {e}")
 
-    # Step 2: Visit website to find email for each lead
+    # Deep Scan: Visit each website to find email + phone
     for lead in leads:
-        if lead.get("website") and not lead.get("email"):
-            logger.info(f"Scanning website for email: {lead['website']}")
-            lead["email"] = extract_email_sync(lead["website"])
+        if lead.get("website"):
+            logger.info(f"Deep scanning: {lead['website']}")
+            # Recover Email
+            if not lead.get("email"):
+                lead["email"] = extract_email_sync(lead["website"])
+            
+            # Recover Phone if missing from snippet
+            if not lead.get("phone"):
+                try:
+                    resp = requests.get(lead["website"], timeout=6, headers=HEADERS)
+                    phones = re.findall(r'[\+]?[0-9]{10,13}', resp.text)
+                    if phones:
+                        lead["phone"] = phones[0]
+                except:
+                    pass
+        time.sleep(0.5)
 
     return leads
 
@@ -135,18 +148,18 @@ def main():
     query = sys.argv[1]
     limit = int(sys.argv[2]) if len(sys.argv) > 2 else 5
 
-    logger.info(f"🚀 Zero-API Free Scraping: {query} | Target: {limit}")
-    leads = search_google_free(query, limit)
+    logger.info(f"🚀 DuckDuckGo Smart Scrape: {query} | Target: {limit}")
+    leads = search_duckduckgo(query, limit)
 
     for lead in leads:
         try:
-            # Apply Day 4 Validation logic
+            # Apply Day 4 Validation
             lead = validate_lead(lead)
             print(f"DATA:{json.dumps(lead)}", flush=True)
         except Exception as e:
-            logger.error(f"Error processing lead: {e}")
+            logger.error(f"Lead processing failed: {e}")
 
-    logger.info(f"Done. Total leads: {len(leads)}")
+    logger.info(f"Done. Successfully provided {len(leads)} leads.")
 
 if __name__ == "__main__":
     main()
