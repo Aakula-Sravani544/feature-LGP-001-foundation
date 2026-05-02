@@ -100,60 +100,101 @@ def scrape_maps_deep(query: str, target_count: int = 5) -> List[Dict[str, Any]]:
                 logger.info(f"Opening details for: {lead['name']}")
                 driver.execute_script("arguments[0].click();", card)
                 
-                # Step 2: Wait for detail panel and extract (FIX 1)
+                # Step 2: Wait for detail panel (FIX 1)
+                detail_selectors = [
+                    "h1.DUwDvf",
+                    "h1[class*='fontHeadlineLarge']",
+                    "div[class*='rogA2c']",
+                    "div[class*='TIHn2']",
+                    "div.bJzME"
+                ]
+                panel_loaded = False
+                for sel in detail_selectors:
+                    try:
+                        WebDriverWait(driver, 8).until(
+                            EC.presence_of_element_located((By.CSS_SELECTOR, sel))
+                        )
+                        panel_loaded = True
+                        break
+                    except TimeoutException:
+                        continue
+                if not panel_loaded:
+                    time.sleep(3)  # last resort wait
+                
+                # Extraction (FIX 2 & FIX 3)
+                # Phone extraction with 5 fallback methods (FIX 2)
+                phone = ""
+                phone_methods = [
+                    ("CSS", "button[data-item-id^='phone:']", "data-item-id"),
+                    ("CSS", "a[href^='tel:']", "href"),
+                    ("XPATH", "//button[contains(@aria-label,'Phone')]", "aria-label"),
+                    ("XPATH", "//span[contains(@aria-label,'phone')]", "aria-label"),
+                ]
+                for method, selector, attr in phone_methods:
+                    try:
+                        if method == "CSS":
+                            el = driver.find_element(By.CSS_SELECTOR, selector)
+                        else:
+                            el = driver.find_element(By.XPATH, selector)
+                        raw = el.get_attribute(attr) or el.text or ""
+                        # Clean: keep only +, digits, spaces
+                        phone = re.sub(r'[^\d\+\s\-]', '', raw).strip()
+                        if phone and len(phone) >= 7:
+                            break
+                    except: continue
+                lead["phone"] = phone
+
+                # Website extraction with fallback (FIX 3)
+                website = ""
+                web_methods = [
+                    ("CSS", "a[data-item-id='authority']", "href"),
+                    ("CSS", "a[href*='http'][aria-label*='ebsite']", "href"),
+                    ("XPATH", "//a[contains(@aria-label,'Website')]", "href"),
+                    ("XPATH", "//a[contains(@data-item-id,'authority')]", "href"),
+                ]
+                for method, selector, attr in web_methods:
+                    try:
+                        if method == "CSS":
+                            el = driver.find_element(By.CSS_SELECTOR, selector)
+                        else:
+                            el = driver.find_element(By.XPATH, selector)
+                        url_attr = el.get_attribute(attr) or ""
+                        if url_attr.startswith("http") and "google" not in url_attr:
+                            website = url_attr
+                            break
+                    except: continue
+                lead["website"] = website
+
+                # Address
                 try:
-                    # Wait for sidebar detail content (FIX 1)
-                    WebDriverWait(driver, 12).until(
-                        EC.presence_of_element_located((By.CSS_SELECTOR, "h1.DUwDvf, h1[class*='fontHeadlineLarge']"))
-                    )
-                    time.sleep(1.5)
-                    
-                    # Phone (FIX 2)
-                    try:
-                        phone_el = driver.find_element(By.CSS_SELECTOR, "button[data-item-id^='phone:']")
-                        raw = phone_el.get_attribute("data-item-id")
-                        lead["phone"] = raw.replace("phone:", "").strip()
-                    except NoSuchElementException:
-                        try:
-                            # Alternative: look for aria-label containing Phone
-                            phone_alt = driver.find_element(By.XPATH, "//*[contains(@aria-label, 'Phone')]")
-                            lead["phone"] = phone_alt.text
-                        except: pass
+                    addr_el = driver.find_element(By.CSS_SELECTOR, "button[data-item-id='address']")
+                    lead["address"] = addr_el.text
+                except: pass
 
-                    # Website
-                    try:
-                        web_el = driver.find_element(By.CSS_SELECTOR, "a[data-item-id='authority']")
-                        lead["website"] = web_el.get_attribute("href")
-                    except NoSuchElementException:
-                        try:
-                            web_alt = driver.find_element(By.XPATH, "//*[contains(@aria-label, 'Website')]")
-                            lead["website"] = web_alt.get_attribute("href")
-                        except: pass
+                # Rating & Reviews
+                try:
+                    rating_el = driver.find_element(By.CSS_SELECTOR, "span[aria-label*='stars']")
+                    lead["rating"] = rating_el.get_attribute("aria-label").split()[0]
+                    review_el = driver.find_element(By.CSS_SELECTOR, "span[aria-label*='reviews']")
+                    lead["reviews"] = re.sub(r'\D', '', review_el.get_attribute("aria-label"))
+                except: pass
 
-                    # Address
+                # Category
+                try:
+                    cat_el = driver.find_element(By.CSS_SELECTOR, "button[jsaction*='category']")
+                    lead["category"] = cat_el.text
+                except: pass
+
+                # Page source regex as last resort for phone (FIX 4)
+                if not lead["phone"]:
                     try:
-                        addr_el = driver.find_element(By.CSS_SELECTOR, "button[data-item-id='address']")
-                        lead["address"] = addr_el.text
+                        page_src = driver.page_source
+                        phone_matches = re.findall(r'[\+]?[0-9]{1}[\s-][0-9]{4,5}[\s-][0-9]{4,6}', page_src)
+                        if phone_matches:
+                            lead["phone"] = phone_matches[0].strip()
                     except: pass
 
-                    # Rating & Reviews
-                    try:
-                        rating_el = driver.find_element(By.CSS_SELECTOR, "span[aria-label*='stars']")
-                        lead["rating"] = rating_el.get_attribute("aria-label").split()[0]
-                        review_el = driver.find_element(By.CSS_SELECTOR, "span[aria-label*='reviews']")
-                        lead["reviews"] = re.sub(r'\D', '', review_el.get_attribute("aria-label"))
-                    except: pass
-
-                    # Category
-                    try:
-                        cat_el = driver.find_element(By.CSS_SELECTOR, "button[jsaction*='category']")
-                        lead["category"] = cat_el.text
-                    except: pass
-
-                except TimeoutException:
-                    logger.warning(f"Timeout loading details for {lead['name']}")
-
-                # Step 3: Sync Website Scraper for email (FIX 3)
+                # Step 3: Sync Website Scraper for email (FIX 5)
                 if lead.get("website"):
                     lead["email"] = extract_email_sync(lead["website"])
 
@@ -164,7 +205,7 @@ def scrape_maps_deep(query: str, target_count: int = 5) -> List[Dict[str, Any]]:
                 print(f"DATA:{json.dumps(lead)}", flush=True)
                 leads.append(lead)
 
-                # Step 4: Add back button after each listing click (FIX 4)
+                # Add back button after each listing click
                 try:
                     back_btn = driver.find_element(By.CSS_SELECTOR, "button[aria-label='Back']")
                     back_btn.click()
