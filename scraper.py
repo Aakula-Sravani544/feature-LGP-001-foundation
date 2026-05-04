@@ -116,33 +116,67 @@ def extract_social_media(url: str) -> dict:
     return social
 
 def search_with_serper(query: str, limit: int = 5) -> list:
-    """Search using Serper.dev API — real Google results."""
+    """Search using Serper Maps API — returns rating, reviews, phone directly from Google Maps."""
     if not SERPER_API_KEY:
-        print("LOG:ERROR - SERPER_API_KEY not found in environment!", flush=True)
+        print("LOG:ERROR - SERPER_API_KEY not found!", flush=True)
         return []
 
-    print(f"LOG:Using Serper API with key: {SERPER_API_KEY[:8]}...", flush=True)
-
-    # Domains to exclude (aggregators/directories)
-    skip_domains = [
-        "booking.com", "tripadvisor", "makemytrip", "goibibo",
-        "agoda", "kayak", "expedia", "oyo", "justdial", "sulekha",
-        "wikipedia", "youtube", "facebook", "instagram", "twitter",
-        "indiamart", "tradeindia", "quora", "reddit", "linkedin"
-    ]
-
+    print(f"LOG:Using Serper Maps API...", flush=True)
     leads = []
-    # Run 2 different queries to get more variety and official sites
-    queries = [
-        f"{query} official website contact phone",
-        f"{query} address email phone number"
-    ]
-
     seen_names = set()
 
-    for q in queries:
-        if len(leads) >= limit:
-            break
+    try:
+        resp = requests.post(
+            "https://google.serper.dev/maps",
+            headers={
+                "X-API-KEY": SERPER_API_KEY,
+                "Content-Type": "application/json"
+            },
+            json={
+                "q": query,
+                "gl": "in",
+                "hl": "en"
+            },
+            timeout=10
+        )
+        data = resp.json()
+        places = data.get("places", [])
+        print(f"LOG:Serper Maps returned {len(places)} places", flush=True)
+
+        for place in places[:limit*2]:
+            name = place.get("title", "").strip()
+            if not name or name in seen_names:
+                continue
+            seen_names.add(name)
+
+            lead = get_full_structure()
+            lead["name"] = name
+            lead["address"] = place.get("address", "")
+            lead["phone"] = place.get("phoneNumber", "")
+            lead["website"] = place.get("website", "")
+            lead["rating"] = str(place.get("rating", ""))
+            lead["reviews"] = str(place.get("reviews", ""))
+            lead["category"] = place.get("category", query.split()[0].title())
+            lead["google_maps_url"] = place.get("cid", "")
+            lead["description"] = place.get("address", "")[:300]
+            lead["lead_id"] = hashlib.md5(
+                name.lower().encode()
+            ).hexdigest()
+
+            if name and len(name) > 3:
+                leads.append(lead)
+                print(f"LOG:Found: {name} | Rating:{lead['rating']} | Phone:{lead['phone']}", flush=True)
+
+            if len(leads) >= limit:
+                break
+
+    except Exception as e:
+        print(f"LOG:Serper Maps error: {e}", flush=True)
+        logger.error(f"Serper Maps failed: {e}")
+
+    # If maps returns 0, fallback to web search
+    if not leads:
+        print(f"LOG:Maps returned 0. Trying web search fallback...", flush=True)
         try:
             resp = requests.post(
                 "https://google.serper.dev/search",
@@ -151,60 +185,28 @@ def search_with_serper(query: str, limit: int = 5) -> list:
                     "Content-Type": "application/json"
                 },
                 json={
-                    "q": q,
+                    "q": f"{query} contact phone email",
                     "num": 10,
-                    "gl": "in",
-                    "hl": "en"
+                    "gl": "in"
                 },
                 timeout=10
             )
             data = resp.json()
-            results = data.get("organic", [])
-            print(f"LOG:Serper returned {len(results)} results for: {q}", flush=True)
-
-            for r in results:
-                if len(leads) >= limit:
-                    break
-
+            for r in data.get("organic", [])[:limit]:
                 name = r.get("title", "").strip()
-                href = r.get("link", "")
-                snippet = r.get("snippet", "")
-
-                # 1. Skip aggregator sites
-                if any(s in href.lower() for s in skip_domains):
-                    continue
-
-                # 2. Skip duplicate names
-                if name in seen_names:
+                if not name or name in seen_names:
                     continue
                 seen_names.add(name)
-
                 lead = get_full_structure()
                 lead["name"] = name
-                lead["website"] = href
-                lead["description"] = snippet[:300]
+                lead["website"] = r.get("link", "")
+                lead["description"] = r.get("snippet", "")[:300]
                 lead["category"] = query.split()[0].title()
-
-                # 3. Extract phone from snippet
-                phones = re.findall(r'[\+]?[0-9]{10,13}', snippet)
-                if phones:
-                    lead["phone"] = phones[0]
-
-                # 4. Extract address from snippet
-                lead["address"] = snippet[:150]
-
-                # 5. Generate lead_id
-                lead["lead_id"] = hashlib.md5(
-                    name.lower().encode()
-                ).hexdigest()
-
-                if name and len(name) > 3:
-                    leads.append(lead)
-                    print(f"LOG:Found lead: {name}", flush=True)
-
+                lead["lead_id"] = hashlib.md5(name.lower().encode()).hexdigest()
+                leads.append(lead)
+                print(f"LOG:Fallback found: {name}", flush=True)
         except Exception as e:
-            print(f"LOG:Serper error: {e}", flush=True)
-            logger.error(f"Serper search failed for query '{q}': {e}")
+            print(f"LOG:Web fallback error: {e}", flush=True)
 
     return leads
 
