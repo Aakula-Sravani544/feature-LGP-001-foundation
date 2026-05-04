@@ -12,6 +12,7 @@ from email_validator import validate_email
 from typing import Dict, Any
 
 from validation import validate_lead
+from ai_engine import enrich_leads_with_ai
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -282,6 +283,19 @@ def main():
     # Step 2: Enrich with website data (Email, Phone, Social, Tech)
     print(f"LOG:Enriching {len(leads)} leads with website data...", flush=True)
     leads = enrich_leads(leads)
+
+    # Day 8 — AI enrichment
+    if os.environ.get("GEMINI_API_KEY"):
+        print(f"LOG:Running AI analysis on {len(leads)} leads...", flush=True)
+        try:
+            leads = enrich_leads_with_ai(leads)
+            print(f"LOG:AI analysis complete", flush=True)
+        except Exception as e:
+            print(f"LOG:AI analysis failed: {e}", flush=True)
+    else:
+        print(f"LOG:No GEMINI_API_KEY — using rule-based scoring", flush=True)
+        from ai_engine import enrich_leads_with_ai
+        leads = enrich_leads_with_ai(leads)
 
     # Step 3: Validate and output
     print(f"LOG:Validating leads...", flush=True)
