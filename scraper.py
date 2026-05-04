@@ -262,52 +262,53 @@ def enrich_leads(leads: list) -> list:
 
 def main():
     if len(sys.argv) < 2:
-        print("LOG:No query provided", flush=True)
         return
-
     query = sys.argv[1]
-    limit = int(sys.argv[2]) if len(sys.argv) > 2 else 5
-    # Cap limit to 10 max on free tier to prevent memory crash
-    limit = min(limit, 10)
+    limit = min(int(sys.argv[2]) if len(sys.argv) > 2 else 5, 10)
+    use_ai = sys.argv[3] == "1" if len(sys.argv) > 3 else False
 
     print(f"LOG:🚀 LeadPulse Pro Engine | Target: {limit}", flush=True)
-    print(f"LOG:Searching for: {query}", flush=True)
+    print(f"LOG:AI Scoring: {'ON' if use_ai else 'OFF'}", flush=True)
 
-    # Step 1: Search with Serper
+    # Search
     leads = search_with_serper(query, limit)
 
     if not leads:
-        print("LOG:No results found. Check SERPER_API_KEY in Render environment.", flush=True)
+        print("LOG:No results found.", flush=True)
         return
 
-    # Step 2: Enrich with website data (Email, Phone, Social, Tech)
-    print(f"LOG:Enriching {len(leads)} leads with website data...", flush=True)
+    # Enrich
+    print(f"LOG:Enriching {len(leads)} leads...", flush=True)
     leads = enrich_leads(leads)
 
-    # Day 8 — AI enrichment
-    if os.environ.get("GEMINI_API_KEY"):
-        print(f"LOG:Running AI analysis on {len(leads)} leads...", flush=True)
+    # AI Analysis
+    if use_ai:
+        print(f"LOG:Running AI analysis...", flush=True)
         try:
+            from ai_engine import enrich_leads_with_ai
             leads = enrich_leads_with_ai(leads)
             print(f"LOG:AI analysis complete", flush=True)
         except Exception as e:
-            print(f"LOG:AI analysis failed: {e}", flush=True)
+            print(f"LOG:AI failed: {e} — using rule-based", flush=True)
+            from ai_engine import enrich_leads_with_ai
+            leads = enrich_leads_with_ai(leads)
     else:
-        print(f"LOG:No GEMINI_API_KEY — using rule-based scoring", flush=True)
-        from ai_engine import enrich_leads_with_ai
-        leads = enrich_leads_with_ai(leads)
+        print(f"LOG:Using rule-based scoring", flush=True)
+        try:
+            from ai_engine import enrich_leads_with_ai
+            leads = enrich_leads_with_ai(leads)
+        except Exception as e:
+            print(f"LOG:Rule-based scoring failed: {e}", flush=True)
 
-    # Step 3: Validate and output
-    print(f"LOG:Validating leads...", flush=True)
+    # Validate and output
     for lead in leads:
         try:
-            # Apply Day 4 Validation
             lead = validate_lead(lead)
             print(f"DATA:{json.dumps(lead)}", flush=True)
         except Exception as e:
             logger.error(f"Validation failed for lead: {e}")
 
-    print(f"LOG:Complete. Total leads: {len(leads)}", flush=True)
+    print(f"LOG:Complete. Total: {len(leads)}", flush=True)
 
 if __name__ == "__main__":
     main()

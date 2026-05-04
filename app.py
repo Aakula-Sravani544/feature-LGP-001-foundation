@@ -312,8 +312,9 @@ def generation_ui(label_suffix=""):
                 batch_target = min(batch_size, target_total - collected_count)
                 status_text.text(f"🔄 Batch Extraction: {collected_count}/{target_total} leads collected...")
                 
+                ai_flag = "1" if use_ai else "0"
                 process = subprocess.Popen(
-                    [sys.executable, "scraper.py", query, str(batch_target)],
+                    [sys.executable, "scraper.py", query, str(batch_target), ai_flag],
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
                     text=True,
