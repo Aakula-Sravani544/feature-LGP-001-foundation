@@ -12,7 +12,6 @@ from email_validator import validate_email
 from typing import Dict, Any
 
 from validation import validate_lead
-from website_scraper import run_website_enrichment
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -89,6 +88,32 @@ def extract_phone_from_website(url: str) -> str:
     except:
         pass
     return ""
+
+def extract_social_media(url: str) -> dict:
+    """Lightweight social media extractor — no aiohttp, no concurrent connections."""
+    social = {}
+    if not url or not url.startswith("http"):
+        return social
+    try:
+        resp = requests.get(url, timeout=5, headers=HEADERS)
+        html = resp.text
+        patterns = {
+            "facebook": r'facebook\.com/[^\s\'"<>\)]{3,50}',
+            "instagram": r'instagram\.com/[^\s\'"<>\)]{3,50}',
+            "linkedin": r'linkedin\.com/(?:company|in)/[^\s\'"<>\)]{3,50}',
+            "twitter": r'(?:twitter|x)\.com/[^\s\'"<>\)]{3,50}',
+            "youtube": r'youtube\.com/[^\s\'"<>\)]{3,50}'
+        }
+        for platform, pattern in patterns.items():
+            matches = re.findall(pattern, html)
+            for match in matches:
+                clean = match.rstrip('/"\'').strip()
+                if len(clean) > 10:
+                    social[platform] = "https://" + clean
+                    break
+    except Exception as e:
+        logger.debug(f"Social extraction failed for {url}: {e}")
+    return social
 
 def search_with_serper(query: str, limit: int = 5) -> list:
     """Search using Serper.dev API — real Google results."""
@@ -184,17 +209,25 @@ def search_with_serper(query: str, limit: int = 5) -> list:
     return leads
 
 def enrich_leads(leads: list) -> list:
-    """Visit each website to extract email and phone."""
+    """Visit each website to extract email, phone and social media."""
     for i, lead in enumerate(leads):
         if lead.get("website"):
             print(f"LOG:Enriching {i+1}/{len(leads)}: {lead['name'][:30]}", flush=True)
-            # Recovery: Email
+            # Email
             if not lead.get("email"):
                 lead["email"] = extract_email_from_website(lead["website"])
-            # Recovery: Phone
+            # Phone
             if not lead.get("phone"):
                 lead["phone"] = extract_phone_from_website(lead["website"])
+            # Social media — lightweight, no aiohttp
+            social = extract_social_media(lead["website"])
+            if social:
+                lead["social_media"] = json.dumps(social)
+            else:
+                lead["social_media"] = ""
             time.sleep(0.3)
+        else:
+            lead["social_media"] = ""
     return leads
 
 def main():
@@ -204,6 +237,8 @@ def main():
 
     query = sys.argv[1]
     limit = int(sys.argv[2]) if len(sys.argv) > 2 else 5
+    # Cap limit to 10 max on free tier to prevent memory crash
+    limit = min(limit, 10)
 
     print(f"LOG:🚀 LeadPulse Pro Engine | Target: {limit}", flush=True)
     print(f"LOG:Searching for: {query}", flush=True)
@@ -215,26 +250,11 @@ def main():
         print("LOG:No results found. Check SERPER_API_KEY in Render environment.", flush=True)
         return
 
-    # Step 2: Enrich with website data (Basic recovery)
+    # Step 2: Enrich with website data (Email, Phone, Social)
     print(f"LOG:Enriching {len(leads)} leads with website data...", flush=True)
     leads = enrich_leads(leads)
 
-    # Step 3: Deep enrichment — social media + tech stack (CHANGE 2)
-    print(f"LOG:Extracting social media links...", flush=True)
-    try:
-        leads = run_website_enrichment(leads)
-        print(f"LOG:Social media extraction complete", flush=True)
-    except Exception as e:
-        print(f"LOG:Social media extraction skipped: {e}", flush=True)
-
-    # Step 4: Convert social_media dict to JSON string for storage (CHANGE 2)
-    for lead in leads:
-        if isinstance(lead.get("social_media"), dict) and lead["social_media"]:
-            lead["social_media"] = json.dumps(lead["social_media"])
-        elif not lead.get("social_media"):
-            lead["social_media"] = ""
-
-    # Step 5: Validate and output
+    # Step 3: Validate and output
     print(f"LOG:Validating leads...", flush=True)
     for lead in leads:
         try:
