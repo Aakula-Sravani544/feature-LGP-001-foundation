@@ -1,6 +1,6 @@
 # Day 5 — Website Scraper: Data Enrichment Engine
 # Extracts email, phone, social media, tech stack from business websites
-# Uses aiohttp async engine with 20 concurrent connections
+# Uses aiohttp async engine with concurrent connections
 # Must extract email/social from 80%+ of reachable websites
 
 import aiohttp
@@ -16,8 +16,8 @@ import phonenumbers
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# 20 concurrent connections as per Day 5 spec
-CONCURRENCY_LIMIT = 20
+# CONCURRENCY_LIMIT set to 5 to avoid Render memory crash
+CONCURRENCY_LIMIT = 5
 TIMEOUT_SECONDS = 8
 MAX_RETRIES = 2
 
@@ -39,7 +39,7 @@ async def scrape_single_website(
     Args:
         session: aiohttp ClientSession
         url: website URL to scrape
-        semaphore: limits concurrent connections to 20
+        semaphore: limits concurrent connections
 
     Returns:
         Dict with email, phone, social_media, tech_stack, contact_page_url
@@ -120,18 +120,21 @@ async def scrape_single_website(
                             except:
                                 continue
 
-                    # 3. Social media links
+                    # 3. Social media links (CHANGE 3)
                     social_patterns = {
-                        "facebook": r'facebook\.com/[^\s\'"<>]+',
-                        "instagram": r'instagram\.com/[^\s\'"<>]+',
-                        "linkedin": r'linkedin\.com/(?:company|in)/[^\s\'"<>]+',
-                        "twitter": r'twitter\.com/[^\s\'"<>]+|x\.com/[^\s\'"<>]+',
-                        "youtube": r'youtube\.com/[^\s\'"<>]+'
+                        "facebook": r'(?:https?://)?(?:www\.)?facebook\.com/[^\s\'"<>\)]+',
+                        "instagram": r'(?:https?://)?(?:www\.)?instagram\.com/[^\s\'"<>\)]+',
+                        "linkedin": r'(?:https?://)?(?:www\.)?linkedin\.com/(?:company|in)/[^\s\'"<>\)]+',
+                        "twitter": r'(?:https?://)?(?:www\.)?(?:twitter|x)\.com/[^\s\'"<>\)]+',
+                        "youtube": r'(?:https?://)?(?:www\.)?youtube\.com/[^\s\'"<>\)]+'
                     }
                     for platform, pattern in social_patterns.items():
-                        match = re.search(pattern, html)
-                        if match:
-                            result["social_media"][platform] = "https://" + match.group().split('"')[0].split("'")[0]
+                        matches = re.findall(pattern, html)
+                        for match in matches:
+                            clean = match.rstrip('/"\'').strip()
+                            if len(clean) > 20:
+                                result["social_media"][platform] = clean
+                                break
 
                     # 4. Meta description
                     meta = soup.find("meta", attrs={"name": "description"})
@@ -165,32 +168,6 @@ async def scrape_single_website(
                                 result["contact_page_url"] = url.rstrip("/") + contact_url
                             break
 
-                    # 7. About page content (optional enrichment)
-                    for a in soup.find_all("a", href=True):
-                        href = a.get("href", "").lower()
-                        if "about" in href:
-                            about_url = a["href"]
-                            if about_url.startswith("/"):
-                                about_url = url.rstrip("/") + about_url
-                            elif not about_url.startswith("http"):
-                                about_url = url.rstrip("/") + "/" + about_url
-                                
-                            try:
-                                async with session.get(
-                                    about_url,
-                                    headers=HEADERS,
-                                    timeout=aiohttp.ClientTimeout(total=5),
-                                    ssl=False
-                                ) as about_resp:
-                                    about_html = await about_resp.text(errors='ignore')
-                                    about_soup = BeautifulSoup(about_html, "html.parser")
-                                    body = about_soup.find("body")
-                                    if body:
-                                        result["about_content"] = body.get_text(strip=True)[:500]
-                            except:
-                                pass
-                            break
-
                     return result
 
             except asyncio.TimeoutError:
@@ -207,7 +184,7 @@ async def scrape_single_website(
 async def enrich_leads_batch(leads: List[Dict]) -> List[Dict]:
     """
     Enrich a batch of leads with website data.
-    Runs 20 concurrent connections as per Day 5 spec.
+    Runs concurrent connections as per memory limits.
 
     Args:
         leads: list of lead dicts with 'website' field
@@ -239,15 +216,13 @@ async def enrich_leads_batch(leads: List[Dict]) -> List[Dict]:
                 if result.get("phone") and not lead.get("phone"):
                     lead["phone"] = result["phone"]
                 if result.get("social_media"):
-                    lead["social_media"] = str(result["social_media"])
+                    lead["social_media"] = result["social_media"]
                 if result.get("tech_stack"):
                     lead["additional_data"] = str(result["tech_stack"])
                 if result.get("meta_description") and not lead.get("description"):
                     lead["description"] = result["meta_description"]
                 if result.get("contact_page_url"):
                     lead["contact_page_url"] = result.get("contact_page_url", "")
-                if result.get("about_content"):
-                    lead["about_info"] = result["about_content"]
 
     return leads
 

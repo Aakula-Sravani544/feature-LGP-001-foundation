@@ -12,6 +12,7 @@ from email_validator import validate_email
 from typing import Dict, Any
 
 from validation import validate_lead
+from website_scraper import run_website_enrichment
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -214,11 +215,26 @@ def main():
         print("LOG:No results found. Check SERPER_API_KEY in Render environment.", flush=True)
         return
 
-    # Step 2: Enrich with website data
+    # Step 2: Enrich with website data (Basic recovery)
     print(f"LOG:Enriching {len(leads)} leads with website data...", flush=True)
     leads = enrich_leads(leads)
 
-    # Step 3: Validate and output
+    # Step 3: Deep enrichment — social media + tech stack (CHANGE 2)
+    print(f"LOG:Extracting social media links...", flush=True)
+    try:
+        leads = run_website_enrichment(leads)
+        print(f"LOG:Social media extraction complete", flush=True)
+    except Exception as e:
+        print(f"LOG:Social media extraction skipped: {e}", flush=True)
+
+    # Step 4: Convert social_media dict to JSON string for storage (CHANGE 2)
+    for lead in leads:
+        if isinstance(lead.get("social_media"), dict) and lead["social_media"]:
+            lead["social_media"] = json.dumps(lead["social_media"])
+        elif not lead.get("social_media"):
+            lead["social_media"] = ""
+
+    # Step 5: Validate and output
     print(f"LOG:Validating leads...", flush=True)
     for lead in leads:
         try:
