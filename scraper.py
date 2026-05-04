@@ -155,7 +155,7 @@ def search_with_serper(query: str, limit: int = 5) -> list:
             lead["phone"] = place.get("phoneNumber", "")
             lead["website"] = place.get("website", "")
             lead["rating"] = str(place.get("rating", ""))
-            lead["reviews"] = str(place.get("reviews", ""))
+            lead["reviews"] = str(place.get("reviews", place.get("reviewsCount", place.get("ratingCount", ""))))
             lead["category"] = place.get("category", query.split()[0].title())
             lead["google_maps_url"] = place.get("cid", "")
             lead["description"] = place.get("address", "")[:300]
@@ -211,7 +211,7 @@ def search_with_serper(query: str, limit: int = 5) -> list:
     return leads
 
 def enrich_leads(leads: list) -> list:
-    """Visit each website to extract email, phone and social media."""
+    """Visit each website to extract email, phone, social media and tech stack."""
     for i, lead in enumerate(leads):
         if lead.get("website"):
             print(f"LOG:Enriching {i+1}/{len(leads)}: {lead['name'][:30]}", flush=True)
@@ -227,9 +227,36 @@ def enrich_leads(leads: list) -> list:
                 lead["social_media"] = json.dumps(social)
             else:
                 lead["social_media"] = ""
+            
+            # Tech stack detection (CHANGE 2)
+            try:
+                tech = []
+                resp_text = requests.get(
+                    lead["website"], timeout=5, headers=HEADERS
+                ).text
+                tech_signals = {
+                    "WordPress": ["wp-content", "wp-includes"],
+                    "Shopify": ["shopify.com", "cdn.shopify"],
+                    "Google Analytics": ["gtag(", "google-analytics"],
+                    "Bootstrap": ["bootstrap.min.css"],
+                    "React": ["__NEXT_DATA__", "react.min.js"],
+                    "Wix": ["wix.com", "wixstatic"],
+                    "HubSpot": ["hubspot.com", "hs-scripts"]
+                }
+                for tech_name, signals in tech_signals.items():
+                    if any(s in resp_text for s in signals):
+                        tech.append(tech_name)
+                if tech:
+                    lead["additional_data"] = json.dumps(tech)
+                else:
+                    lead["additional_data"] = ""
+            except Exception:
+                lead["additional_data"] = ""
+                
             time.sleep(0.3)
         else:
             lead["social_media"] = ""
+            lead["additional_data"] = ""
     return leads
 
 def main():
@@ -252,7 +279,7 @@ def main():
         print("LOG:No results found. Check SERPER_API_KEY in Render environment.", flush=True)
         return
 
-    # Step 2: Enrich with website data (Email, Phone, Social)
+    # Step 2: Enrich with website data (Email, Phone, Social, Tech)
     print(f"LOG:Enriching {len(leads)} leads with website data...", flush=True)
     leads = enrich_leads(leads)
 
