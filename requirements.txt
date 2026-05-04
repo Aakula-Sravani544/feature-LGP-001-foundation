@@ -13,3 +13,7 @@ phonenumbers
 email-validator
 aiohttp
 fake-useragent
+google-generativeai
+lxml
+httpx
+tenacity
