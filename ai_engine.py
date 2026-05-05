@@ -1,5 +1,5 @@
 """
-Day 8 — Gemini AI Integration
+Day 9 — Additional AI Features
 LeadPulse Pro AI Engine
 Features:
 - Lead scoring (0-100)
@@ -7,6 +7,7 @@ Features:
 - Outreach message generation
 - Industry classification
 - Batch processing (10 leads per API call)
+- Day 9: Sub-region generation, Email guessing, Sentiment, Trends, Contact finder
 """
 
 import os
@@ -226,25 +227,272 @@ def analyze_leads_batch(
 
 
 # ==========================================
+# FEATURE 1 — Sub-Region Generator
+# ==========================================
+def generate_sub_regions(city: str) -> list:
+    """
+    Use Gemini to decompose a city into 10-20 named districts.
+    Enables parallel searches per district for more coverage.
+
+    Args:
+        city: City name e.g. 'Hyderabad'
+
+    Returns:
+        List of district/sub-region names
+    """
+    model = setup_gemini()
+
+    if model:
+        try:
+            prompt = f"""List the 10 most important business districts and neighborhoods in {city}, India.
+Return ONLY a JSON array of strings. No other text. No markdown.
+Example: ["Banjara Hills", "Jubilee Hills", "Hitech City"]"""
+
+            response = model.generate_content(prompt)
+            raw = response.text.strip()
+            raw = raw.replace("```json", "").replace("```", "").strip()
+            regions = json.loads(raw)
+            if isinstance(regions, list):
+                logger.info(f"Generated {len(regions)} sub-regions for {city}")
+                return regions[:15]
+        except Exception as e:
+            logger.error(f"Sub-region generation failed: {e}")
+
+    # Fallback — hardcoded major Indian cities
+    fallback_regions = {
+        "hyderabad": ["Banjara Hills", "Jubilee Hills", "Hitech City",
+                     "Gachibowli", "Secunderabad", "Kukatpally",
+                     "Ameerpet", "Madhapur", "Kondapur", "Begumpet"],
+        "chennai": ["T Nagar", "Anna Nagar", "Adyar", "Velachery",
+                   "Nungambakkam", "Mylapore", "Tambaram", "OMR",
+                   "Porur", "Chromepet"],
+        "bangalore": ["Koramangala", "Indiranagar", "Whitefield",
+                     "Electronic City", "Jayanagar", "HSR Layout",
+                     "Marathahalli", "JP Nagar", "Bannerghatta", "BTM"],
+        "mumbai": ["Andheri", "Bandra", "Powai", "Worli",
+                  "Malad", "Goregaon", "Juhu", "Kurla",
+                  "Thane", "Navi Mumbai"],
+        "delhi": ["Connaught Place", "Lajpat Nagar", "Dwarka",
+                 "Rohini", "Karol Bagh", "Saket", "Noida",
+                 "Gurgaon", "Janakpuri", "Pitampura"]
+    }
+    city_lower = city.lower()
+    for key in fallback_regions:
+        if key in city_lower:
+            return fallback_regions[key]
+    return [city]
+
+
+# ==========================================
+# FEATURE 2 — Email Pattern Guesser
+# ==========================================
+def guess_email_pattern(
+    business_name: str,
+    website: str
+) -> str:
+    """
+    Guess likely business email from name and domain.
+
+    Args:
+        business_name: Business name
+        website: Website URL
+
+    Returns:
+        Guessed email string or empty string
+    """
+    if not website:
+        return ""
+
+    try:
+        # Extract domain from website
+        domain = website.replace("https://", "").replace("http://", "")
+        domain = domain.replace("www.", "").split("/")[0].strip()
+
+        if not domain:
+            return ""
+
+        # Common email patterns
+        patterns = [
+            f"info@{domain}",
+            f"contact@{domain}",
+            f"hello@{domain}",
+            f"sales@{domain}",
+            f"enquiry@{domain}",
+        ]
+
+        # Use AI to pick best pattern if available
+        model = setup_gemini()
+        if model:
+            try:
+                prompt = f"""Given business name '{business_name}' and domain '{domain}',
+what is the most likely professional email address?
+Return ONLY the email address. No other text."""
+                response = model.generate_content(prompt)
+                guessed = response.text.strip()
+                if "@" in guessed and domain in guessed:
+                    return guessed
+            except:
+                pass
+
+        return patterns[0]
+
+    except Exception as e:
+        logger.debug(f"Email pattern guess failed: {e}")
+        return ""
+
+
+# ==========================================
+# FEATURE 3 — Sentiment Analyser
+# ==========================================
+def analyze_sentiment(lead: Dict) -> str:
+    """
+    Analyse business sentiment from rating and review count.
+
+    Args:
+        lead: Lead dictionary with rating and reviews
+
+    Returns:
+        Sentiment label: Positive/Neutral/Negative
+    """
+    try:
+        rating = float(lead.get("rating", 0))
+        reviews_str = str(lead.get("reviews", "0")).replace(",", "").strip()
+        reviews = int(reviews_str) if reviews_str.isdigit() else 0
+    except:
+        return "Neutral"
+
+    model = setup_gemini()
+
+    if model and rating > 0:
+        try:
+            prompt = f"""Business: {lead.get('name', '')}
+Rating: {rating}/5
+Reviews: {reviews}
+Category: {lead.get('category', '')}
+
+Analyze customer sentiment in one word: Positive, Neutral, or Negative.
+Return ONLY one word."""
+            response = model.generate_content(prompt)
+            sentiment = response.text.strip()
+            if sentiment in ["Positive", "Neutral", "Negative"]:
+                return sentiment
+        except:
+            pass
+
+    # Rule-based fallback
+    if rating >= 4.3:
+        return "Positive"
+    elif rating >= 3.5:
+        return "Neutral"
+    else:
+        return "Negative"
+
+
+# ==========================================
+# FEATURE 4 — Trend Predictor
+# ==========================================
+def predict_trend(lead: Dict) -> str:
+    """
+    Predict if business is growing or declining based on signals.
+
+    Args:
+        lead: Lead dictionary
+
+    Returns:
+        Trend label: Growing/Stable/Declining
+    """
+    try:
+        rating = float(lead.get("rating", 0))
+        reviews_str = str(lead.get("reviews", "0")).replace(",", "").strip()
+        reviews = int(reviews_str) if reviews_str.isdigit() else 0
+    except:
+        return "Stable"
+
+    model = setup_gemini()
+
+    if model and rating > 0:
+        try:
+            prompt = f"""Business: {lead.get('name', '')}
+Rating: {rating}/5
+Total Reviews: {reviews}
+Has Website: {'Yes' if lead.get('website') else 'No'}
+Has Social Media: {'Yes' if lead.get('social_media') else 'No'}
+
+Based on these signals, is this business Growing, Stable, or Declining?
+Return ONLY one word: Growing, Stable, or Declining."""
+            response = model.generate_content(prompt)
+            trend = response.text.strip()
+            if trend in ["Growing", "Stable", "Declining"]:
+                return trend
+        except:
+            pass
+
+    # Rule-based fallback
+    if rating >= 4.5 and reviews >= 1000:
+        return "Growing"
+    elif rating >= 4.0 and reviews >= 100:
+        return "Stable"
+    else:
+        return "Declining"
+
+
+# ==========================================
+# FEATURE 5 — Contact Finder AI
+# ==========================================
+def find_contact_person(lead: Dict) -> str:
+    """
+    Suggest likely decision-maker name and title for a business.
+
+    Args:
+        lead: Lead dictionary
+
+    Returns:
+        Suggested contact string e.g. "Marketing Manager"
+    """
+    model = setup_gemini()
+
+    if model:
+        try:
+            prompt = f"""For a {lead.get('category', 'business')} called '{lead.get('name', '')}',
+what job title would be the best decision-maker to contact for B2B sales?
+Return ONLY the job title. Max 5 words. No other text."""
+            response = model.generate_content(prompt)
+            return response.text.strip()
+        except:
+            pass
+
+    # Rule-based fallback by category
+    category = lead.get("category", "").lower()
+    if "restaurant" in category or "hotel" in category:
+        return "General Manager"
+    elif "it" in category or "tech" in category or "software" in category:
+        return "CEO / Founder"
+    elif "hospital" in category or "clinic" in category:
+        return "Practice Manager"
+    elif "school" in category or "college" in category:
+        return "Principal / Director"
+    else:
+        return "Business Owner"
+
+
+# ==========================================
 # MAIN AI ENRICHMENT FUNCTION
 # ==========================================
 def enrich_leads_with_ai(leads: List[Dict]) -> List[Dict]:
     """
-    Main function to enrich all leads with AI analysis.
-    Processes in batches of 10 as per Day 8 spec.
-    Falls back to rule-based scoring if no API key.
+    Enrich all leads with full AI analysis including Day 9 features.
+    Processes in batches of 10. Falls back to rule-based if no API key.
 
     Args:
         leads: List of lead dicts
 
     Returns:
-        Leads with ai_analysis field populated
+        Enriched leads with all AI fields populated
     """
     if not leads:
         return leads
 
     model = setup_gemini()
-
     total = len(leads)
     logger.info(f"Starting AI enrichment for {total} leads")
 
@@ -253,28 +501,70 @@ def enrich_leads_with_ai(leads: List[Dict]) -> List[Dict]:
         batch_num = (i // BATCH_SIZE) + 1
         logger.info(f"Processing batch {batch_num} ({len(batch)} leads)")
 
+        # Core AI analysis (score, qualification, outreach, industry)
         if model:
             analyses = analyze_leads_batch(model, batch)
         else:
-            logger.info("No API key — using rule-based scoring")
             analyses = [rule_based_score(l) for l in batch]
 
-        # Store AI analysis in each lead
         for lead, analysis in zip(batch, analyses):
             try:
+                # Store core analysis
                 lead["ai_analysis"] = json.dumps(analysis)
-                # Ensure score is also available for sorting
                 lead["ai_score"] = analysis.get("score", 0)
-            except Exception as e:
-                logger.error(f"Failed to store analysis for {lead.get('name')}: {e}")
-                lead["ai_analysis"] = json.dumps(rule_based_score(lead))
 
-        # Respect Gemini free tier rate limit
-        # 60 requests/minute — wait between batches
+                # Day 9 Feature 2: Email Pattern Guesser
+                if not lead.get("email") and lead.get("website"):
+                    guessed = guess_email_pattern(
+                        lead.get("name", ""),
+                        lead.get("website", "")
+                    )
+                    if guessed:
+                        lead["email"] = guessed
+
+                # Day 9 Feature 3: Sentiment
+                sentiment = analyze_sentiment(lead)
+
+                # Day 9 Feature 4: Trend
+                trend = predict_trend(lead)
+
+                # Day 9 Feature 5: Contact finder
+                contact = find_contact_person(lead)
+
+                # Store Day 9 results in additional_data
+                existing = []
+                try:
+                    additional_raw = lead.get("additional_data", "[]")
+                    existing = json.loads(additional_raw) if additional_raw else []
+                    if not isinstance(existing, list):
+                        existing = []
+                except:
+                    existing = []
+
+                day9_data = {
+                    "sentiment": sentiment,
+                    "trend": trend,
+                    "suggested_contact": contact,
+                    "tech_stack": existing
+                }
+                lead["additional_data"] = json.dumps(day9_data)
+
+                # Store sub_region if available
+                if not lead.get("sub_region"):
+                    addr = lead.get("address", "")
+                    if addr and "," in addr:
+                        parts = addr.split(",")
+                        if len(parts) >= 2:
+                            city = parts[-2].strip()
+                            lead["sub_region"] = city
+
+            except Exception as e:
+                logger.error(f"Day 9 enrichment failed for {lead.get('name')}: {e}")
+
         if model and i + BATCH_SIZE < total:
             time.sleep(1)
 
-    logger.info(f"AI enrichment complete for {total} leads")
+    logger.info(f"Day 9 AI enrichment complete for {total} leads")
     return leads
 
 
@@ -321,3 +611,15 @@ def get_ai_score(lead: Dict) -> int:
         return int(analysis.get("score", 0))
     except:
         return 0
+
+__all__ = [
+    'enrich_leads_with_ai',
+    'analyze_single_lead',
+    'get_ai_score',
+    'generate_sub_regions',
+    'guess_email_pattern',
+    'analyze_sentiment',
+    'predict_trend',
+    'find_contact_person',
+    'rule_based_score'
+]
