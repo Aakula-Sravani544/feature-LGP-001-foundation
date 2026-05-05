@@ -37,101 +37,6 @@ def get_full_structure() -> dict:
         "validation_notes": "", "sub_region": ""
     }
 
-def visit_website_once(url: str) -> dict:
-    """Visit website ONCE and extract ALL data in single request."""
-    result = {
-        "email": "",
-        "phone": "",
-        "social_media": "",
-        "additional_data": ""
-    }
-    if not url or not url.startswith("http"):
-        return result
-    try:
-        resp = requests.get(url, timeout=4, headers=HEADERS)
-        html = resp.text
-        soup = BeautifulSoup(html, "html.parser")
-
-        # 1. Email — mailto links first
-        for a in soup.find_all("a", href=re.compile(r"^mailto:")):
-            email = a["href"].replace("mailto:", "").split("?")[0].strip()
-            try:
-                validate_email(email)
-                result["email"] = email
-                break
-            except: continue
-
-        # 2. Email — regex if not found
-        if not result["email"]:
-            for email in re.findall(
-                r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', html
-            ):
-                try:
-                    validate_email(email)
-                    if not any(x in email.lower() for x in
-                        ['png','jpg','gif','woff','svg','css','js','example']):
-                        result["email"] = email
-                        break
-                except: continue
-
-        # 3. Phone — tel links first
-        for a in soup.find_all("a", href=re.compile(r"^tel:")):
-            raw = a["href"].replace("tel:", "").strip()
-            cleaned = re.sub(r'\D', '', raw)
-            if len(cleaned) >= 10:
-                result["phone"] = raw
-                break
-
-        # 4. Phone — regex if not found
-        if not result["phone"]:
-            phones = re.findall(r'[\+]?[0-9]{10,13}', html)
-            for p in phones:
-                cleaned = re.sub(r'\D', '', p)
-                if len(cleaned) >= 10:
-                    result["phone"] = p
-                    break
-
-        # 5. Social media — all in one pass
-        social = {}
-        patterns = {
-            "facebook": r'facebook\.com/[^\s\'"<>\)]{3,50}',
-            "instagram": r'instagram\.com/[^\s\'"<>\)]{3,50}',
-            "linkedin": r'linkedin\.com/(?:company|in)/[^\s\'"<>\)]{3,50}',
-            "twitter": r'(?:twitter|x)\.com/[^\s\'"<>\)]{3,50}',
-            "youtube": r'youtube\.com/[^\s\'"<>\)]{3,50}'
-        }
-        for platform, pattern in patterns.items():
-            matches = re.findall(pattern, html)
-            for match in matches:
-                clean = match.rstrip('/"\'').strip()
-                if len(clean) > 10:
-                    social[platform] = "https://" + clean
-                    break
-        if social:
-            result["social_media"] = json.dumps(social)
-
-        # 6. Tech stack — all in one pass
-        tech = []
-        tech_signals = {
-            "WordPress": ["wp-content", "wp-includes"],
-            "Shopify": ["shopify.com", "cdn.shopify"],
-            "Google Analytics": ["gtag(", "google-analytics"],
-            "Bootstrap": ["bootstrap.min.css"],
-            "React": ["__NEXT_DATA__", "react.min.js"],
-            "Wix": ["wix.com", "wixstatic"],
-            "HubSpot": ["hubspot.com", "hs-scripts"]
-        }
-        for tech_name, signals in tech_signals.items():
-            if any(s in html for s in signals):
-                tech.append(tech_name)
-        if tech:
-            result["additional_data"] = json.dumps(tech)
-
-    except Exception as e:
-        logger.debug(f"Website visit failed for {url}: {e}")
-
-    return result
-
 def search_with_serper(query: str, limit: int = 5) -> list:
     """Search using Serper Maps API — returns rating, reviews, phone directly from Google Maps."""
     if not SERPER_API_KEY:
@@ -228,25 +133,98 @@ def search_with_serper(query: str, limit: int = 5) -> list:
     return leads
 
 def enrich_leads(leads: list) -> list:
-    """Enrich leads — visit each website ONCE for all data."""
+    """Visit each website with strict 5 second total timeout per lead."""
     for i, lead in enumerate(leads):
-        website = lead.get("website", "")
-        if website:
-            print(f"LOG:Enriching {i+1}/{len(leads)}: {lead['name'][:25]}", flush=True)
-            data = visit_website_once(website)
-            # Only fill if not already found from Serper Maps
-            if not lead.get("email") and data["email"]:
-                lead["email"] = data["email"]
-            if not lead.get("phone") and data["phone"]:
-                lead["phone"] = data["phone"]
-            if data["social_media"]:
-                lead["social_media"] = data["social_media"]
-            if data["additional_data"]:
-                lead["additional_data"] = data["additional_data"]
-        else:
+        if not lead.get("website"):
             lead["social_media"] = ""
             lead["additional_data"] = ""
+            continue
+
+        print(f"LOG:Enriching {i+1}/{len(leads)}: {lead['name'][:30]}", flush=True)
+
+        try:
+            # Single website request — reuse for email, phone, social, tech
+            resp = requests.get(
+                lead["website"],
+                timeout=3,
+                headers=HEADERS,
+                allow_redirects=True
+            )
+            html = resp.text
+            soup = BeautifulSoup(html, "html.parser")
+
+            # Email
+            if not lead.get("email"):
+                for a in soup.find_all("a", href=re.compile(r"^mailto:")):
+                    email = a["href"].replace("mailto:", "").split("?")[0].strip()
+                    try:
+                        validate_email(email)
+                        lead["email"] = email
+                        break
+                    except: continue
+                if not lead.get("email"):
+                    for email in re.findall(
+                        r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', html
+                    ):
+                        try:
+                            validate_email(email)
+                            if not any(x in email.lower() for x in
+                                ['png','jpg','gif','svg','css','js','example']):
+                                lead["email"] = email
+                                break
+                        except: continue
+
+            # Phone
+            if not lead.get("phone"):
+                for a in soup.find_all("a", href=re.compile(r"^tel:")):
+                    lead["phone"] = a["href"].replace("tel:", "").strip()
+                    break
+                if not lead.get("phone"):
+                    phones = re.findall(r'[\+]?[0-9]{10,13}', html)
+                    if phones:
+                        lead["phone"] = phones[0]
+
+            # Social media
+            social = {}
+            patterns = {
+                "facebook": r'facebook\.com/[^\s\'"<>\)]{3,50}',
+                "instagram": r'instagram\.com/[^\s\'"<>\)]{3,50}',
+                "linkedin": r'linkedin\.com/(?:company|in)/[^\s\'"<>\)]{3,50}',
+                "twitter": r'(?:twitter|x)\.com/[^\s\'"<>\)]{3,50}',
+                "youtube": r'youtube\.com/[^\s\'"<>\)]{3,50}'
+            }
+            for platform, pattern in patterns.items():
+                matches = re.findall(pattern, html)
+                for match in matches:
+                    clean = match.rstrip('/"\'').strip()
+                    if len(clean) > 10:
+                        social[platform] = "https://" + clean
+                        break
+            lead["social_media"] = json.dumps(social) if social else ""
+
+            # Tech stack
+            tech = []
+            tech_signals = {
+                "WordPress": ["wp-content", "wp-includes"],
+                "Shopify": ["shopify.com", "cdn.shopify"],
+                "Google Analytics": ["gtag(", "google-analytics"],
+                "Bootstrap": ["bootstrap.min.css"],
+                "React": ["__NEXT_DATA__", "react.min.js"],
+                "Wix": ["wix.com", "wixstatic"],
+                "HubSpot": ["hubspot.com", "hs-scripts"]
+            }
+            for tech_name, signals in tech_signals.items():
+                if any(s in html for s in signals):
+                    tech.append(tech_name)
+            lead["additional_data"] = json.dumps(tech) if tech else ""
+
+        except Exception as e:
+            logger.debug(f"Enrichment failed for {lead.get('name')}: {e}")
+            lead["social_media"] = ""
+            lead["additional_data"] = ""
+
         time.sleep(0.1)
+
     return leads
 
 def main():
@@ -289,7 +267,8 @@ def main():
         except Exception as e:
             print(f"LOG:Rule-based scoring failed: {e}", flush=True)
 
-    # Validate and output
+    # Validate and output immediately — do not wait for all leads
+    print(f"LOG:Validating and outputting leads...", flush=True)
     for lead in leads:
         try:
             lead = validate_lead(lead)
