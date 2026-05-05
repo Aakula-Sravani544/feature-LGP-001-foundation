@@ -235,46 +235,110 @@ def main():
     use_ai = sys.argv[3] == "1" if len(sys.argv) > 3 else False
 
     print(f"LOG:🚀 LeadPulse Pro Engine | Target: {limit}", flush=True)
-    print(f"LOG:AI Scoring: {'ON' if use_ai else 'OFF'}", flush=True)
+    print(f"LOG:Searching: {query}", flush=True)
 
-    # Search
+    # Step 1: Get leads from Serper immediately
     leads = search_with_serper(query, limit)
 
     if not leads:
         print("LOG:No results found.", flush=True)
         return
 
-    # Enrich
-    print(f"LOG:Enriching {len(leads)} leads...", flush=True)
-    leads = enrich_leads(leads)
+    print(f"LOG:Found {len(leads)} leads. Starting enrichment...", flush=True)
 
-    # AI Analysis
-    if use_ai:
-        print(f"LOG:Running AI analysis...", flush=True)
-        try:
-            from ai_engine import enrich_leads_with_ai
-            leads = enrich_leads_with_ai(leads)
-            print(f"LOG:AI analysis complete", flush=True)
-        except Exception as e:
-            print(f"LOG:AI failed: {e} — using rule-based", flush=True)
-            from ai_engine import enrich_leads_with_ai
-            leads = enrich_leads_with_ai(leads)
-    else:
-        print(f"LOG:Using rule-based scoring", flush=True)
-        try:
-            from ai_engine import enrich_leads_with_ai
-            leads = enrich_leads_with_ai(leads)
-        except Exception as e:
-            print(f"LOG:Rule-based scoring failed: {e}", flush=True)
+    # Step 2: Enrich and OUTPUT each lead immediately
+    # Do NOT wait for all leads — print as soon as each one is ready
+    for i, lead in enumerate(leads):
+        print(f"LOG:Processing {i+1}/{len(leads)}: {lead.get('name','')[:30]}", flush=True)
 
-    # Validate and output immediately — do not wait for all leads
-    print(f"LOG:Validating and outputting leads...", flush=True)
-    for lead in leads:
-        try:
-            lead = validate_lead(lead)
-            print(f"DATA:{json.dumps(lead)}", flush=True)
-        except Exception as e:
-            logger.error(f"Validation failed for lead: {e}")
+        # Enrich this single lead with website data
+        if lead.get("website"):
+            try:
+                resp = requests.get(
+                    lead["website"],
+                    timeout=2,
+                    headers=HEADERS,
+                    allow_redirects=True
+                )
+                html = resp.text
+                soup = BeautifulSoup(html, "html.parser")
+
+                # Email
+                if not lead.get("email"):
+                    for a in soup.find_all("a", href=re.compile(r"^mailto:")):
+                        email = a["href"].replace("mailto:", "").split("?")[0].strip()
+                        try:
+                            validate_email(email)
+                            lead["email"] = email
+                            break
+                        except: continue
+
+                # Phone
+                if not lead.get("phone"):
+                    phones = re.findall(r'[\+]?[0-9]{10,13}', html)
+                    if phones:
+                        lead["phone"] = phones[0]
+
+                # Social media
+                social = {}
+                patterns = {
+                    "facebook": r'facebook\.com/[^\s\'"<>\)]{3,50}',
+                    "instagram": r'instagram\.com/[^\s\'"<>\)]{3,50}',
+                    "linkedin": r'linkedin\.com/(?:company|in)/[^\s\'"<>\)]{3,50}',
+                    "twitter": r'(?:twitter|x)\.com/[^\s\'"<>\)]{3,50}',
+                    "youtube": r'youtube\.com/[^\s\'"<>\)]{3,50}'
+                }
+                for platform, pattern in patterns.items():
+                    matches = re.findall(pattern, html)
+                    for match in matches:
+                        clean = match.rstrip('/"\'').strip()
+                        if len(clean) > 10:
+                            social[platform] = "https://" + clean
+                            break
+                lead["social_media"] = json.dumps(social) if social else ""
+
+                # Tech stack
+                tech = []
+                tech_signals = {
+                    "WordPress": ["wp-content", "wp-includes"],
+                    "Shopify": ["shopify.com", "cdn.shopify"],
+                    "Google Analytics": ["gtag(", "google-analytics"],
+                    "Bootstrap": ["bootstrap.min.css"],
+                    "React": ["__NEXT_DATA__", "react.min.js"]
+                }
+                for tech_name, signals in tech_signals.items():
+                    if any(s in html for s in signals):
+                        tech.append(tech_name)
+                lead["additional_data"] = json.dumps(tech) if tech else ""
+
+            except Exception as e:
+                logger.debug(f"Website enrichment skipped for {lead.get('name')}: {e}")
+                lead["social_media"] = ""
+                lead["additional_data"] = ""
+        else:
+            lead["social_media"] = ""
+            lead["additional_data"] = ""
+
+        # AI scoring
+        if use_ai:
+            try:
+                from ai_engine import analyze_single_lead
+                lead = analyze_single_lead(lead)
+            except Exception as e:
+                logger.debug(f"AI scoring failed: {e}")
+        else:
+            try:
+                from ai_engine import rule_based_score
+                lead["ai_analysis"] = json.dumps(rule_based_score(lead))
+                lead["ai_score"] = rule_based_score(lead).get("score", 0)
+            except Exception as e:
+                logger.debug(f"Rule scoring failed: {e}")
+
+        # Validate
+        lead = validate_lead(lead)
+
+        # OUTPUT IMMEDIATELY — do not wait for other leads
+        print(f"DATA:{json.dumps(lead)}", flush=True)
 
     print(f"LOG:Complete. Total: {len(leads)}", flush=True)
 
