@@ -37,67 +37,62 @@ def get_full_structure() -> dict:
         "validation_notes": "", "sub_region": ""
     }
 
-def extract_email_from_website(url: str) -> str:
-    """Synchronously extracts emails from a website."""
+def visit_website_once(url: str) -> dict:
+    """Visit website ONCE and extract ALL data in single request."""
+    result = {
+        "email": "",
+        "phone": "",
+        "social_media": "",
+        "additional_data": ""
+    }
     if not url or not url.startswith("http"):
-        return ""
+        return result
     try:
-        resp = requests.get(url, timeout=3, headers=HEADERS)
-        if resp.status_code != 200:
-            return ""
-            
-        soup = BeautifulSoup(resp.text, "html.parser")
-        
-        # 1. Search mailto links
+        resp = requests.get(url, timeout=4, headers=HEADERS)
+        html = resp.text
+        soup = BeautifulSoup(html, "html.parser")
+
+        # 1. Email — mailto links first
         for a in soup.find_all("a", href=re.compile(r"^mailto:")):
             email = a["href"].replace("mailto:", "").split("?")[0].strip()
             try:
                 validate_email(email)
-                return email
-            except:
-                continue
-        
-        # 2. Regex search in page text
-        email_pattern = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
-        emails = re.findall(email_pattern, resp.text)
-        for email in emails:
-            try:
-                validate_email(email)
-                # Filter out garbage
-                if not any(x in email.lower() for x in ['.png','.jpg','.gif','.woff','svg','css','js','example']):
-                    return email
-            except:
-                continue
-    except Exception as e:
-        logger.debug(f"Email extraction failed for {url}: {e}")
-    return ""
+                result["email"] = email
+                break
+            except: continue
 
-def extract_phone_from_website(url: str) -> str:
-    """Synchronously extracts phone numbers from a website."""
-    if not url or not url.startswith("http"):
-        return ""
-    try:
-        resp = requests.get(url, timeout=3, headers=HEADERS)
-        if resp.status_code != 200:
-            return ""
-            
-        phones = re.findall(r'[\+]?[0-9]{10,13}', resp.text)
-        for p in phones:
-            cleaned = re.sub(r'\D', '', p)
+        # 2. Email — regex if not found
+        if not result["email"]:
+            for email in re.findall(
+                r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', html
+            ):
+                try:
+                    validate_email(email)
+                    if not any(x in email.lower() for x in
+                        ['png','jpg','gif','woff','svg','css','js','example']):
+                        result["email"] = email
+                        break
+                except: continue
+
+        # 3. Phone — tel links first
+        for a in soup.find_all("a", href=re.compile(r"^tel:")):
+            raw = a["href"].replace("tel:", "").strip()
+            cleaned = re.sub(r'\D', '', raw)
             if len(cleaned) >= 10:
-                return p
-    except:
-        pass
-    return ""
+                result["phone"] = raw
+                break
 
-def extract_social_media(url: str) -> dict:
-    """Lightweight social media extractor — no aiohttp, no concurrent connections."""
-    social = {}
-    if not url or not url.startswith("http"):
-        return social
-    try:
-        resp = requests.get(url, timeout=5, headers=HEADERS)
-        html = resp.text
+        # 4. Phone — regex if not found
+        if not result["phone"]:
+            phones = re.findall(r'[\+]?[0-9]{10,13}', html)
+            for p in phones:
+                cleaned = re.sub(r'\D', '', p)
+                if len(cleaned) >= 10:
+                    result["phone"] = p
+                    break
+
+        # 5. Social media — all in one pass
+        social = {}
         patterns = {
             "facebook": r'facebook\.com/[^\s\'"<>\)]{3,50}',
             "instagram": r'instagram\.com/[^\s\'"<>\)]{3,50}',
@@ -112,9 +107,30 @@ def extract_social_media(url: str) -> dict:
                 if len(clean) > 10:
                     social[platform] = "https://" + clean
                     break
+        if social:
+            result["social_media"] = json.dumps(social)
+
+        # 6. Tech stack — all in one pass
+        tech = []
+        tech_signals = {
+            "WordPress": ["wp-content", "wp-includes"],
+            "Shopify": ["shopify.com", "cdn.shopify"],
+            "Google Analytics": ["gtag(", "google-analytics"],
+            "Bootstrap": ["bootstrap.min.css"],
+            "React": ["__NEXT_DATA__", "react.min.js"],
+            "Wix": ["wix.com", "wixstatic"],
+            "HubSpot": ["hubspot.com", "hs-scripts"]
+        }
+        for tech_name, signals in tech_signals.items():
+            if any(s in html for s in signals):
+                tech.append(tech_name)
+        if tech:
+            result["additional_data"] = json.dumps(tech)
+
     except Exception as e:
-        logger.debug(f"Social extraction failed for {url}: {e}")
-    return social
+        logger.debug(f"Website visit failed for {url}: {e}")
+
+    return result
 
 def search_with_serper(query: str, limit: int = 5) -> list:
     """Search using Serper Maps API — returns rating, reviews, phone directly from Google Maps."""
@@ -212,50 +228,25 @@ def search_with_serper(query: str, limit: int = 5) -> list:
     return leads
 
 def enrich_leads(leads: list) -> list:
-    """Visit each website to extract email, phone, social media and tech stack."""
+    """Enrich leads — visit each website ONCE for all data."""
     for i, lead in enumerate(leads):
-        if lead.get("website"):
-            print(f"LOG:Enriching {i+1}/{len(leads)}: {lead['name'][:30]}", flush=True)
-            # Email — skip if already found from Maps
-            if not lead.get("email"):
-                lead["email"] = extract_email_from_website(lead["website"])
-            # Phone — skip if already found from Maps
-            if not lead.get("phone"):
-                lead["phone"] = extract_phone_from_website(lead["website"])
-            # Social media
-            social = extract_social_media(lead["website"])
-            if social:
-                lead["social_media"] = json.dumps(social)
-            else:
-                lead["social_media"] = ""
-            # Tech stack detection
-            try:
-                tech = []
-                resp_text = requests.get(
-                    lead["website"], timeout=3, headers=HEADERS
-                ).text
-                tech_signals = {
-                    "WordPress": ["wp-content", "wp-includes"],
-                    "Shopify": ["shopify.com", "cdn.shopify"],
-                    "Google Analytics": ["gtag(", "google-analytics"],
-                    "Bootstrap": ["bootstrap.min.css"],
-                    "React": ["__NEXT_DATA__", "react.min.js"],
-                    "Wix": ["wix.com", "wixstatic"],
-                    "HubSpot": ["hubspot.com", "hs-scripts"]
-                }
-                for tech_name, signals in tech_signals.items():
-                    if any(s in resp_text for s in signals):
-                        tech.append(tech_name)
-                if tech:
-                    lead["additional_data"] = json.dumps(tech)
-                else:
-                    lead["additional_data"] = ""
-            except Exception:
-                lead["additional_data"] = ""
-            time.sleep(0.2)
+        website = lead.get("website", "")
+        if website:
+            print(f"LOG:Enriching {i+1}/{len(leads)}: {lead['name'][:25]}", flush=True)
+            data = visit_website_once(website)
+            # Only fill if not already found from Serper Maps
+            if not lead.get("email") and data["email"]:
+                lead["email"] = data["email"]
+            if not lead.get("phone") and data["phone"]:
+                lead["phone"] = data["phone"]
+            if data["social_media"]:
+                lead["social_media"] = data["social_media"]
+            if data["additional_data"]:
+                lead["additional_data"] = data["additional_data"]
         else:
             lead["social_media"] = ""
             lead["additional_data"] = ""
+        time.sleep(0.1)
     return leads
 
 def main():
