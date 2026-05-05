@@ -549,14 +549,42 @@ def enrich_leads_with_ai(leads: List[Dict]) -> List[Dict]:
                 }
                 lead["additional_data"] = json.dumps(day9_data)
 
-                # Store sub_region if available
+                # Store sub_region — extract neighbourhood from address
                 if not lead.get("sub_region"):
-                    addr = lead.get("address", "")
-                    if addr and "," in addr:
-                        parts = addr.split(",")
-                        if len(parts) >= 2:
-                            city = parts[-2].strip()
-                            lead["sub_region"] = city
+                    address = lead.get("address", "")
+                    sub_region = ""
+                    if address and "," in address:
+                        parts = [p.strip() for p in address.split(",")]
+                        # Filter out state names, country, pincodes
+                        skip_words = [
+                            "india", "telangana", "karnataka", "maharashtra",
+                            "tamil nadu", "andhra pradesh", "kerala", "gujarat",
+                            "rajasthan", "punjab", "haryana", "uttar pradesh",
+                            "west bengal", "madhya pradesh", "bihar", "odisha"
+                        ]
+                        for part in parts:
+                            part_clean = part.strip()
+                            # Skip if it's a pincode (all digits)
+                            if part_clean.isdigit():
+                                continue
+                            # Skip if it contains digits (pincode mixed with state)
+                            if any(char.isdigit() for char in part_clean):
+                                continue
+                            # Skip if it's a state or country name
+                            if part_clean.lower() in skip_words:
+                                continue
+                            # Skip if too short
+                            if len(part_clean) < 4:
+                                continue
+                            # Skip if it's the full city name
+                            if part_clean.lower() in ["hyderabad", "chennai", "bangalore",
+                                "bengaluru", "mumbai", "delhi", "kolkata", "pune",
+                                "ahmedabad", "jaipur", "vijayawada", "visakhapatnam"]:
+                                continue
+                            # This is likely a neighbourhood/district
+                            sub_region = part_clean
+                            break
+                    lead["sub_region"] = sub_region
 
             except Exception as e:
                 logger.error(f"Day 9 enrichment failed for {lead.get('name')}: {e}")
@@ -628,14 +656,42 @@ def analyze_single_lead(lead: Dict, use_ai: bool = True) -> Dict:
         }
         lead["additional_data"] = json.dumps(day9_data)
 
-        # Sub-region extraction
+        # Store sub_region — extract neighbourhood from address
         if not lead.get("sub_region"):
-            addr = lead.get("address", "")
-            if addr and "," in addr:
-                parts = addr.split(",")
-                if len(parts) >= 2:
-                    city = parts[-2].strip()
-                    lead["sub_region"] = city
+            address = lead.get("address", "")
+            sub_region = ""
+            if address and "," in address:
+                parts = [p.strip() for p in address.split(",")]
+                # Filter out state names, country, pincodes
+                skip_words = [
+                    "india", "telangana", "karnataka", "maharashtra",
+                    "tamil nadu", "andhra pradesh", "kerala", "gujarat",
+                    "rajasthan", "punjab", "haryana", "uttar pradesh",
+                    "west bengal", "madhya pradesh", "bihar", "odisha"
+                ]
+                for part in parts:
+                    part_clean = part.strip()
+                    # Skip if it's a pincode (all digits)
+                    if part_clean.isdigit():
+                        continue
+                    # Skip if it contains digits (pincode mixed with state)
+                    if any(char.isdigit() for char in part_clean):
+                        continue
+                    # Skip if it's a state or country name
+                    if part_clean.lower() in skip_words:
+                        continue
+                    # Skip if too short
+                    if len(part_clean) < 4:
+                        continue
+                    # Skip if it's the full city name
+                    if part_clean.lower() in ["hyderabad", "chennai", "bangalore",
+                        "bengaluru", "mumbai", "delhi", "kolkata", "pune",
+                        "ahmedabad", "jaipur", "vijayawada", "visakhapatnam"]:
+                        continue
+                    # This is likely a neighbourhood/district
+                    sub_region = part_clean
+                    break
+            lead["sub_region"] = sub_region
 
     except Exception as e:
         logger.error(f"Single lead enrichment failed: {e}")
