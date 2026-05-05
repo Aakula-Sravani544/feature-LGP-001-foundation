@@ -42,7 +42,7 @@ def extract_email_from_website(url: str) -> str:
     if not url or not url.startswith("http"):
         return ""
     try:
-        resp = requests.get(url, timeout=6, headers=HEADERS)
+        resp = requests.get(url, timeout=3, headers=HEADERS)
         if resp.status_code != 200:
             return ""
             
@@ -77,7 +77,7 @@ def extract_phone_from_website(url: str) -> str:
     if not url or not url.startswith("http"):
         return ""
     try:
-        resp = requests.get(url, timeout=6, headers=HEADERS)
+        resp = requests.get(url, timeout=3, headers=HEADERS)
         if resp.status_code != 200:
             return ""
             
@@ -216,24 +216,23 @@ def enrich_leads(leads: list) -> list:
     for i, lead in enumerate(leads):
         if lead.get("website"):
             print(f"LOG:Enriching {i+1}/{len(leads)}: {lead['name'][:30]}", flush=True)
-            # Email
+            # Email — skip if already found from Maps
             if not lead.get("email"):
                 lead["email"] = extract_email_from_website(lead["website"])
-            # Phone
+            # Phone — skip if already found from Maps
             if not lead.get("phone"):
                 lead["phone"] = extract_phone_from_website(lead["website"])
-            # Social media — lightweight, no aiohttp
+            # Social media
             social = extract_social_media(lead["website"])
             if social:
                 lead["social_media"] = json.dumps(social)
             else:
                 lead["social_media"] = ""
-            
-            # Tech stack detection (CHANGE 2)
+            # Tech stack detection
             try:
                 tech = []
                 resp_text = requests.get(
-                    lead["website"], timeout=5, headers=HEADERS
+                    lead["website"], timeout=3, headers=HEADERS
                 ).text
                 tech_signals = {
                     "WordPress": ["wp-content", "wp-includes"],
@@ -253,8 +252,7 @@ def enrich_leads(leads: list) -> list:
                     lead["additional_data"] = ""
             except Exception:
                 lead["additional_data"] = ""
-                
-            time.sleep(0.3)
+            time.sleep(0.2)
         else:
             lead["social_media"] = ""
             lead["additional_data"] = ""
@@ -264,7 +262,7 @@ def main():
     if len(sys.argv) < 2:
         return
     query = sys.argv[1]
-    limit = min(int(sys.argv[2]) if len(sys.argv) > 2 else 5, 10)
+    limit = min(int(sys.argv[2]) if len(sys.argv) > 2 else 5, 20)
     use_ai = sys.argv[3] == "1" if len(sys.argv) > 3 else False
 
     print(f"LOG:🚀 LeadPulse Pro Engine | Target: {limit}", flush=True)
