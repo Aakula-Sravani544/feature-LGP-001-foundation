@@ -319,20 +319,12 @@ def main():
             lead["social_media"] = ""
             lead["additional_data"] = ""
 
-        # AI scoring
-        if use_ai:
-            try:
-                from ai_engine import analyze_single_lead
-                lead = analyze_single_lead(lead)
-            except Exception as e:
-                logger.debug(f"AI scoring failed: {e}")
-        else:
-            try:
-                from ai_engine import rule_based_score
-                lead["ai_analysis"] = json.dumps(rule_based_score(lead))
-                lead["ai_score"] = rule_based_score(lead).get("score", 0)
-            except Exception as e:
-                logger.debug(f"Rule scoring failed: {e}")
+        # AI scoring and Day 9 Enrichment
+        try:
+            from ai_engine import analyze_single_lead
+            lead = analyze_single_lead(lead, use_ai=use_ai)
+        except Exception as e:
+            logger.debug(f"Analysis failed: {e}")
 
         # Validate
         lead = validate_lead(lead)

@@ -571,24 +571,74 @@ def enrich_leads_with_ai(leads: List[Dict]) -> List[Dict]:
 # ==========================================
 # SINGLE LEAD AI ANALYSIS
 # ==========================================
-def analyze_single_lead(lead: Dict) -> Dict:
+def analyze_single_lead(lead: Dict, use_ai: bool = True) -> Dict:
     """
     Analyze a single lead with AI or rule-based fallback.
+    Includes Day 9 features: Sentiment, Trend, Contact, Email Guessing.
 
     Args:
         lead: Single lead dictionary
+        use_ai: If False, forces rule-based scoring even if API key exists.
 
     Returns:
-        Lead with ai_analysis populated
+        Lead with ai_analysis and additional_data populated
     """
-    model = setup_gemini()
+    model = setup_gemini() if use_ai else None
 
+    # Core Analysis
     if model:
         analyses = analyze_leads_batch(model, [lead])
         if analyses:
-            lead["ai_analysis"] = json.dumps(analyses[0])
+            analysis = analyses[0]
+            lead["ai_analysis"] = json.dumps(analysis)
+            lead["ai_score"] = analysis.get("score", 0)
     else:
-        lead["ai_analysis"] = json.dumps(rule_based_score(lead))
+        analysis = rule_based_score(lead)
+        lead["ai_analysis"] = json.dumps(analysis)
+        lead["ai_score"] = analysis.get("score", 0)
+
+    # Day 9 Features
+    try:
+        # Email Pattern Guesser
+        if not lead.get("email") and lead.get("website"):
+            guessed = guess_email_pattern(lead.get("name", ""), lead.get("website", ""))
+            if guessed:
+                lead["email"] = guessed
+
+        # Sentiment, Trend, Contact
+        sentiment = analyze_sentiment(lead)
+        trend = predict_trend(lead)
+        contact = find_contact_person(lead)
+
+        # Tech stack preservation
+        existing_tech = []
+        try:
+            raw_add = lead.get("additional_data", "")
+            if raw_add:
+                parsed = json.loads(raw_add)
+                existing_tech = parsed if isinstance(parsed, list) else []
+        except:
+            pass
+
+        day9_data = {
+            "sentiment": sentiment,
+            "trend": trend,
+            "suggested_contact": contact,
+            "tech_stack": existing_tech
+        }
+        lead["additional_data"] = json.dumps(day9_data)
+
+        # Sub-region extraction
+        if not lead.get("sub_region"):
+            addr = lead.get("address", "")
+            if addr and "," in addr:
+                parts = addr.split(",")
+                if len(parts) >= 2:
+                    city = parts[-2].strip()
+                    lead["sub_region"] = city
+
+    except Exception as e:
+        logger.error(f"Single lead enrichment failed: {e}")
 
     return lead
 
