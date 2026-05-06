@@ -10,7 +10,6 @@ from datetime import datetime
 from typing import List, Dict
 
 logger = logging.getLogger(__name__)
-SERPER_API_KEY = os.environ.get("SERPER_API_KEY", "")
 HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
 
 
@@ -83,8 +82,7 @@ def scrape_linkedin(
     keyword: str,
     location: str,
     maps_leads: List[Dict] = None,
-    limit: int = 25,
-    use_ai: bool = False
+    limit: int = 25
 ) -> List[Dict]:
     all_profiles = []
     seen_ids = set()
@@ -112,7 +110,8 @@ def scrape_linkedin(
 
         print(f"LOG:Query {i+1}/{len(queries)}: searching...", flush=True)
 
-        if not SERPER_API_KEY:
+        serper_key = os.environ.get("SERPER_API_KEY", "")
+        if not serper_key:
             print("LOG:No SERPER_API_KEY!", flush=True)
             break
 
@@ -120,7 +119,7 @@ def scrape_linkedin(
             resp = requests.post(
                 "https://google.serper.dev/search",
                 headers={
-                    "X-API-KEY": SERPER_API_KEY,
+                    "X-API-KEY": serper_key,
                     "Content-Type": "application/json"
                 },
                 json={"q": query, "num": 10, "gl": "in"},
@@ -200,13 +199,6 @@ def scrape_linkedin(
                 })
                 p["category"] = "LinkedIn Contact"
                 p["validation_status"] = "Valid" if p["name"] else "Pending"
-
-                # Apply AI Scoring and Enrichment
-                try:
-                    from ai_engine import analyze_single_lead
-                    p = analyze_single_lead(p, use_ai=use_ai)
-                except Exception as e:
-                    pass
 
                 all_profiles.append(p)
                 new_this_query += 1

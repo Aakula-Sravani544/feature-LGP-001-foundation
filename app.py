@@ -305,11 +305,20 @@ def generation_ui(label_suffix=""):
                 except:
                     maps_leads = []
                     
-                profiles = scrape_linkedin(keyword, location, maps_leads=maps_leads, limit=max_leads, use_ai=use_ai)
+                profiles = scrape_linkedin(keyword, location, maps_leads=maps_leads, limit=max_leads)
+                
                 for i, profile in enumerate(profiles):
+                    # Apply AI Scoring here so UI updates per lead
+                    if use_ai:
+                        try:
+                            from ai_engine import analyze_single_lead
+                            profile = analyze_single_lead(profile, use_ai=True)
+                        except Exception as e:
+                            print(f"LOG:AI Enrichment Error: {e}", flush=True)
+                            
                     st.session_state.session_leads.append(profile)
                     progress_bar.progress((i+1)/max(len(profiles),1))
-                    status_text.text(f"LinkedIn: {i+1}/{len(profiles)} profiles collected...")
+                    status_text.text(f"LinkedIn: {i+1}/{len(profiles)} profiles collected & scored...")
                     m1_metric.metric("Total Scraped", i+1)
                     m2_metric.metric("Valid Leads", i+1)
                     m3_metric.metric("Duplicates Skipped", 0)
