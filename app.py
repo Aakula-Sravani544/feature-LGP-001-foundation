@@ -282,8 +282,47 @@ def generation_ui(label_suffix=""):
         query = f"{keyword} in {location}" if keyword and location else keyword or location
         if not query:
             st.warning("Please enter at least a Keyword or Location.")
-        elif source != "Google Maps":
-            st.info(f"{source} scraper is scheduled for Phase 2. Currently using Google Maps engine.")
+        elif source == "LinkedIn":
+            st.session_state.is_scraping = True
+            st.session_state.session_leads = []
+            progress_bar = st.progress(0)
+            status_text = st.empty()
+            table_placeholder = st.empty()
+            metrics_placeholder = st.empty()
+            with metrics_placeholder.container():
+                m1, m2, m3 = st.columns(3)
+                m1_metric = m1.empty()
+                m2_metric = m2.empty()
+                m3_metric = m3.empty()
+            status_text.text("🔍 Searching LinkedIn profiles...")
+            try:
+                from linkedin_scraper import scrape_linkedin
+                profiles = scrape_linkedin(keyword, location, limit=max_leads)
+                for i, profile in enumerate(profiles):
+                    st.session_state.session_leads.append(profile)
+                    progress_bar.progress((i+1)/max(len(profiles),1))
+                    status_text.text(f"LinkedIn: {i+1}/{len(profiles)} profiles collected...")
+                    m1_metric.metric("Total Scraped", i+1)
+                    m2_metric.metric("Valid Leads", i+1)
+                    m3_metric.metric("Duplicates Skipped", 0)
+                    with table_placeholder.container():
+                        df_view = pd.DataFrame(st.session_state.session_leads)
+                        cols = [c for c in ["full_name","job_title","company_name","linkedin_url","validation_status"] if c in df_view.columns]
+                        st.dataframe(df_view[cols] if cols else df_view, hide_index=True)
+                database.save_to_db(st.session_state.session_leads)
+                success, msg = google_sheets.save_to_google_sheets(st.session_state.session_leads)
+                if success:
+                    st.success(f"✅ {len(profiles)} LinkedIn profiles saved!")
+                else:
+                    st.warning(f"Saved locally. Sheets: {msg}")
+            except Exception as e:
+                st.error(f"LinkedIn error: {e}")
+            st.session_state.is_scraping = False
+            time.sleep(1)
+            st.rerun()
+
+        elif source == "Website":
+            st.info("Website scraper runs automatically during Google Maps extraction.")
         else:
             st.session_state.is_scraping = True
             st.session_state.session_leads = []
