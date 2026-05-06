@@ -32,7 +32,7 @@ def get_linkedin_structure() -> Dict:
         "social_media": "",
         "additional_data": "", # company_size + industry goes here
         "scraped_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "ai_analysis": "N/A",
+        "ai_analysis": "{}",
         "validation_status": "Pending",
         "validation_notes": "",
         "sub_region": "",
@@ -83,7 +83,8 @@ def scrape_linkedin(
     keyword: str,
     location: str,
     maps_leads: List[Dict] = None,
-    limit: int = 25
+    limit: int = 25,
+    use_ai: bool = False
 ) -> List[Dict]:
     all_profiles = []
     seen_ids = set()
@@ -199,6 +200,13 @@ def scrape_linkedin(
                 })
                 p["category"] = "LinkedIn Contact"
                 p["validation_status"] = "Valid" if p["name"] else "Pending"
+
+                # Apply AI Scoring and Enrichment
+                try:
+                    from ai_engine import analyze_single_lead
+                    p = analyze_single_lead(p, use_ai=use_ai)
+                except Exception as e:
+                    pass
 
                 all_profiles.append(p)
                 new_this_query += 1

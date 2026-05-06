@@ -297,7 +297,15 @@ def generation_ui(label_suffix=""):
             status_text.text("🔍 Searching LinkedIn profiles...")
             try:
                 from linkedin_scraper import scrape_linkedin
-                profiles = scrape_linkedin(keyword, location, limit=max_leads)
+                
+                # Fetch existing maps leads for cross-linking
+                try:
+                    df_master = database.load_db()
+                    maps_leads = df_master.to_dict('records') if not df_master.empty else []
+                except:
+                    maps_leads = []
+                    
+                profiles = scrape_linkedin(keyword, location, maps_leads=maps_leads, limit=max_leads, use_ai=use_ai)
                 for i, profile in enumerate(profiles):
                     st.session_state.session_leads.append(profile)
                     progress_bar.progress((i+1)/max(len(profiles),1))
