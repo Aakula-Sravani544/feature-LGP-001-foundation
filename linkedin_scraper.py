@@ -53,42 +53,67 @@ def dedup_against_maps(profiles: List[Dict], maps_leads: List[Dict]) -> List[Dic
     return result
 
 
-def scrape_linkedin(keyword: str, location: str, maps_leads: List[Dict]=None, limit: int=25) -> List[Dict]:
+def scrape_linkedin(
+    keyword: str,
+    location: str,
+    maps_leads: List[Dict] = None,
+    limit: int = 25
+) -> List[Dict]:
     all_profiles = []
     seen_ids = set()
-    job_titles = ["CEO","Founder","Director","Manager","Owner","Head","General Manager","President","MD","Partner"]
+    seen_names = set()
 
-    print(f"LOG:🔍 LinkedIn scraper started: {keyword} in {location}", flush=True)
+    # Use VARIED queries — not just job titles
+    # Different query types return different people
+    queries = [
+        f"site:linkedin.com/in {keyword} {location} CEO OR Founder",
+        f"site:linkedin.com/in {keyword} {location} Manager OR Director",
+        f"site:linkedin.com/in {keyword} {location} Owner OR Head",
+        f"site:linkedin.com/in {keyword} {location} President OR MD",
+        f"site:linkedin.com/in {keyword} manager {location}",
+        f"site:linkedin.com/in {location} {keyword} executive",
+        f"site:linkedin.com/in {location} {keyword} operations",
+        f"site:linkedin.com/in {location} {keyword} sales",
+    ]
 
-    for title in job_titles:
+    print(f"LOG:LinkedIn scraper: {keyword} in {location} | Target: {limit}", flush=True)
+    print(f"LOG:Running {len(queries)} different queries", flush=True)
+
+    for i, query in enumerate(queries):
         if len(all_profiles) >= limit:
             break
-        query = f"site:linkedin.com/in {title} {keyword} {location}"
-        print(f"LOG:Searching: {title} {keyword}...", flush=True)
+
+        print(f"LOG:Query {i+1}/{len(queries)}: searching...", flush=True)
 
         if not SERPER_API_KEY:
-            print("LOG:No SERPER_API_KEY found!", flush=True)
+            print("LOG:No SERPER_API_KEY!", flush=True)
             break
 
         try:
             resp = requests.post(
                 "https://google.serper.dev/search",
-                headers={"X-API-KEY": SERPER_API_KEY, "Content-Type": "application/json"},
+                headers={
+                    "X-API-KEY": SERPER_API_KEY,
+                    "Content-Type": "application/json"
+                },
                 json={"q": query, "num": 10, "gl": "in"},
                 timeout=10
             )
             results = resp.json().get("organic", [])
-            print(f"LOG:{len(results)} results for {title}", flush=True)
+            new_this_query = 0
 
             for r in results:
-                if len(all_profiles) >= limit: break
-                link = r.get("link","")
-                if "linkedin.com/in" not in link: continue
+                if len(all_profiles) >= limit:
+                    break
+                link = r.get("link", "")
+                if "linkedin.com/in" not in link:
+                    continue
 
                 p = get_linkedin_structure()
-                t = r.get("title","")
-                s = r.get("snippet","")
+                t = r.get("title", "")
+                s = r.get("snippet", "")
 
+                # Parse name and title
                 parts = t.split(" - ")
                 if len(parts) >= 2:
                     p["full_name"] = parts[0].strip()
@@ -98,32 +123,48 @@ def scrape_linkedin(keyword: str, location: str, maps_leads: List[Dict]=None, li
                 else:
                     p2 = t.split(" | ")
                     p["full_name"] = p2[0].strip() if p2 else r.get("title","").strip()
-                    p["job_title"] = p2[1].strip() if len(p2) > 1 else title
+                    p["job_title"] = p2[1].strip() if len(p2) > 1 else keyword
 
                 p["linkedin_url"] = link
                 p["location"] = location
                 p["industry"] = s[:200]
                 p["company_name"] = p["company_name"] or keyword
-                p["lead_id"] = hashlib.md5(p["full_name"].lower().encode()).hexdigest()
+                p["lead_id"] = hashlib.md5(
+                    p["full_name"].lower().encode()
+                ).hexdigest()
 
-                if p["lead_id"] in seen_ids: continue
+                # Skip duplicates by both ID and name
+                if p["lead_id"] in seen_ids:
+                    continue
+                if p["full_name"].lower() in seen_names:
+                    continue
                 seen_ids.add(p["lead_id"])
+                seen_names.add(p["full_name"].lower())
 
-                p["email_guessed"] = guess_email(p["full_name"], p["company_name"])
-                size = re.search(r'(\d+[\+]?\d*)\s*(?:employees|connections)', s)
-                if size: p["company_size"] = size.group(1)
+                p["email_guessed"] = guess_email(
+                    p["full_name"], p["company_name"]
+                )
+                size = re.search(
+                    r'(\d+[\+]?\d*)\s*(?:employees|connections)', s
+                )
+                if size:
+                    p["company_size"] = size.group(1)
                 p["validation_status"] = "Valid" if p["full_name"] else "Pending"
 
                 all_profiles.append(p)
+                new_this_query += 1
                 print(f"LOG:✅ {p['full_name']} | {p['job_title']}", flush=True)
 
+            print(f"LOG:Query {i+1} added {new_this_query} new profiles. Total: {len(all_profiles)}", flush=True)
+
         except Exception as e:
-            print(f"LOG:Error for {title}: {e}", flush=True)
+            print(f"LOG:Query {i+1} failed: {e}", flush=True)
 
         time.sleep(0.3)
 
+    # Dedup against Maps leads
     if maps_leads:
         all_profiles = dedup_against_maps(all_profiles, maps_leads)
 
-    print(f"LOG:LinkedIn done. {len(all_profiles)} profiles found", flush=True)
+    print(f"LOG:LinkedIn complete. {len(all_profiles)} unique profiles", flush=True)
     return all_profiles[:limit]
