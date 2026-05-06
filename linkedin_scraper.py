@@ -37,7 +37,9 @@ def get_linkedin_structure() -> Dict:
         "validation_notes": "",
         "sub_region": "",
         # LinkedIn specific extra fields stored in description/additional_data
-        "source": "LinkedIn"
+        "source": "LinkedIn",
+        "company_name": "",
+        "cross_linked_to": ""
     }
 
 
@@ -59,16 +61,13 @@ def dedup_against_maps(profiles: List[Dict], maps_leads: List[Dict]) -> List[Dic
         lid = p.get("lead_id","")
         if lid in seen: continue
         seen.add(lid)
-        co = ""
-        try:
-            if p.get("additional_data"):
-                add_data = json.loads(p["additional_data"])
-                co = add_data.get("company_name", "").lower()
-        except:
-            pass
+        
+        co = p.get("company_name", "").lower()
             
         for mc, mid in maps_cos.items():
             if co and (co in mc or mc in co):
+                p["cross_linked_to"] = mid
+                # Also update inside additional_data for completeness
                 try:
                     add_data = json.loads(p.get("additional_data", "{}"))
                     add_data["cross_linked_to"] = mid
@@ -188,6 +187,8 @@ def scrape_linkedin(
                 p["website"] = linkedin_url      # linkedin URL
                 p["address"] = location          # city
                 p["description"] = f"{job_title} at {company_name}"  # job info
+                p["company_name"] = company_name  # Issue 1 fix
+                p["cross_linked_to"] = ""         # Issue 3 fix
                 p["additional_data"] = json.dumps({
                     "job_title": job_title,
                     "company_name": company_name,
