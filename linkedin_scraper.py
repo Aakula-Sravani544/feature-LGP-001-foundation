@@ -15,14 +15,29 @@ HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
 
 
 def get_linkedin_structure() -> Dict:
+    """Returns LinkedIn lead using same column names as Google Sheets."""
     return {
-        "lead_id": "", "full_name": "", "job_title": "",
-        "company_name": "", "location": "", "linkedin_url": "",
-        "connection_degree": "2nd", "company_linkedin": "",
-        "company_size": "", "industry": "", "email_guessed": "",
+        "lead_id": "",
+        "name": "",           # full_name goes here
+        "address": "",        # location goes here
+        "phone": "",          # phone if available
+        "email": "",          # email_guessed goes here
+        "website": "",        # linkedin_url goes here
+        "rating": "",
+        "reviews": "",
+        "category": "LinkedIn Contact",
+        "google_maps_url": "",
+        "description": "",    # job_title + company_name goes here
+        "hours": "",
+        "social_media": "",
+        "additional_data": "", # company_size + industry goes here
         "scraped_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "source": "LinkedIn", "validation_status": "Pending",
-        "cross_linked_to": ""
+        "ai_analysis": "N/A",
+        "validation_status": "Pending",
+        "validation_notes": "",
+        "sub_region": "",
+        # LinkedIn specific extra fields stored in description/additional_data
+        "source": "LinkedIn"
     }
 
 
@@ -44,10 +59,22 @@ def dedup_against_maps(profiles: List[Dict], maps_leads: List[Dict]) -> List[Dic
         lid = p.get("lead_id","")
         if lid in seen: continue
         seen.add(lid)
-        co = p.get("company_name","").lower()
+        co = ""
+        try:
+            if p.get("additional_data"):
+                add_data = json.loads(p["additional_data"])
+                co = add_data.get("company_name", "").lower()
+        except:
+            pass
+            
         for mc, mid in maps_cos.items():
             if co and (co in mc or mc in co):
-                p["cross_linked_to"] = mid
+                try:
+                    add_data = json.loads(p.get("additional_data", "{}"))
+                    add_data["cross_linked_to"] = mid
+                    p["additional_data"] = json.dumps(add_data)
+                except:
+                    pass
                 break
         result.append(p)
     return result
@@ -114,46 +141,67 @@ def scrape_linkedin(
                 s = r.get("snippet", "")
 
                 # Parse name and title
+                p_full_name = ""
+                job_title = ""
+                company_name = ""
+                
                 parts = t.split(" - ")
                 if len(parts) >= 2:
-                    p["full_name"] = parts[0].strip()
-                    p["job_title"] = parts[1].strip()
+                    p_full_name = parts[0].strip()
+                    job_title = parts[1].strip()
                     if len(parts) >= 3:
-                        p["company_name"] = parts[2].strip()
+                        company_name = parts[2].strip()
                 else:
                     p2 = t.split(" | ")
-                    p["full_name"] = p2[0].strip() if p2 else r.get("title","").strip()
-                    p["job_title"] = p2[1].strip() if len(p2) > 1 else keyword
+                    p_full_name = p2[0].strip() if p2 else r.get("title","").strip()
+                    job_title = p2[1].strip() if len(p2) > 1 else keyword
 
-                p["linkedin_url"] = link
-                p["location"] = location
-                p["industry"] = s[:200]
-                p["company_name"] = p["company_name"] or keyword
-                p["lead_id"] = hashlib.md5(
-                    p["full_name"].lower().encode()
+                linkedin_url = link
+                industry = s[:200]
+                company_name = company_name or keyword
+                lead_id = hashlib.md5(
+                    p_full_name.lower().encode()
                 ).hexdigest()
 
                 # Skip duplicates by both ID and name
-                if p["lead_id"] in seen_ids:
+                if lead_id in seen_ids:
                     continue
-                if p["full_name"].lower() in seen_names:
+                if p_full_name.lower() in seen_names:
                     continue
-                seen_ids.add(p["lead_id"])
-                seen_names.add(p["full_name"].lower())
+                seen_ids.add(lead_id)
+                seen_names.add(p_full_name.lower())
 
-                p["email_guessed"] = guess_email(
-                    p["full_name"], p["company_name"]
+                email_guessed = guess_email(
+                    p_full_name, company_name
                 )
+                company_size = ""
                 size = re.search(
                     r'(\d+[\+]?\d*)\s*(?:employees|connections)', s
                 )
                 if size:
-                    p["company_size"] = size.group(1)
-                p["validation_status"] = "Valid" if p["full_name"] else "Pending"
+                    company_size = size.group(1)
+
+                # After parsing name and title, map to Google Sheets columns:
+                p["lead_id"] = lead_id
+                p["name"] = p_full_name          # full name
+                p["email"] = email_guessed       # guessed email
+                p["website"] = linkedin_url      # linkedin URL
+                p["address"] = location          # city
+                p["description"] = f"{job_title} at {company_name}"  # job info
+                p["additional_data"] = json.dumps({
+                    "job_title": job_title,
+                    "company_name": company_name,
+                    "company_size": company_size,
+                    "industry": industry,
+                    "connection_degree": "2nd",
+                    "source": "LinkedIn"
+                })
+                p["category"] = "LinkedIn Contact"
+                p["validation_status"] = "Valid" if p["name"] else "Pending"
 
                 all_profiles.append(p)
                 new_this_query += 1
-                print(f"LOG:✅ {p['full_name']} | {p['job_title']}", flush=True)
+                print(f"LOG:✅ {p['name']} | {job_title}", flush=True)
 
             print(f"LOG:Query {i+1} added {new_this_query} new profiles. Total: {len(all_profiles)}", flush=True)
 
