@@ -135,7 +135,7 @@ def get_full_structure() -> dict:
 
 def search_with_apify(query: str, limit: int = 50):
     """
-    Stable Apify Google Maps scraper integration
+    Stable Apify Google Maps scraper integration using synchronous execution
     """
 
     if not APIFY_API_TOKEN:
@@ -144,76 +144,30 @@ def search_with_apify(query: str, limit: int = 50):
 
     try:
         keyword = query
-        print(f"LOG: Starting Apify search for {keyword}", flush=True)
-
-        actor_input = {
-            "searchStringsArray": [keyword],
-            "maxCrawledPlacesPerSearch": limit,
-            "language": "en",
-            "countryCode": "IN"
-        }
+        print(f"LOG: Starting synchronous Apify search for {keyword}", flush=True)
 
         run_response = requests.post(
-            f"https://api.apify.com/v2/acts/compass~crawler-google-places/runs?token={APIFY_API_TOKEN}",
-            json=actor_input,
-            timeout=60
+            f"https://api.apify.com/v2/acts/compass~crawler-google-places/run-sync-get-dataset-items?token={APIFY_API_TOKEN}",
+            json={
+                "searchStringsArray": [keyword],
+                "maxCrawledPlacesPerSearch": limit,
+                "language": "en",
+                "countryCode": "IN"
+            },
+            timeout=120
         )
 
-        run_json = run_response.json()
-
-        data = run_json.get("data", {})
-        run_id = data.get("id")
-
-        if not run_id:
-            print(f"LOG: Failed to start Apify actor", flush=True)
-            print(run_json, flush=True)
+        if run_response.status_code != 201 and run_response.status_code != 200:
+            print(f"LOG: Apify sync run failed with status {run_response.status_code}", flush=True)
             return []
 
-        print(f"LOG: Apify run started: {run_id}", flush=True)
-
-        dataset_id = None
-
-        for i in range(60):
-            time.sleep(5)
-
-            status_response = requests.get(
-                f"https://api.apify.com/v2/actor-runs/{run_id}?token={APIFY_API_TOKEN}",
-                timeout=30
-            )
-
-            status_json = status_response.json()
-            run_data = status_json.get("data", {})
-
-            status = run_data.get("status", "")
-
-            print(f"LOG: Status = {status}", flush=True)
-
-            if status == "SUCCEEDED":
-                dataset_id = run_data.get("defaultDatasetId")
-                break
-
-            if status in ["FAILED", "TIMED-OUT", "ABORTED"]:
-                print("LOG: Apify run failed", flush=True)
-                return []
-
-        if not dataset_id:
-            print("LOG: No dataset found", flush=True)
-            return []
-
-        dataset_response = requests.get(
-            f"https://api.apify.com/v2/datasets/{dataset_id}/items?token={APIFY_API_TOKEN}",
-            timeout=60
-        )
-
-        items = dataset_response.json()
-
+        items = run_response.json()
         print(f"LOG: Apify returned {len(items)} places", flush=True)
 
         leads = []
         seen = set()
 
         for item in items:
-
             lead = get_full_structure()
 
             name = item.get("title", "")
@@ -249,14 +203,12 @@ def search_with_apify(query: str, limit: int = 50):
             lead = validate_lead(lead)
 
             leads.append(lead)
-
             print(f"LOG: Added lead {name}", flush=True)
 
             if len(leads) >= limit:
                 break
 
         print(f"LOG: Final leads count = {len(leads)}", flush=True)
-
         return leads
 
     except Exception as e:
