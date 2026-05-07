@@ -146,18 +146,19 @@ def search_with_apify(query: str, limit: int = 50):
         print(f"LOG: Starting synchronous Apify search for {query}", flush=True)
 
         run_response = requests.post(
-            f"https://api.apify.com/v2/acts/apify~google-maps-scraper/run-sync-get-dataset-items?token={APIFY_API_TOKEN}",
+            f"https://api.apify.com/v2/acts/compass~crawler-google-places/run-sync-get-dataset-items?token={APIFY_API_TOKEN}",
             json={
                 "searchStringsArray": [query],
                 "maxCrawledPlacesPerSearch": limit,
                 "language": "en",
-                "country": "India"
+                "countryCode": "IN"
             },
             timeout=120
         )
 
         if run_response.status_code != 200:
-            print(f"LOG: Apify sync run failed with status {run_response.status_code}", flush=True)
+            print(f"LOG: Apify status: {run_response.status_code}", flush=True)
+            print(f"LOG: Apify response: {run_response.text[:1000]}", flush=True)
             return []
 
         items = run_response.json()
