@@ -1,0 +1,19 @@
+credentials:
+  usernames:
+    admin:
+      email: admin@leadpulse.pro
+      name: System Admin
+      password: "$2b$12$NSvatNY/M6DY64Wd.u5Okuu8YvQyxcJMznYPGfz2kE5BlM/Zri5/O"
+      role: admin
+    user:
+      email: user@leadpulse.pro
+      name: Standard User
+      password: "$2b$12$JHAAW/THe/E1CxRxW03S9.3LUhpGRGWzJeZ9Y9Ke/Kjo9u0BH92nK"
+      role: user
+cookie:
+  expiry_days: 30
+  key: leadpulse_auth_key
+  name: leadpulse_cookie
+preauthorized:
+  emails:
+  - admin@leadpulse.pro

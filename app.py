@@ -14,6 +14,7 @@ load_dotenv()
 
 import database
 import google_sheets
+import auth
 
 # ==========================================
 # STARTUP SYNC
@@ -191,9 +192,6 @@ st.markdown("""
 # ==========================================
 # SESSION STATE INITIALIZATION
 # ==========================================
-if 'authenticated' not in st.session_state: st.session_state.authenticated = False
-if 'username' not in st.session_state: st.session_state.username = None
-if 'role' not in st.session_state: st.session_state.role = None
 if 'is_scraping' not in st.session_state: st.session_state.is_scraping = False
 if 'session_leads' not in st.session_state: st.session_state.session_leads = []
 if 'logs' not in st.session_state: st.session_state.logs = ""
@@ -226,30 +224,7 @@ def get_stats():
 # ==========================================
 # LOGIN PAGE
 # ==========================================
-def login_page():
-    st.markdown("<br><br>", unsafe_allow_html=True)
-    col1, col2, col3 = st.columns([1, 1, 1])
-    with col2:
-        st.markdown("""
-            <div style="text-align: center; margin-bottom: 2rem;">
-                <h1 style="font-size: 2.5rem; font-weight: 800; color: #0F172A;">🚀 LeadPulse <span>Pro</span></h1>
-                <p style="color: #64748B;">Production Grade Lead Extraction Engine</p>
-            </div>
-        """, unsafe_allow_html=True)
-        
-        username = st.text_input("Username", placeholder="e.g. admin")
-        password = st.text_input("Password", type="password")
-        
-        if st.button("Enter Dashboard"):
-            role = database.verify_user(username, password)
-            if role:
-                st.session_state.authenticated = True
-                st.session_state.username = username
-                st.session_state.role = role
-                database.log_action(username, "Logged In")
-                st.rerun()
-            else:
-                st.error("Invalid Credentials")
+# Old login page removed for Day 11 streamlit-authenticator
 
 # ==========================================
 # GENERATION COMPONENT (SHARED)
@@ -568,11 +543,11 @@ def show_admin_dashboard():
             st.rerun()
 
 # ==========================================
-# MAIN ROUTING
+# MAIN ROUTING (DAY 11 AUTH)
 # ==========================================
-if not st.session_state.authenticated:
-    login_page()
-else:
+username, authenticator = auth.authenticate()
+
+if st.session_state.get('authentication_status'):
     with st.sidebar:
         st.markdown("""
             <div class="sidebar-logo">
@@ -599,10 +574,18 @@ else:
         """, unsafe_allow_html=True)
         st.markdown("<br>", unsafe_allow_html=True)
         
-        if st.button("Sign Out Session", use_container_width=True):
-            logout()
+        # Streamlit-authenticator logout
+        authenticator.logout('Sign Out Session', 'sidebar')
+        if not st.session_state.get('authentication_status'):
+            st.session_state.authenticated = False
+            st.session_state.username = None
+            st.session_state.role = None
+            st.session_state.current_portal = None
+            st.rerun()
 
     if st.session_state.role == "admin":
         show_admin_dashboard()
-    else:
+    elif st.session_state.role == "user":
         show_user_dashboard()
+    else:
+        st.error("Access Denied: Unauthorized Role")
