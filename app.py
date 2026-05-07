@@ -545,7 +545,7 @@ def show_admin_dashboard():
 # ==========================================
 # MAIN ROUTING (DAY 11 AUTH)
 # ==========================================
-name, authentication_status, username, authenticator = auth.authenticate()
+name, authentication_status, username, role, authenticator = auth.authenticate()
 
 if authentication_status:
     with st.sidebar:
