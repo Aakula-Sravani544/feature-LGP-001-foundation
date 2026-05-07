@@ -133,110 +133,134 @@ def get_full_structure() -> dict:
         "validation_notes": "", "sub_region": ""
     }
 
-def search_with_apify_leads(query: str, limit: int = 100) -> list:
-    """Apify Leads Finder — returns 100 leads with real emails."""
+def search_with_apify(query: str, limit: int = 50):
+    """
+    Stable Apify Google Maps scraper integration
+    """
+
     if not APIFY_API_TOKEN:
-        print("LOG:No APIFY_API_TOKEN found", flush=True)
+        print("LOG: No APIFY_API_TOKEN found", flush=True)
         return []
 
-    keyword = query.split(" in ")[0].strip() if " in " in query else query
-    location = query.split(" in ")[-1].strip() if " in " in query else "India"
-
-    print(f"LOG:Starting Apify Leads Finder for: {keyword} in {location}", flush=True)
-
     try:
-        # Start actor run
-        start_resp = requests.post(
-            "https://api.apify.com/v2/acts/IoSHqwTR9YGhzccez/runs",
-            headers={
-                "Authorization": f"Bearer {APIFY_API_TOKEN}",
-                "Content-Type": "application/json"
-            },
-            json={
-                "searchQuery": f"{keyword} {location}",
-                "numberOfLeads": limit,
-                "country": "IN"
-            },
-            timeout=30
+        keyword = query
+        print(f"LOG: Starting Apify search for {keyword}", flush=True)
+
+        actor_input = {
+            "searchStringsArray": [keyword],
+            "maxCrawledPlacesPerSearch": limit,
+            "language": "en",
+            "countryCode": "IN"
+        }
+
+        run_response = requests.post(
+            f"https://api.apify.com/v2/acts/compass~crawler-google-places/runs?token={APIFY_API_TOKEN}",
+            json=actor_input,
+            timeout=60
         )
 
-        run_data = start_resp.json()
-        run_id = run_data.get("data", {}).get("id", "")
+        run_json = run_response.json()
+
+        data = run_json.get("data", {})
+        run_id = data.get("id")
 
         if not run_id:
-            print(f"LOG:Apify failed to start. Response: {run_data}", flush=True)
+            print(f"LOG: Failed to start Apify actor", flush=True)
+            print(run_json, flush=True)
             return []
 
-        print(f"LOG:Apify run started: {run_id}", flush=True)
+        print(f"LOG: Apify run started: {run_id}", flush=True)
 
-        # Wait for completion — max 5 minutes
-        for attempt in range(60):
+        dataset_id = None
+
+        for i in range(60):
             time.sleep(5)
-            status_resp = requests.get(
-                f"https://api.apify.com/v2/actor-runs/{run_id}",
-                headers={"Authorization": f"Bearer {APIFY_API_TOKEN}"},
-                timeout=10
+
+            status_response = requests.get(
+                f"https://api.apify.com/v2/actor-runs/{run_id}?token={APIFY_API_TOKEN}",
+                timeout=30
             )
-            status = status_resp.json().get("data", {}).get("status", "")
-            print(f"LOG:Apify status: {status} ({attempt+1}/60)", flush=True)
+
+            status_json = status_response.json()
+            run_data = status_json.get("data", {})
+
+            status = run_data.get("status", "")
+
+            print(f"LOG: Status = {status}", flush=True)
 
             if status == "SUCCEEDED":
+                dataset_id = run_data.get("defaultDatasetId")
                 break
-            elif status in ["FAILED", "ABORTED", "TIMED-OUT"]:
-                print(f"LOG:Apify run {status}", flush=True)
+
+            if status in ["FAILED", "TIMED-OUT", "ABORTED"]:
+                print("LOG: Apify run failed", flush=True)
                 return []
 
-        # Get results
-        results_resp = requests.get(
-            f"https://api.apify.com/v2/actor-runs/{run_id}/dataset/items",
-            headers={"Authorization": f"Bearer {APIFY_API_TOKEN}"},
-            params={"limit": limit},
-            timeout=30
+        if not dataset_id:
+            print("LOG: No dataset found", flush=True)
+            return []
+
+        dataset_response = requests.get(
+            f"https://api.apify.com/v2/datasets/{dataset_id}/items?token={APIFY_API_TOKEN}",
+            timeout=60
         )
-        items = results_resp.json()
-        print(f"LOG:Apify returned {len(items)} leads", flush=True)
+
+        items = dataset_response.json()
+
+        print(f"LOG: Apify returned {len(items)} places", flush=True)
 
         leads = []
-        seen_ids = set()
+        seen = set()
 
         for item in items:
+
             lead = get_full_structure()
 
-            # Map Apify fields to LeadPulse structure
-            first = item.get("first_name", "")
-            last = item.get("last_name", "")
-            lead["name"] = f"{first} {last}".strip()
-            lead["email"] = item.get("email", "")
-            lead["phone"] = item.get("mobile_number", item.get("company_phone", ""))
-            lead["website"] = item.get("company_website", "")
-            lead["address"] = f"{item.get('city', '')}, {item.get('state', '')}, {item.get('country', '')}".strip(", ")
-            lead["category"] = item.get("industry", keyword.title())
-            lead["description"] = item.get("job_title", "")
-            lead["google_maps_url"] = item.get("linkedin", "")
-            lead["social_media"] = json.dumps({"linkedin": item.get("linkedin", "")})
-            lead["additional_data"] = json.dumps({
-                "job_title": item.get("job_title", ""),
-                "company_name": item.get("company_name", ""),
-                "company_size": str(item.get("company_size", "")),
-                "seniority": item.get("seniority_level", ""),
-                "keywords": item.get("keywords", "")[:200] if item.get("keywords") else ""
-            })
-            lead["sub_region"] = item.get("city", "")
+            name = item.get("title", "")
+            phone = item.get("phone", "")
+            website = item.get("website", "")
+            address = item.get("address", "")
+            category = item.get("categoryName", "")
+            maps_url = item.get("url", "")
+
+            if not name:
+                continue
+
+            lead["name"] = name
+            lead["phone"] = phone
+            lead["website"] = website
+            lead["address"] = address
+            lead["category"] = category
+            lead["google_maps_url"] = maps_url
+            lead["description"] = category
+            lead["rating"] = str(item.get("totalScore", ""))
+            lead["reviews"] = str(item.get("reviewsCount", ""))
+
             lead["lead_id"] = hashlib.md5(
-                lead["name"].lower().encode()
+                name.lower().encode()
             ).hexdigest()
 
-            if lead["lead_id"] in seen_ids or not lead["name"]:
+            if lead["lead_id"] in seen:
                 continue
-            seen_ids.add(lead["lead_id"])
+
+            seen.add(lead["lead_id"])
+
+            # validation
+            lead = validate_lead(lead)
 
             leads.append(lead)
-            print(f"LOG:✅ {lead['name']} | {lead['description']} | {lead['email']}", flush=True)
+
+            print(f"LOG: Added lead {name}", flush=True)
+
+            if len(leads) >= limit:
+                break
+
+        print(f"LOG: Final leads count = {len(leads)}", flush=True)
 
         return leads
 
     except Exception as e:
-        print(f"LOG:Apify error: {e}", flush=True)
+        print(f"LOG: Apify error: {e}", flush=True)
         return []
 
 def search_with_serper(query: str, limit: int = 5) -> list:
@@ -433,20 +457,19 @@ def main():
     if len(sys.argv) < 2:
         return
     query = sys.argv[1]
+    # Set limit cap to 100
     limit = min(int(sys.argv[2]) if len(sys.argv) > 2 else 10, 100)
     use_ai = sys.argv[3] == "1" if len(sys.argv) > 3 else False
 
     print(f"LOG:🚀 LeadPulse Pro Engine | Target: {limit}", flush=True)
     print(f"LOG:Searching: {query}", flush=True)
 
-    # Try Apify Leads Finder for 100 real leads
-    leads = []
-    if APIFY_API_TOKEN and limit > 20:
-        leads = search_with_apify_leads(query, limit)
+    # FIRST try Apify
+    leads = search_with_apify(query, limit)
 
-    # Fallback to Serper Maps
+    # If no leads, fallback to Serper
     if not leads:
-        print(f"LOG:Using Serper Maps fallback...", flush=True)
+        print(f"LOG:Apify failed or returned 0 leads. Falling back to Serper Maps...", flush=True)
         leads = search_with_serper(query, limit)
 
     if not leads:
