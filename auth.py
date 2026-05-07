@@ -44,13 +44,25 @@ def authenticate():
     
     if st.session_state.current_portal is None:
         show_portal_selection()
-        return None, None
+        return None, None, None, authenticator
     
     # Show login form for the selected portal
     portal_name = "Admin" if st.session_state.current_portal == 'admin' else "User"
     
-    # stauth.Authenticate.login returns (name, authentication_status, username)
-    name, authentication_status, username = authenticator.login('main', fields={'Form name': f'{portal_name} Login'})
+    # Safely handle login() result for different versions
+    result = authenticator.login(
+        location='main',
+        fields={'Form name': f'{portal_name} Login'}
+    )
+    
+    if result is None:
+        # Support newer/older versions where it updates session_state instead of returning tuple
+        name = st.session_state.get("name")
+        authentication_status = st.session_state.get("authentication_status")
+        username = st.session_state.get("username")
+    else:
+        # Result is the tuple
+        name, authentication_status, username = result
     
     if authentication_status:
         # Check if user role matches the selected portal
@@ -65,12 +77,11 @@ def authenticate():
             if st.button("Back to Selection"):
                 st.session_state.current_portal = None
                 st.rerun()
-            return None, authenticator
+            return name, None, username, authenticator
         
         st.session_state.authenticated = True
         st.session_state.role = user_role
         st.session_state.username = username
-        return username, authenticator
         
     elif authentication_status is False:
         st.error('Username/password is incorrect')
@@ -82,4 +93,4 @@ def authenticate():
             st.session_state.current_portal = None
             st.rerun()
             
-    return None, authenticator
+    return name, authentication_status, username, authenticator
