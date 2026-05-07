@@ -14,7 +14,27 @@ load_dotenv()
 
 import database
 import google_sheets
-import auth
+# Import new auth module
+from auth import (
+    init_session, render_login_page, render_logout_button,
+    check_session_expiry, get_user_info, get_all_users,
+    register_user, delete_user, update_user_plan, update_password
+)
+
+# Initialize session
+init_session()
+
+# Check session expiry
+if st.session_state.authenticated and check_session_expiry():
+    st.warning("Session expired. Please login again.")
+    for key in list(st.session_state.keys()):
+        del st.session_state[key]
+    st.rerun()
+
+# Show login if not authenticated
+if not st.session_state.authenticated:
+    render_login_page()
+    st.stop()
 
 # ==========================================
 # STARTUP SYNC
@@ -189,22 +209,12 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# ==========================================
-# SESSION STATE INITIALIZATION
-# ==========================================
-if 'is_scraping' not in st.session_state: st.session_state.is_scraping = False
-if 'session_leads' not in st.session_state: st.session_state.session_leads = []
-if 'logs' not in st.session_state: st.session_state.logs = ""
+# Session state initialized via auth.init_session()
 
 # ==========================================
 # SHARED UTILITIES
 # ==========================================
-def logout():
-    database.log_action(st.session_state.username, "Logged Out")
-    st.session_state.authenticated = False
-    st.session_state.username = None
-    st.session_state.role = None
-    st.rerun()
+# Shared logout replaced by auth.render_logout_button()
 
 def get_stats():
     try:
@@ -500,19 +510,57 @@ def show_admin_dashboard():
 
     with tabs[2]:
         st.markdown("### User Management")
-        st.markdown("Manage roles, subscriptions, and access.")
-        df_users = pd.DataFrame([
-            {"username": "admin", "role": "admin", "plan": "Enterprise", "status": "Active"},
-            {"username": "user", "role": "user", "plan": "Starter", "status": "Active"}
-        ])
-        st.dataframe(df_users, width="stretch")
+
+        # Show all users
+        users_list = get_all_users()
+        import pandas as pd
+        df_users = pd.DataFrame(users_list)
+        st.dataframe(df_users, hide_index=True, width="stretch")
+
+        # Create new user
         with st.expander("+ Create New User"):
-            u_name = st.text_input("Username")
-            u_pass = st.text_input("Password", type="password")
-            u_role = st.selectbox("Role", ["user", "admin"])
-            u_plan = st.selectbox("Subscription Plan", ["Free", "Starter", "Pro", "Enterprise"])
-            if st.button("Create User"):
-                st.success(f"User {u_name} created successfully! (Mocked)")
+            u_name = st.text_input("Username", key="new_u_name")
+            u_pass = st.text_input("Password", type="password", key="new_u_pass")
+            u_role = st.selectbox("Role", ["user", "admin"], key="new_u_role")
+            u_plan = st.selectbox("Plan", ["Free","Starter","Pro","Enterprise"], key="new_u_plan")
+            u_email = st.text_input("Email", key="new_u_email")
+            if st.button("Create User", key="create_user_btn"):
+                success, msg = register_user(u_name, u_pass, u_role, u_plan, u_name, u_email)
+                if success:
+                    st.success(msg)
+                    st.rerun()
+                else:
+                    st.error(msg)
+
+        # Delete user
+        with st.expander("Delete User"):
+            del_username = st.text_input("Username to delete", key="del_u_name")
+            if st.button("Delete User", key="del_user_btn"):
+                if delete_user(del_username):
+                    st.success(f"User {del_username} deleted")
+                    st.rerun()
+                else:
+                    st.error("Cannot delete user")
+
+        # Update plan
+        with st.expander("Update User Plan"):
+            plan_username = st.text_input("Username", key="plan_u_name")
+            new_plan = st.selectbox("New Plan", ["Free","Starter","Pro","Enterprise"], key="new_plan")
+            if st.button("Update Plan", key="update_plan_btn"):
+                if update_user_plan(plan_username, new_plan):
+                    st.success(f"Plan updated for {plan_username}")
+                else:
+                    st.error("Failed to update plan")
+
+        # Reset password
+        with st.expander("Reset Password"):
+            reset_username = st.text_input("Username", key="reset_u_name")
+            reset_pass = st.text_input("New Password", type="password", key="reset_pass")
+            if st.button("Reset Password", key="reset_pass_btn"):
+                if update_password(reset_username, reset_pass):
+                    st.success(f"Password reset for {reset_username}")
+                else:
+                    st.error("Failed to reset password")
 
     with tabs[3]:
         st.markdown("### User System Logs")
@@ -543,49 +591,38 @@ def show_admin_dashboard():
             st.rerun()
 
 # ==========================================
-# MAIN ROUTING (DAY 11 AUTH)
+# MAIN ROUTING
 # ==========================================
-name, authentication_status, username, role, authenticator = auth.authenticate()
+with st.sidebar:
+    st.markdown(f"""
+        <div class="sidebar-logo">
+            🚀 LeadPulse <span>Pro</span>
+        </div>
+        <div class="user-info">
+            Logged in as: <strong>{st.session_state.username}</strong><br>
+            Plan: <span style="color:#22C55E">{st.session_state.plan}</span>
+        </div>
+        <div class="sidebar-divider"></div>
+    """, unsafe_allow_html=True)
+    
+    role_label = "Admin Workspace" if st.session_state.role == "admin" else "User Workspace"
+    st.markdown(f'<div class="nav-item-active">🏠 {role_label}</div>', unsafe_allow_html=True)
+    st.markdown("<br><br><br>", unsafe_allow_html=True)
+    
+    st.markdown(f"""
+        <div style="padding: 1rem; background: rgba(255,255,255,0.03); border-radius: 8px;">
+            <p style="margin:0; font-size: 0.7rem; color: #94A3B8 !important;">ENGINE STATUS</p>
+            <p style="margin:0; font-weight: 700; color: {'#34D399' if not st.session_state.is_scraping else '#FB923C'} !important;">
+                {'● IDLE' if not st.session_state.is_scraping else '● EXTRACTING...'}
+            </p>
+        </div>
+    """, unsafe_allow_html=True)
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    # Render logout button from auth.py
+    render_logout_button()
 
-if authentication_status:
-    with st.sidebar:
-        st.markdown("""
-            <div class="sidebar-logo">
-                🚀 LeadPulse <span>Pro</span>
-            </div>
-            <div class="user-info">
-                Logged in as: <strong>{un}</strong><br>
-                Plan: <span style="color:#22C55E">Enterprise</span>
-            </div>
-            <div class="sidebar-divider"></div>
-        """.format(un=st.session_state.username), unsafe_allow_html=True)
-        
-        role_label = "Admin Workspace" if st.session_state.role == "admin" else "User Workspace"
-        st.markdown(f'<div class="nav-item-active">🏠 {role_label}</div>', unsafe_allow_html=True)
-        st.markdown("<br><br><br>", unsafe_allow_html=True)
-        
-        st.markdown(f"""
-            <div style="padding: 1rem; background: rgba(255,255,255,0.03); border-radius: 8px;">
-                <p style="margin:0; font-size: 0.7rem; color: #94A3B8 !important;">ENGINE STATUS</p>
-                <p style="margin:0; font-weight: 700; color: {'#34D399' if not st.session_state.is_scraping else '#FB923C'} !important;">
-                    {'● IDLE' if not st.session_state.is_scraping else '● EXTRACTING...'}
-                </p>
-            </div>
-        """, unsafe_allow_html=True)
-        st.markdown("<br>", unsafe_allow_html=True)
-        
-        # Streamlit-authenticator logout
-        authenticator.logout('Sign Out Session', 'sidebar')
-        if not st.session_state.get('authentication_status'):
-            st.session_state.authenticated = False
-            st.session_state.username = None
-            st.session_state.role = None
-            st.session_state.current_portal = None
-            st.rerun()
-
-    if st.session_state.role == "admin":
-        show_admin_dashboard()
-    elif st.session_state.role == "user":
-        show_user_dashboard()
-    else:
-        st.error("Access Denied: Unauthorized Role")
+if st.session_state.role == "admin":
+    show_admin_dashboard()
+else:
+    show_user_dashboard()

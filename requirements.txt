@@ -17,6 +17,5 @@ google-generativeai
 lxml
 httpx
 tenacity
-streamlit-authenticator
 bcrypt
-PyYAML
+pyyaml
