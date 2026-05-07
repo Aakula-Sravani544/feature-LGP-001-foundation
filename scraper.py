@@ -26,6 +26,155 @@ HEADERS = {
     "Accept-Language": "en-US,en;q=0.9"
 }
 
+# Sub-regions for major Indian cities
+CITY_SUBREGIONS = {
+    "hyderabad": [
+        "Banjara Hills", "Jubilee Hills", "Hitech City",
+        "Gachibowli", "Secunderabad", "Kukatpally",
+        "Ameerpet", "Madhapur", "Begumpet", "Kondapur",
+        "Manikonda", "Miyapur", "LB Nagar", "Dilsukhnagar",
+        "Mehdipatnam"
+    ],
+    "chennai": [
+        "T Nagar", "Anna Nagar", "Adyar", "Velachery",
+        "Nungambakkam", "Mylapore", "Tambaram", "OMR",
+        "Porur", "Chromepet", "Perambur", "Royapettah",
+        "Egmore", "Kodambakkam", "Guindy"
+    ],
+    "bangalore": [
+        "Koramangala", "Indiranagar", "Whitefield",
+        "Electronic City", "Jayanagar", "HSR Layout",
+        "Marathahalli", "JP Nagar", "Bannerghatta",
+        "BTM Layout", "Rajajinagar", "Malleshwaram",
+        "Hebbal", "Yelahanka", "Sarjapur"
+    ],
+    "mumbai": [
+        "Andheri", "Bandra", "Powai", "Worli",
+        "Malad", "Goregaon", "Juhu", "Kurla",
+        "Borivali", "Thane", "Dadar", "Chembur",
+        "Vashi", "Kandivali", "Mulund"
+    ],
+    "delhi": [
+        "Connaught Place", "Lajpat Nagar", "Dwarka",
+        "Rohini", "Karol Bagh", "Saket", "Noida",
+        "Gurgaon", "Janakpuri", "Pitampura",
+        "Vasant Kunj", "Greater Kailash", "Nehru Place",
+        "Preet Vihar", "Faridabad"
+    ],
+    "vijayawada": [
+        "Benz Circle", "MG Road", "Governorpet",
+        "Labbipet", "Patamata", "Gunadala",
+        "Suryaraopet", "Eluru Road", "Auto Nagar",
+        "Kandrika"
+    ],
+    "guntur": [
+        "Brodipet", "Arundelpet", "Naaz Centre",
+        "Kothapet", "AT Agraharam", "Old Town",
+        "Amaravathi Road", "Brindavan Gardens",
+        "Vidyanagar", "Nallapadu"
+    ]
+}
+
+
+def get_subregions(location: str) -> list:
+    """Get sub-regions for a city."""
+    location_lower = location.lower().strip()
+    for city, regions in CITY_SUBREGIONS.items():
+        if city in location_lower or location_lower in city:
+            return regions
+    # Default — just use the location itself
+    return [location]
+
+
+def search_multi_region(query: str, limit: int = 100) -> list:
+    """
+    Search multiple sub-regions to get 100+ unique leads.
+    Each sub-region query returns 10-20 leads.
+    Stops when limit is reached.
+    """
+    keyword = query.split(" in ")[0] if " in " in query else query
+    location = query.split(" in ")[-1] if " in " in query else "hyderabad"
+
+    subregions = get_subregions(location)
+    print(f"LOG:Multi-region search: {len(subregions)} areas in {location}", flush=True)
+
+    all_leads = []
+    seen_ids = set()
+    seen_names = set()
+
+    for region in subregions:
+        if len(all_leads) >= limit:
+            break
+
+        sub_query = f"{keyword} in {region} {location}"
+        print(f"LOG:Searching: {sub_query}", flush=True)
+
+        try:
+            resp = requests.post(
+                "https://google.serper.dev/maps",
+                headers={
+                    "X-API-KEY": SERPER_API_KEY,
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "q": sub_query,
+                    "gl": "in",
+                    "hl": "en"
+                },
+                timeout=10
+            )
+            places = resp.json().get("places", [])
+            new_count = 0
+
+            for place in places:
+                if len(all_leads) >= limit:
+                    break
+
+                name = place.get("title", "").strip()
+                if not name:
+                    continue
+
+                # Skip duplicates
+                name_lower = name.lower()
+                lead_id = hashlib.md5(name_lower.encode()).hexdigest()
+
+                if lead_id in seen_ids:
+                    continue
+                if name_lower in seen_names:
+                    continue
+
+                seen_ids.add(lead_id)
+                seen_names.add(name_lower)
+
+                lead = get_full_structure()
+                lead["name"] = name
+                lead["address"] = place.get("address", "")
+                lead["phone"] = place.get("phoneNumber", "")
+                lead["website"] = place.get("website", "")
+                lead["rating"] = str(place.get("rating", ""))
+                lead["reviews"] = str(place.get("reviews",
+                    place.get("reviewsCount", "")))
+                lead["category"] = place.get("category",
+                    keyword.title())
+                lead["google_maps_url"] = place.get("cid", "")
+                lead["description"] = place.get("address", "")[:300]
+                lead["sub_region"] = region
+                lead["lead_id"] = lead_id
+
+                all_leads.append(lead)
+                new_count += 1
+                print(f"LOG:✅ {name} | ⭐{lead['rating']} | 📞{lead['phone']}", flush=True)
+
+            print(f"LOG:{region}: {new_count} new leads. Total: {len(all_leads)}", flush=True)
+
+        except Exception as e:
+            print(f"LOG:Error for {region}: {e}", flush=True)
+
+        time.sleep(0.5)
+
+    print(f"LOG:Multi-region complete. {len(all_leads)} unique leads", flush=True)
+    return all_leads[:limit]
+
 def get_full_structure() -> dict:
     """Returns a standardized lead dictionary."""
     return {
@@ -337,22 +486,20 @@ def main():
     print(f"LOG:🚀 LeadPulse Pro Engine | Target: {limit}", flush=True)
     print(f"LOG:Searching: {query}", flush=True)
 
-    # Try Apify first (100+ leads)
-    leads = []
-    if APIFY_API_TOKEN:
-        leads = search_with_apify(query, limit)
-
-    # Fallback to Serper if Apify returns 0
-    if not leads:
-        print(f"LOG:Using Serper Maps fallback...", flush=True)
+    # Use multi-region search for 100 unique leads
+    if limit > 20:
+        leads = search_multi_region(query, limit)
+    else:
         leads = search_with_serper(query, limit)
 
     if not leads:
         print("LOG:No results found.", flush=True)
         return
 
-    print(f"LOG:Enriching {len(leads)} leads...", flush=True)
+    print(f"LOG:Processing {len(leads)} leads...", flush=True)
     for i, lead in enumerate(leads):
+        print(f"LOG:Processing {i+1}/{len(leads)}: {lead.get('name','')[:30]}", flush=True)
+
         if lead.get("website"):
             try:
                 resp = requests.get(lead["website"], timeout=2, headers=HEADERS)
@@ -367,11 +514,10 @@ def main():
                             break
                         except: continue
                 social = {}
-                patterns = {
+                for platform, pattern in {
                     "facebook": r'facebook\.com/[^\s\'"<>\)]{3,50}',
-                    "instagram": r'instagram\.com/[^\s\'"<>\)]{3,50}',
-                }
-                for platform, pattern in patterns.items():
+                    "instagram": r'instagram\.com/[^\s\'"<>\)]{3,50}'
+                }.items():
                     matches = re.findall(pattern, html)
                     for match in matches:
                         clean = match.rstrip('/"\'').strip()
@@ -396,7 +542,7 @@ def main():
         lead = validate_lead(lead)
         print(f"DATA:{json.dumps(lead)}", flush=True)
 
-    print(f"LOG:Complete. Total: {len(leads)}", flush=True)
+    print(f"LOG:Complete. {len(leads)} leads", flush=True)
 
 if __name__ == "__main__":
     main()
