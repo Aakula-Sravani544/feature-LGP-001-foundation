@@ -133,49 +133,44 @@ def get_full_structure() -> dict:
         "validation_notes": "", "sub_region": ""
     }
 
-def search_with_apify(query: str, limit: int = 100) -> list:
-    """Search Google Maps using Apify actor — returns 100+ leads."""
+def search_with_apify_leads(query: str, limit: int = 100) -> list:
+    """Apify Leads Finder — returns 100 leads with real emails."""
     if not APIFY_API_TOKEN:
         print("LOG:No APIFY_API_TOKEN found", flush=True)
         return []
 
-    print(f"LOG:Using Apify Google Maps Scraper...", flush=True)
+    keyword = query.split(" in ")[0].strip() if " in " in query else query
+    location = query.split(" in ")[-1].strip() if " in " in query else "India"
 
-    # Extract keyword and location
-    keyword = query.split(" in ")[0] if " in " in query else query
-    location = query.split(" in ")[-1] if " in " in query else "India"
+    print(f"LOG:Starting Apify Leads Finder for: {keyword} in {location}", flush=True)
 
     try:
-        # Start Apify actor run
+        # Start actor run
         start_resp = requests.post(
-            "https://api.apify.com/v2/acts/compass~crawler-google-places/runs",
+            "https://api.apify.com/v2/acts/IoSHqwTR9YGhzccez/runs",
             headers={
                 "Authorization": f"Bearer {APIFY_API_TOKEN}",
                 "Content-Type": "application/json"
             },
             json={
-                "searchStringsArray": [f"{keyword} in {location}"],
-                "maxCrawledPlacesPerSearch": limit,
-                "language": "en",
-                "countryCode": "in",
-                "includeHistogram": False,
-                "includeOpeningHours": False,
-                "includePeopleAlsoSearch": False,
+                "searchQuery": f"{keyword} {location}",
+                "numberOfLeads": limit,
+                "country": "IN"
             },
             timeout=30
         )
+
         run_data = start_resp.json()
         run_id = run_data.get("data", {}).get("id", "")
 
         if not run_id:
-            print(f"LOG:Apify run failed to start", flush=True)
+            print(f"LOG:Apify failed to start. Response: {run_data}", flush=True)
             return []
 
         print(f"LOG:Apify run started: {run_id}", flush=True)
 
-        # Wait for run to complete
-        import time
-        for attempt in range(30):
+        # Wait for completion — max 5 minutes
+        for attempt in range(60):
             time.sleep(5)
             status_resp = requests.get(
                 f"https://api.apify.com/v2/actor-runs/{run_id}",
@@ -183,11 +178,12 @@ def search_with_apify(query: str, limit: int = 100) -> list:
                 timeout=10
             )
             status = status_resp.json().get("data", {}).get("status", "")
-            print(f"LOG:Apify status: {status}", flush=True)
+            print(f"LOG:Apify status: {status} ({attempt+1}/60)", flush=True)
+
             if status == "SUCCEEDED":
                 break
             elif status in ["FAILED", "ABORTED", "TIMED-OUT"]:
-                print(f"LOG:Apify run failed: {status}", flush=True)
+                print(f"LOG:Apify run {status}", flush=True)
                 return []
 
         # Get results
@@ -198,33 +194,44 @@ def search_with_apify(query: str, limit: int = 100) -> list:
             timeout=30
         )
         items = results_resp.json()
-        print(f"LOG:Apify returned {len(items)} places", flush=True)
+        print(f"LOG:Apify returned {len(items)} leads", flush=True)
 
         leads = []
         seen_ids = set()
 
         for item in items:
             lead = get_full_structure()
-            lead["name"] = item.get("title", "")
-            lead["address"] = item.get("address", "")
-            lead["phone"] = item.get("phone", "")
-            lead["website"] = item.get("website", "")
-            lead["rating"] = str(item.get("totalScore", ""))
-            lead["reviews"] = str(item.get("reviewsCount", ""))
-            lead["category"] = item.get("categoryName", keyword.title())
-            lead["google_maps_url"] = item.get("url", "")
-            lead["description"] = item.get("description", "")[:300]
+
+            # Map Apify fields to LeadPulse structure
+            first = item.get("first_name", "")
+            last = item.get("last_name", "")
+            lead["name"] = f"{first} {last}".strip()
+            lead["email"] = item.get("email", "")
+            lead["phone"] = item.get("mobile_number", item.get("company_phone", ""))
+            lead["website"] = item.get("company_website", "")
+            lead["address"] = f"{item.get('city', '')}, {item.get('state', '')}, {item.get('country', '')}".strip(", ")
+            lead["category"] = item.get("industry", keyword.title())
+            lead["description"] = item.get("job_title", "")
+            lead["google_maps_url"] = item.get("linkedin", "")
+            lead["social_media"] = json.dumps({"linkedin": item.get("linkedin", "")})
+            lead["additional_data"] = json.dumps({
+                "job_title": item.get("job_title", ""),
+                "company_name": item.get("company_name", ""),
+                "company_size": str(item.get("company_size", "")),
+                "seniority": item.get("seniority_level", ""),
+                "keywords": item.get("keywords", "")[:200] if item.get("keywords") else ""
+            })
+            lead["sub_region"] = item.get("city", "")
             lead["lead_id"] = hashlib.md5(
                 lead["name"].lower().encode()
             ).hexdigest()
 
-            if lead["lead_id"] in seen_ids:
+            if lead["lead_id"] in seen_ids or not lead["name"]:
                 continue
             seen_ids.add(lead["lead_id"])
 
-            if lead["name"]:
-                leads.append(lead)
-                print(f"LOG:Found: {lead['name']} | ⭐{lead['rating']} | 📞{lead['phone']}", flush=True)
+            leads.append(lead)
+            print(f"LOG:✅ {lead['name']} | {lead['description']} | {lead['email']}", flush=True)
 
         return leads
 
@@ -432,94 +439,57 @@ def main():
     print(f"LOG:🚀 LeadPulse Pro Engine | Target: {limit}", flush=True)
     print(f"LOG:Searching: {query}", flush=True)
 
-    # Use multi-region for 100 leads, single query for small requests
-    if limit > 20:
-        leads = search_multi_region(query, limit)
-    else:
+    # Try Apify Leads Finder for 100 real leads
+    leads = []
+    if APIFY_API_TOKEN and limit > 20:
+        leads = search_with_apify_leads(query, limit)
+
+    # Fallback to Serper Maps
+    if not leads:
+        print(f"LOG:Using Serper Maps fallback...", flush=True)
         leads = search_with_serper(query, limit)
 
     if not leads:
         print("LOG:No results found.", flush=True)
         return
 
-    print(f"LOG:Enriching and outputting {len(leads)} leads...", flush=True)
+    print(f"LOG:Processing {len(leads)} leads...", flush=True)
 
     for i, lead in enumerate(leads):
         print(f"LOG:Processing {i+1}/{len(leads)}: {lead.get('name','')[:30]}", flush=True)
 
-        # Website enrichment
-        if lead.get("website"):
+        # Enrich email from website if missing
+        if lead.get("website") and not lead.get("email"):
             try:
                 resp = requests.get(lead["website"], timeout=2, headers=HEADERS)
-                html = resp.text
-                soup = BeautifulSoup(html, "html.parser")
-
-                # Email
-                if not lead.get("email"):
-                    for a in soup.find_all("a", href=re.compile(r"^mailto:")):
-                        email = a["href"].replace("mailto:", "").split("?")[0].strip()
-                        try:
-                            validate_email(email)
-                            lead["email"] = email
-                            break
-                        except: continue
-
-                # Social media
-                social = {}
-                for platform, pattern in {
-                    "facebook": r'facebook\.com/[^\s\'"<>\)]{3,50}',
-                    "instagram": r'instagram\.com/[^\s\'"<>\)]{3,50}',
-                    "linkedin": r'linkedin\.com/company/[^\s\'"<>\)]{3,50}'
-                }.items():
-                    matches = re.findall(pattern, html)
-                    for match in matches:
-                        clean = match.rstrip('/"\'').strip()
-                        if len(clean) > 10:
-                            social[platform] = "https://" + clean
-                            break
-                lead["social_media"] = json.dumps(social) if social else ""
-
-                # Tech stack
-                tech = []
-                for tech_name, signals in {
-                    "WordPress": ["wp-content", "wp-includes"],
-                    "Shopify": ["shopify.com", "cdn.shopify"],
-                    "Google Analytics": ["gtag(", "google-analytics"],
-                    "Bootstrap": ["bootstrap.min.css"]
-                }.items():
-                    if any(s in html for s in signals):
-                        tech.append(tech_name)
-                lead["additional_data"] = json.dumps(tech) if tech else ""
-
-            except Exception as e:
-                logger.debug(f"Enrichment failed: {e}")
-                lead["social_media"] = ""
-                lead["additional_data"] = ""
-        else:
-            lead["social_media"] = ""
-            lead["additional_data"] = ""
+                soup = BeautifulSoup(resp.text, "html.parser")
+                for a in soup.find_all("a", href=re.compile(r"^mailto:")):
+                    email = a["href"].replace("mailto:", "").split("?")[0].strip()
+                    try:
+                        validate_email(email)
+                        lead["email"] = email
+                        break
+                    except: continue
+            except: pass
 
         # AI scoring
         if use_ai:
             try:
                 from ai_engine import analyze_single_lead
                 lead = analyze_single_lead(lead)
-            except Exception as e:
-                logger.debug(f"AI failed: {e}")
+            except: pass
         else:
             try:
                 from ai_engine import rule_based_score
                 score = rule_based_score(lead)
                 lead["ai_analysis"] = json.dumps(score)
                 lead["ai_score"] = score.get("score", 0)
-            except Exception as e:
-                logger.debug(f"Rule scoring failed: {e}")
+            except: pass
 
-        # Validate and output immediately
         lead = validate_lead(lead)
         print(f"DATA:{json.dumps(lead)}", flush=True)
 
-    print(f"LOG:✅ Complete. Total leads: {len(leads)}", flush=True)
+    print(f"LOG:✅ Complete. Total: {len(leads)}", flush=True)
 
 if __name__ == "__main__":
     main()
