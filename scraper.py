@@ -143,21 +143,20 @@ def search_with_apify(query: str, limit: int = 50):
         return []
 
     try:
-        keyword = query
-        print(f"LOG: Starting synchronous Apify search for {keyword}", flush=True)
+        print(f"LOG: Starting synchronous Apify search for {query}", flush=True)
 
         run_response = requests.post(
-            f"https://api.apify.com/v2/acts/compass~crawler-google-places/run-sync-get-dataset-items?token={APIFY_API_TOKEN}",
+            f"https://api.apify.com/v2/acts/apify~google-maps-scraper/run-sync-get-dataset-items?token={APIFY_API_TOKEN}",
             json={
-                "searchStringsArray": [keyword],
+                "searchStringsArray": [query],
                 "maxCrawledPlacesPerSearch": limit,
                 "language": "en",
-                "countryCode": "IN"
+                "country": "India"
             },
             timeout=120
         )
 
-        if run_response.status_code != 201 and run_response.status_code != 200:
+        if run_response.status_code != 200:
             print(f"LOG: Apify sync run failed with status {run_response.status_code}", flush=True)
             return []
 
@@ -171,22 +170,15 @@ def search_with_apify(query: str, limit: int = 50):
             lead = get_full_structure()
 
             name = item.get("title", "")
-            phone = item.get("phone", "")
-            website = item.get("website", "")
-            address = item.get("address", "")
-            category = item.get("categoryName", "")
-            maps_url = item.get("url", "")
-
             if not name:
                 continue
 
             lead["name"] = name
-            lead["phone"] = phone
-            lead["website"] = website
-            lead["address"] = address
-            lead["category"] = category
-            lead["google_maps_url"] = maps_url
-            lead["description"] = category
+            lead["phone"] = item.get("phone", "")
+            lead["website"] = item.get("website", "")
+            lead["address"] = item.get("address", "")
+            lead["category"] = item.get("categoryName", "")
+            lead["google_maps_url"] = item.get("url", "")
             lead["rating"] = str(item.get("totalScore", ""))
             lead["reviews"] = str(item.get("reviewsCount", ""))
 
