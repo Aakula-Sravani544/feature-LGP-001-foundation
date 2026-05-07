@@ -28,75 +28,35 @@ HEADERS = {
 
 # Sub-regions for major Indian cities
 CITY_SUBREGIONS = {
-    "hyderabad": [
-        "Banjara Hills", "Jubilee Hills", "Hitech City",
-        "Gachibowli", "Secunderabad", "Kukatpally",
-        "Ameerpet", "Madhapur", "Begumpet", "Kondapur",
-        "Manikonda", "Miyapur", "LB Nagar", "Dilsukhnagar",
-        "Mehdipatnam"
-    ],
-    "chennai": [
-        "T Nagar", "Anna Nagar", "Adyar", "Velachery",
-        "Nungambakkam", "Mylapore", "Tambaram", "OMR",
-        "Porur", "Chromepet", "Perambur", "Royapettah",
-        "Egmore", "Kodambakkam", "Guindy"
-    ],
-    "bangalore": [
-        "Koramangala", "Indiranagar", "Whitefield",
-        "Electronic City", "Jayanagar", "HSR Layout",
-        "Marathahalli", "JP Nagar", "Bannerghatta",
-        "BTM Layout", "Rajajinagar", "Malleshwaram",
-        "Hebbal", "Yelahanka", "Sarjapur"
-    ],
-    "mumbai": [
-        "Andheri", "Bandra", "Powai", "Worli",
-        "Malad", "Goregaon", "Juhu", "Kurla",
-        "Borivali", "Thane", "Dadar", "Chembur",
-        "Vashi", "Kandivali", "Mulund"
-    ],
-    "delhi": [
-        "Connaught Place", "Lajpat Nagar", "Dwarka",
-        "Rohini", "Karol Bagh", "Saket", "Noida",
-        "Gurgaon", "Janakpuri", "Pitampura",
-        "Vasant Kunj", "Greater Kailash", "Nehru Place",
-        "Preet Vihar", "Faridabad"
-    ],
-    "vijayawada": [
-        "Benz Circle", "MG Road", "Governorpet",
-        "Labbipet", "Patamata", "Gunadala",
-        "Suryaraopet", "Eluru Road", "Auto Nagar",
-        "Kandrika"
-    ],
-    "guntur": [
-        "Brodipet", "Arundelpet", "Naaz Centre",
-        "Kothapet", "AT Agraharam", "Old Town",
-        "Amaravathi Road", "Brindavan Gardens",
-        "Vidyanagar", "Nallapadu"
-    ]
+    "hyderabad": ["Banjara Hills", "Jubilee Hills", "Hitech City", "Gachibowli", "Secunderabad", "Kukatpally", "Ameerpet", "Madhapur", "Begumpet", "Kondapur", "Manikonda", "Miyapur", "LB Nagar", "Dilsukhnagar", "Mehdipatnam"],
+    "chennai": ["T Nagar", "Anna Nagar", "Adyar", "Velachery", "Nungambakkam", "Mylapore", "Tambaram", "OMR", "Porur", "Chromepet", "Perambur", "Royapettah", "Egmore", "Kodambakkam", "Guindy"],
+    "bangalore": ["Koramangala", "Indiranagar", "Whitefield", "Electronic City", "Jayanagar", "HSR Layout", "Marathahalli", "JP Nagar", "Bannerghatta", "BTM Layout", "Rajajinagar", "Malleshwaram", "Hebbal", "Yelahanka", "Sarjapur"],
+    "mumbai": ["Andheri", "Bandra", "Powai", "Worli", "Malad", "Goregaon", "Juhu", "Kurla", "Borivali", "Thane", "Dadar", "Chembur", "Vashi", "Kandivali", "Mulund"],
+    "delhi": ["Connaught Place", "Lajpat Nagar", "Dwarka", "Rohini", "Karol Bagh", "Saket", "Noida", "Gurgaon", "Janakpuri", "Pitampura", "Vasant Kunj", "Greater Kailash", "Nehru Place", "Preet Vihar", "Faridabad"],
+    "vijayawada": ["Benz Circle", "MG Road", "Governorpet", "Labbipet", "Patamata", "Gunadala", "Suryaraopet", "Eluru Road", "Auto Nagar", "Kandrika"],
+    "guntur": ["Brodipet", "Arundelpet", "Naaz Centre", "Kothapet", "AT Agraharam", "Old Town", "Amaravathi Road", "Brindavan Gardens", "Vidyanagar", "Nallapadu"],
+    "vizag": ["MVP Colony", "Dwaraka Nagar", "Gajuwaka", "Rushikonda", "Seethammadhara", "Maddilapalem", "Akkayyapalem", "Jagadamba", "Siripuram", "NAD Junction"],
+    "pune": ["Koregaon Park", "Baner", "Hinjewadi", "Wakad", "Kothrud", "Hadapsar", "Viman Nagar", "Kalyani Nagar", "Aundh", "Magarpatta"],
+    "kolkata": ["Park Street", "Salt Lake", "New Town", "Howrah", "Gariahat", "Ballygunge", "Alipore", "Rajarhat", "Dum Dum", "Behala"]
 }
 
 
 def get_subregions(location: str) -> list:
-    """Get sub-regions for a city."""
-    location_lower = location.lower().strip()
+    """Get sub-regions list for a city."""
+    loc = location.lower().strip()
     for city, regions in CITY_SUBREGIONS.items():
-        if city in location_lower or location_lower in city:
+        if city in loc or loc in city:
             return regions
-    # Default — just use the location itself
     return [location]
 
 
 def search_multi_region(query: str, limit: int = 100) -> list:
-    """
-    Search multiple sub-regions to get 100+ unique leads.
-    Each sub-region query returns 10-20 leads.
-    Stops when limit is reached.
-    """
-    keyword = query.split(" in ")[0] if " in " in query else query
-    location = query.split(" in ")[-1] if " in " in query else "hyderabad"
-
+    """Search multiple sub-regions to collect 100 unique leads."""
+    keyword = query.split(" in ")[0].strip() if " in " in query else query
+    location = query.split(" in ")[-1].strip() if " in " in query else "hyderabad"
     subregions = get_subregions(location)
-    print(f"LOG:Multi-region search: {len(subregions)} areas in {location}", flush=True)
+
+    print(f"LOG:Multi-region mode: {len(subregions)} areas | Target: {limit}", flush=True)
 
     all_leads = []
     seen_ids = set()
@@ -107,7 +67,7 @@ def search_multi_region(query: str, limit: int = 100) -> list:
             break
 
         sub_query = f"{keyword} in {region} {location}"
-        print(f"LOG:Searching: {sub_query}", flush=True)
+        print(f"LOG:Searching {region}...", flush=True)
 
         try:
             resp = requests.post(
@@ -116,11 +76,7 @@ def search_multi_region(query: str, limit: int = 100) -> list:
                     "X-API-KEY": SERPER_API_KEY,
                     "Content-Type": "application/json"
                 },
-                json={
-                    "q": sub_query,
-                    "gl": "in",
-                    "hl": "en"
-                },
+                json={"q": sub_query, "gl": "in", "hl": "en"},
                 timeout=10
             )
             places = resp.json().get("places", [])
@@ -129,20 +85,13 @@ def search_multi_region(query: str, limit: int = 100) -> list:
             for place in places:
                 if len(all_leads) >= limit:
                     break
-
                 name = place.get("title", "").strip()
                 if not name:
                     continue
-
-                # Skip duplicates
                 name_lower = name.lower()
                 lead_id = hashlib.md5(name_lower.encode()).hexdigest()
-
-                if lead_id in seen_ids:
+                if lead_id in seen_ids or name_lower in seen_names:
                     continue
-                if name_lower in seen_names:
-                    continue
-
                 seen_ids.add(lead_id)
                 seen_names.add(name_lower)
 
@@ -152,27 +101,24 @@ def search_multi_region(query: str, limit: int = 100) -> list:
                 lead["phone"] = place.get("phoneNumber", "")
                 lead["website"] = place.get("website", "")
                 lead["rating"] = str(place.get("rating", ""))
-                lead["reviews"] = str(place.get("reviews",
-                    place.get("reviewsCount", "")))
-                lead["category"] = place.get("category",
-                    keyword.title())
+                lead["reviews"] = str(place.get("reviews", place.get("reviewsCount", "")))
+                lead["category"] = place.get("category", keyword.title())
                 lead["google_maps_url"] = place.get("cid", "")
                 lead["description"] = place.get("address", "")[:300]
                 lead["sub_region"] = region
                 lead["lead_id"] = lead_id
-
                 all_leads.append(lead)
                 new_count += 1
                 print(f"LOG:✅ {name} | ⭐{lead['rating']} | 📞{lead['phone']}", flush=True)
 
-            print(f"LOG:{region}: {new_count} new leads. Total: {len(all_leads)}", flush=True)
+            print(f"LOG:{region} done: {new_count} new | Total: {len(all_leads)}/{limit}", flush=True)
 
         except Exception as e:
-            print(f"LOG:Error for {region}: {e}", flush=True)
+            print(f"LOG:Error in {region}: {e}", flush=True)
 
         time.sleep(0.5)
 
-    print(f"LOG:Multi-region complete. {len(all_leads)} unique leads", flush=True)
+    print(f"LOG:Multi-region complete. {len(all_leads)} unique leads found.", flush=True)
     return all_leads[:limit]
 
 def get_full_structure() -> dict:
@@ -486,7 +432,7 @@ def main():
     print(f"LOG:🚀 LeadPulse Pro Engine | Target: {limit}", flush=True)
     print(f"LOG:Searching: {query}", flush=True)
 
-    # Use multi-region search for 100 unique leads
+    # Use multi-region for 100 leads, single query for small requests
     if limit > 20:
         leads = search_multi_region(query, limit)
     else:
@@ -496,15 +442,19 @@ def main():
         print("LOG:No results found.", flush=True)
         return
 
-    print(f"LOG:Processing {len(leads)} leads...", flush=True)
+    print(f"LOG:Enriching and outputting {len(leads)} leads...", flush=True)
+
     for i, lead in enumerate(leads):
         print(f"LOG:Processing {i+1}/{len(leads)}: {lead.get('name','')[:30]}", flush=True)
 
+        # Website enrichment
         if lead.get("website"):
             try:
                 resp = requests.get(lead["website"], timeout=2, headers=HEADERS)
                 html = resp.text
                 soup = BeautifulSoup(html, "html.parser")
+
+                # Email
                 if not lead.get("email"):
                     for a in soup.find_all("a", href=re.compile(r"^mailto:")):
                         email = a["href"].replace("mailto:", "").split("?")[0].strip()
@@ -513,10 +463,13 @@ def main():
                             lead["email"] = email
                             break
                         except: continue
+
+                # Social media
                 social = {}
                 for platform, pattern in {
                     "facebook": r'facebook\.com/[^\s\'"<>\)]{3,50}',
-                    "instagram": r'instagram\.com/[^\s\'"<>\)]{3,50}'
+                    "instagram": r'instagram\.com/[^\s\'"<>\)]{3,50}',
+                    "linkedin": r'linkedin\.com/company/[^\s\'"<>\)]{3,50}'
                 }.items():
                     matches = re.findall(pattern, html)
                     for match in matches:
@@ -525,24 +478,48 @@ def main():
                             social[platform] = "https://" + clean
                             break
                 lead["social_media"] = json.dumps(social) if social else ""
-            except: pass
 
+                # Tech stack
+                tech = []
+                for tech_name, signals in {
+                    "WordPress": ["wp-content", "wp-includes"],
+                    "Shopify": ["shopify.com", "cdn.shopify"],
+                    "Google Analytics": ["gtag(", "google-analytics"],
+                    "Bootstrap": ["bootstrap.min.css"]
+                }.items():
+                    if any(s in html for s in signals):
+                        tech.append(tech_name)
+                lead["additional_data"] = json.dumps(tech) if tech else ""
+
+            except Exception as e:
+                logger.debug(f"Enrichment failed: {e}")
+                lead["social_media"] = ""
+                lead["additional_data"] = ""
+        else:
+            lead["social_media"] = ""
+            lead["additional_data"] = ""
+
+        # AI scoring
         if use_ai:
             try:
                 from ai_engine import analyze_single_lead
                 lead = analyze_single_lead(lead)
-            except: pass
+            except Exception as e:
+                logger.debug(f"AI failed: {e}")
         else:
             try:
                 from ai_engine import rule_based_score
-                lead["ai_analysis"] = json.dumps(rule_based_score(lead))
-                lead["ai_score"] = rule_based_score(lead).get("score", 0)
-            except: pass
+                score = rule_based_score(lead)
+                lead["ai_analysis"] = json.dumps(score)
+                lead["ai_score"] = score.get("score", 0)
+            except Exception as e:
+                logger.debug(f"Rule scoring failed: {e}")
 
+        # Validate and output immediately
         lead = validate_lead(lead)
         print(f"DATA:{json.dumps(lead)}", flush=True)
 
-    print(f"LOG:Complete. {len(leads)} leads", flush=True)
+    print(f"LOG:✅ Complete. Total leads: {len(leads)}", flush=True)
 
 if __name__ == "__main__":
     main()
