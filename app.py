@@ -352,7 +352,7 @@ def generation_ui(label_suffix=""):
             max_leads = st.slider(
                 "Max Leads / Session",
                 min_value=10,
-                max_value=100,
+                max_value=1000,
                 value=50,
                 step=10,
                 key=f"max_{label_suffix}"
@@ -608,7 +608,6 @@ def show_admin_dashboard():
 
         # Show all users
         users_list = get_all_users()
-        import pandas as pd
         df_users = pd.DataFrame(users_list)
         st.dataframe(df_users, hide_index=True, width="stretch")
 
