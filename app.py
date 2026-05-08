@@ -499,7 +499,6 @@ def generation_ui(label_suffix=""):
         import time
         time.sleep(2)
         st.rerun()
-           st.rerun()
 
 # ==========================================
 # USER DASHBOARD
