@@ -328,11 +328,21 @@ Return ONLY a JSON array of strings. No other text. No markdown."""
     return combined[:25] # Return top 25 areas to ensure we hit 100 leads
 
 def generation_ui(label_suffix=""):
+    # Import subscription module
+    from subscription import (
+        get_max_leads, can_use_linkedin, can_use_ai,
+        get_upgrade_message, render_upgrade_banner, get_plan
+    )
+
+    # Get current user plan
+    current_plan = st.session_state.get("plan", "Free")
+    max_allowed = get_max_leads(current_plan)
+
     st.markdown(f"### 🔍 Start New Extraction {label_suffix}")
 
     with st.container():
         # Row 1 — Category and Business Type
-        c1, c2 = st.columns(2)
+        c1, c2, c3 = st.columns([2, 2, 1])
         with c1:
             category = st.selectbox(
                 "Business Category",
@@ -353,6 +363,8 @@ def generation_ui(label_suffix=""):
                 placeholder="e.g. Biryani shops, Car wash",
                 key=f"custom_{label_suffix}"
             )
+        with c3:
+            source = st.selectbox("Source", ["Google Maps", "LinkedIn"], key=f"src_{label_suffix}")
 
         # Row 2 — City and Region
         c3, c4 = st.columns(2)
@@ -373,20 +385,25 @@ def generation_ui(label_suffix=""):
         c5, c6, c7 = st.columns([2, 1, 1])
         with c5:
             max_leads = st.slider(
-                "Max Leads / Session",
+                f"Max Leads / Session (Plan limit: {max_allowed})",
                 min_value=10,
-                max_value=1000,
-                value=50,
+                max_value=min(max_allowed, 1000), # Cap slider at 1000 for UI, or use max_allowed
+                value=min(50, max_allowed),
                 step=10,
                 key=f"max_{label_suffix}"
             )
         with c6:
             st.markdown("<br>", unsafe_allow_html=True)
+            ai_allowed = can_use_ai(current_plan)
             use_ai = st.toggle(
                 "🤖 Enable AI Scoring",
                 value=False,
+                disabled=not ai_allowed,
+                help=get_upgrade_message(current_plan, "ai_scoring") if not ai_allowed else "Enable AI lead scoring",
                 key=f"ai_{label_suffix}"
             )
+            if not ai_allowed:
+                st.caption(f"🔒 AI Scoring requires Starter plan. You are on {current_plan}.")
         with c7:
             st.markdown("<br>", unsafe_allow_html=True)
             btn_generate = st.button(
@@ -397,6 +414,18 @@ def generation_ui(label_suffix=""):
             )
 
     if btn_generate:
+        # Enforce lead cap
+        if max_leads > max_allowed:
+            st.error(f"Your {current_plan} plan allows max {max_allowed} leads per session.")
+            render_upgrade_banner(current_plan)
+            return
+
+        # When LinkedIn is selected but not allowed
+        if source == "LinkedIn" and not can_use_linkedin(current_plan):
+            st.error(get_upgrade_message(current_plan, "linkedin"))
+            render_upgrade_banner(current_plan)
+            st.stop()
+
         # Build keyword
         keyword = custom_keyword.strip() if custom_keyword.strip() else category
 
@@ -427,6 +456,55 @@ def generation_ui(label_suffix=""):
             m3_metric = m3.empty()
 
         # Step 1 — Generate sub-regions using AI
+        if source == "LinkedIn":
+            status_text.text("🔍 Searching LinkedIn profiles...")
+            try:
+                from linkedin_scraper import scrape_linkedin
+                
+                # Fetch existing maps leads for cross-linking
+                try:
+                    df_master = database.load_db()
+                    maps_leads = df_master.to_dict('records') if not df_master.empty else []
+                except:
+                    maps_leads = []
+                    
+                profiles = scrape_linkedin(keyword, city if not region else f"{region} {city}", maps_leads=maps_leads, limit=max_leads)
+                
+                for i, profile in enumerate(profiles):
+                    # Apply AI Scoring here so UI updates per lead
+                    if use_ai:
+                        try:
+                            from ai_engine import analyze_single_lead
+                            profile = analyze_single_lead(profile)
+                        except Exception as e:
+                            print(f"LOG:AI Enrichment Error: {e}", flush=True)
+                            
+                    st.session_state.session_leads.append(profile)
+                    progress_bar.progress((i+1)/max(len(profiles),1))
+                    status_text.text(f"LinkedIn: {i+1}/{len(profiles)} profiles collected & scored...")
+                    m1_metric.metric("Total Scraped", i+1)
+                    m2_metric.metric("Valid Leads", i+1)
+                    m3_metric.metric("Duplicates Skipped", 0)
+                    with table_placeholder.container():
+                        df_view = pd.DataFrame(st.session_state.session_leads)
+                        cols = [c for c in ["name","description","website","validation_status"] if c in df_view.columns]
+                        st.dataframe(df_view[cols] if cols else df_view, hide_index=True)
+                
+                database.save_to_db(st.session_state.session_leads)
+                success, msg = google_sheets.save_to_google_sheets(st.session_state.session_leads)
+                if success:
+                    st.success(f"✅ {len(profiles)} LinkedIn profiles saved!")
+                else:
+                    st.warning(f"Saved locally. Sheets: {msg}")
+            except Exception as e:
+                st.error(f"LinkedIn error: {e}")
+            
+            st.session_state.is_scraping = False
+            time.sleep(1)
+            st.rerun()
+            return
+
+        # Step 1 — Generate sub-regions using AI (for Google Maps)
         status_text.text(f"🤖 AI analyzing sub-regions for {region or city}...")
         st.session_state.logs += f"[SYS] Generating sub-regions for {region or city}...\n"
         log_placeholder.markdown(
@@ -715,12 +793,25 @@ with st.sidebar:
         <div class="sidebar-logo">
             🚀 LeadPulse <span>Pro</span>
         </div>
-        <div class="user-info">
-            Logged in as: <strong>{st.session_state.username}</strong><br>
-            Plan: <span style="color:#22C55E">{st.session_state.plan}</span>
-        </div>
         <div class="sidebar-divider"></div>
     """, unsafe_allow_html=True)
+    
+    # Show plan badge in sidebar
+    plan_colors = {
+        "Free": "#94A3B8",
+        "Starter": "#22C55E",
+        "Pro": "#3B82F6",
+        "Enterprise": "#F59E0B"
+    }
+    current_plan = st.session_state.get("plan", "Free")
+    plan_color = plan_colors.get(current_plan, "#94A3B8")
+    st.markdown(f"""
+        <div style="padding:0 1rem 1rem 1rem;">
+            Logged in as: <strong>{st.session_state.username}</strong><br>
+            Plan: <span style="color:{plan_color}; font-weight:700;">{current_plan}</span>
+        </div>
+    """, unsafe_allow_html=True)
+    st.markdown('<div class="sidebar-divider"></div>', unsafe_allow_html=True)
     
     role_label = "Admin Workspace" if st.session_state.role == "admin" else "User Workspace"
     st.markdown(f'<div class="nav-item-active">🏠 {role_label}</div>', unsafe_allow_html=True)
