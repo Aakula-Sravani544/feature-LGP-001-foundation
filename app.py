@@ -242,32 +242,10 @@ def get_stats():
 def get_sub_regions_ai(keyword: str, region: str, city: str) -> list:
     """
     Use Gemini AI to generate detailed sub-regions for a given area.
-    Falls back to hardcoded sub-regions if AI fails.
+    Falls back to hardcoded sub-regions and city-wide hubs if needed.
     """
-    # Try Gemini AI first
-    gemini_key = os.environ.get("GEMINI_API_KEY", "")
-    if gemini_key:
-        try:
-            import google.generativeai as genai
-            genai.configure(api_key=gemini_key)
-            model = genai.GenerativeModel("gemini-1.5-flash")
-            prompt = f"""You are a local area expert for {city}, India.
-For the area "{region}" in {city}, list all specific sub-areas, phases, road numbers, sectors, and localities where {keyword} businesses might be found.
-Be very specific — include road numbers, phase numbers, colony names, sector numbers.
-Example for KPHB Hyderabad: ["KPHB Phase 1", "KPHB Phase 2", "KPHB Phase 3", "KPHB Phase 4", "KPHB Phase 5", "KPHB Phase 6", "KPHB Colony Road 1", "KPHB Colony Road 2", "KPHB Main Road", "Kukatpally Housing Board"]
-Return ONLY a JSON array of strings. No other text. No markdown."""
-
-            response = model.generate_content(prompt)
-            raw = response.text.strip().replace("```json","").replace("```","").strip()
-            import json
-            sub_regions = json.loads(raw)
-            if isinstance(sub_regions, list) and len(sub_regions) > 0:
-                return sub_regions[:15]
-        except Exception as e:
-            st.session_state.logs += f"[SYS] AI sub-region failed: {e}\n"
-
-    # Fallback hardcoded sub-regions
-    fallback = {
+    # Hardcoded Fallbacks
+    specific_area_fallback = {
         "kphb": ["KPHB Phase 1", "KPHB Phase 2", "KPHB Phase 3", "KPHB Phase 4", "KPHB Phase 5", "KPHB Phase 6", "KPHB Main Road", "Kukatpally Main Road", "JNTU Road KPHB", "KPHB Colony"],
         "banjara hills": ["Banjara Hills Road 1", "Banjara Hills Road 2", "Banjara Hills Road 3", "Banjara Hills Road 10", "Banjara Hills Road 12", "Banjara Hills Road 13", "Banjara Hills Road 14"],
         "jubilee hills": ["Jubilee Hills Road 36", "Jubilee Hills Road 45", "Jubilee Hills Check Post", "Jubilee Hills Main Road"],
@@ -283,26 +261,71 @@ Return ONLY a JSON array of strings. No other text. No markdown."""
         "indiranagar": ["Indiranagar 100 Feet Road", "Indiranagar 12th Main", "Indiranagar CMH Road", "Indiranagar Double Road"],
     }
 
-    region_lower = region.lower()
-    for key, regions in fallback.items():
-        if key in region_lower:
-            return regions
-
-    # Generic fallback — use city sub-regions
-    city_fallback = {
-        "hyderabad": ["Banjara Hills", "Jubilee Hills", "Hitech City", "Gachibowli", "Secunderabad", "Kukatpally", "Ameerpet", "Madhapur", "Begumpet", "Kondapur", "Manikonda", "Miyapur", "LB Nagar", "Dilsukhnagar", "Mehdipatnam"],
+    city_hubs_fallback = {
+        "hyderabad": ["Madhapur", "Banjara Hills", "Jubilee Hills", "Hitech City", "Gachibowli", "Secunderabad", "Kukatpally", "Ameerpet", "Begumpet", "Kondapur", "Manikonda", "Miyapur", "LB Nagar", "Dilsukhnagar", "Mehdipatnam"],
         "chennai": ["T Nagar", "Anna Nagar", "Adyar", "Velachery", "Nungambakkam", "Mylapore", "Tambaram", "OMR", "Porur", "Chromepet"],
         "bangalore": ["Koramangala", "Indiranagar", "Whitefield", "Electronic City", "Jayanagar", "HSR Layout", "Marathahalli", "JP Nagar", "Bannerghatta", "BTM Layout"],
         "vijayawada": ["Benz Circle", "MG Road", "Governorpet", "Labbipet", "Patamata", "Gunadala", "Suryaraopet", "Eluru Road", "Auto Nagar", "Kandrika"],
         "guntur": ["Brodipet", "Arundelpet", "Kothapet", "AT Agraharam", "Old Town", "Amaravathi Road", "Vidyanagar", "Nallapadu", "Naaz Centre", "Brindavan Gardens"],
     }
 
-    city_lower = city.lower()
-    for key, regions in city_fallback.items():
-        if key in city_lower:
-            return regions
+    specific_regions = []
+    
+    # 1. Try Gemini AI for specific sub-regions
+    gemini_key = os.environ.get("GEMINI_API_KEY", "")
+    if gemini_key:
+        try:
+            import google.generativeai as genai
+            genai.configure(api_key=gemini_key)
+            model = genai.GenerativeModel("gemini-1.5-flash")
+            prompt = f"""You are a local area expert for {city}, India.
+For the area "{region}" in {city}, list all specific sub-areas, phases, road numbers, sectors, and localities where {keyword} businesses might be found.
+Be very specific — include road numbers, phase numbers, colony names, sector numbers.
+Return ONLY a JSON array of strings. No other text. No markdown."""
+            response = model.generate_content(prompt)
+            raw = response.text.strip().replace("```json","").replace("```","").strip()
+            import json
+            sub_regions = json.loads(raw)
+            if isinstance(sub_regions, list) and len(sub_regions) > 0:
+                specific_regions = sub_regions[:15]
+        except Exception as e:
+            st.session_state.logs += f"[SYS] AI sub-region failed: {e}\n"
 
-    return [region or city]
+    # 2. If AI failed, try hardcoded area fallback
+    if not specific_regions:
+        region_lower = region.lower()
+        for key, regions in specific_area_fallback.items():
+            if key in region_lower:
+                specific_regions = regions
+                break
+
+    # 3. Get City Hubs Fallback
+    city_hubs = []
+    city_lower = city.lower()
+    for key, regions in city_hubs_fallback.items():
+        if key in city_lower:
+            city_hubs = regions
+            break
+
+    # 4. Combine Everything
+    # Rules: Specific first, then City Hubs, No Duplicates
+    combined = []
+    seen = set()
+    
+    for r in specific_regions:
+        if r.lower() not in seen:
+            combined.append(r)
+            seen.add(r.lower())
+            
+    for r in city_hubs:
+        if r.lower() not in seen:
+            combined.append(r)
+            seen.add(r.lower())
+            
+    if not combined:
+        return [region or city]
+        
+    return combined[:25] # Return top 25 areas to ensure we hit 100 leads
 
 def generation_ui(label_suffix=""):
     st.markdown(f"### 🔍 Start New Extraction {label_suffix}")
