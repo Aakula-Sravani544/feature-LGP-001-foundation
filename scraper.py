@@ -208,13 +208,13 @@ def search_with_apify(query: str, limit: int = 50):
         print(f"LOG: Apify error: {e}", flush=True)
         return []
 
-def search_with_serper(query: str, limit: int = 5) -> list:
-    """Search using Serper Maps API — returns rating, reviews, phone directly from Google Maps."""
+def search_with_serper(query: str, limit: int = 10) -> list:
+    """Search using exact query — sub-region already included."""
     if not SERPER_API_KEY:
-        print("LOG:ERROR - SERPER_API_KEY not found!", flush=True)
+        print("LOG:No SERPER_API_KEY found!", flush=True)
         return []
 
-    print(f"LOG:Using Serper Maps API...", flush=True)
+    print(f"LOG:Serper Maps search: {query}", flush=True)
     leads = []
     seen_names = set()
 
@@ -225,22 +225,18 @@ def search_with_serper(query: str, limit: int = 5) -> list:
                 "X-API-KEY": SERPER_API_KEY,
                 "Content-Type": "application/json"
             },
-            json={
-                "q": query,
-                "gl": "in",
-                "hl": "en"
-            },
+            json={"q": query, "gl": "in", "hl": "en"},
             timeout=10
         )
         data = resp.json()
         places = data.get("places", [])
-        print(f"LOG:Serper Maps returned {len(places)} places", flush=True)
+        print(f"LOG:Serper returned {len(places)} places for: {query}", flush=True)
 
         for place in places[:limit*2]:
             name = place.get("title", "").strip()
-            if not name or name in seen_names:
+            if not name or name.lower() in seen_names:
                 continue
-            seen_names.add(name)
+            seen_names.add(name.lower())
 
             lead = get_full_structure()
             lead["name"] = name
@@ -248,58 +244,20 @@ def search_with_serper(query: str, limit: int = 5) -> list:
             lead["phone"] = place.get("phoneNumber", "")
             lead["website"] = place.get("website", "")
             lead["rating"] = str(place.get("rating", ""))
-            lead["reviews"] = str(place.get("reviews", place.get("reviewsCount", place.get("ratingCount", ""))))
+            lead["reviews"] = str(place.get("reviews", place.get("reviewsCount", "")))
             lead["category"] = place.get("category", query.split()[0].title())
             lead["google_maps_url"] = place.get("cid", "")
             lead["description"] = place.get("address", "")[:300]
-            lead["lead_id"] = hashlib.md5(
-                name.lower().encode()
-            ).hexdigest()
-
-            if name and len(name) > 3:
-                leads.append(lead)
-                print(f"LOG:Found: {name} | Rating:{lead['rating']} | Phone:{lead['phone']}", flush=True)
+            lead["sub_region"] = query
+            lead["lead_id"] = hashlib.md5(name.lower().encode()).hexdigest()
+            leads.append(lead)
+            print(f"LOG:✅ {name} | ⭐{lead['rating']} | 📞{lead['phone']}", flush=True)
 
             if len(leads) >= limit:
                 break
 
     except Exception as e:
-        print(f"LOG:Serper Maps error: {e}", flush=True)
-        logger.error(f"Serper Maps failed: {e}")
-
-    # If maps returns 0, fallback to web search
-    if not leads:
-        print(f"LOG:Maps returned 0. Trying web search fallback...", flush=True)
-        try:
-            resp = requests.post(
-                "https://google.serper.dev/search",
-                headers={
-                    "X-API-KEY": SERPER_API_KEY,
-                    "Content-Type": "application/json"
-                },
-                json={
-                    "q": f"{query} contact phone email",
-                    "num": 10,
-                    "gl": "in"
-                },
-                timeout=10
-            )
-            data = resp.json()
-            for r in data.get("organic", [])[:limit]:
-                name = r.get("title", "").strip()
-                if not name or name in seen_names:
-                    continue
-                seen_names.add(name)
-                lead = get_full_structure()
-                lead["name"] = name
-                lead["website"] = r.get("link", "")
-                lead["description"] = r.get("snippet", "")[:300]
-                lead["category"] = query.split()[0].title()
-                lead["lead_id"] = hashlib.md5(name.lower().encode()).hexdigest()
-                leads.append(lead)
-                print(f"LOG:Fallback found: {name}", flush=True)
-        except Exception as e:
-            print(f"LOG:Web fallback error: {e}", flush=True)
+        print(f"LOG:Serper error: {e}", flush=True)
 
     return leads
 
@@ -402,45 +360,57 @@ def main():
     if len(sys.argv) < 2:
         return
     query = sys.argv[1]
-    # Set limit cap to 100
-    limit = min(int(sys.argv[2]) if len(sys.argv) > 2 else 10, 100)
+    limit = min(int(sys.argv[2]) if len(sys.argv) > 2 else 10, 20)
     use_ai = sys.argv[3] == "1" if len(sys.argv) > 3 else False
 
     print(f"LOG:🚀 LeadPulse Pro Engine | Target: {limit}", flush=True)
-    print(f"LOG:Searching: {query}", flush=True)
+    print(f"LOG:Query: {query}", flush=True)
 
-    # FIRST try Apify
-    leads = search_with_apify(query, limit)
-
-    # If no leads, fallback to Serper
-    if not leads:
-        print(f"LOG:Apify failed or returned 0 leads. Falling back to Serper Maps...", flush=True)
-        leads = search_with_serper(query, limit)
+    # Search with exact query (sub-region already in query)
+    leads = search_with_serper(query, limit)
 
     if not leads:
-        print("LOG:No results found.", flush=True)
+        print(f"LOG:No results for: {query}", flush=True)
         return
 
-    print(f"LOG:Processing {len(leads)} leads...", flush=True)
-
+    # Enrich each lead
     for i, lead in enumerate(leads):
         print(f"LOG:Processing {i+1}/{len(leads)}: {lead.get('name','')[:30]}", flush=True)
 
-        # Enrich email from website if missing
-        if lead.get("website") and not lead.get("email"):
+        if lead.get("website"):
             try:
                 resp = requests.get(lead["website"], timeout=2, headers=HEADERS)
-                soup = BeautifulSoup(resp.text, "html.parser")
-                for a in soup.find_all("a", href=re.compile(r"^mailto:")):
-                    email = a["href"].replace("mailto:", "").split("?")[0].strip()
-                    try:
-                        validate_email(email)
-                        lead["email"] = email
-                        break
-                    except: continue
-            except: pass
+                html = resp.text
+                soup = BeautifulSoup(html, "html.parser")
 
-        # AI scoring
+                if not lead.get("email"):
+                    for a in soup.find_all("a", href=re.compile(r"^mailto:")):
+                        email = a["href"].replace("mailto:", "").split("?")[0].strip()
+                        try:
+                            validate_email(email)
+                            lead["email"] = email
+                            break
+                        except: continue
+
+                social = {}
+                for platform, pattern in {
+                    "facebook": r'facebook\.com/[^\s\'"<>\)]{3,50}',
+                    "instagram": r'instagram\.com/[^\s\'"<>\)]{3,50}'
+                }.items():
+                    matches = re.findall(pattern, html)
+                    for match in matches:
+                        clean = match.rstrip('/"\'').strip()
+                        if len(clean) > 10:
+                            social[platform] = "https://" + clean
+                            break
+                lead["social_media"] = json.dumps(social) if social else ""
+
+            except Exception as e:
+                logger.debug(f"Enrichment failed: {e}")
+                lead["social_media"] = ""
+        else:
+            lead["social_media"] = ""
+
         if use_ai:
             try:
                 from ai_engine import analyze_single_lead
@@ -457,7 +427,10 @@ def main():
         lead = validate_lead(lead)
         print(f"DATA:{json.dumps(lead)}", flush=True)
 
-    print(f"LOG:✅ Complete. Total: {len(leads)}", flush=True)
+    print(f"LOG:✅ Done: {len(leads)} leads from {query}", flush=True)
+
+if __name__ == "__main__":
+    main()
 
 if __name__ == "__main__":
     main()

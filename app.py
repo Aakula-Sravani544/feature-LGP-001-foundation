@@ -239,171 +239,267 @@ def get_stats():
 # ==========================================
 # GENERATION COMPONENT (SHARED)
 # ==========================================
+def get_sub_regions_ai(keyword: str, region: str, city: str) -> list:
+    """
+    Use Gemini AI to generate detailed sub-regions for a given area.
+    Falls back to hardcoded sub-regions if AI fails.
+    """
+    # Try Gemini AI first
+    gemini_key = os.environ.get("GEMINI_API_KEY", "")
+    if gemini_key:
+        try:
+            import google.generativeai as genai
+            genai.configure(api_key=gemini_key)
+            model = genai.GenerativeModel("gemini-1.5-flash")
+            prompt = f"""You are a local area expert for {city}, India.
+For the area "{region}" in {city}, list all specific sub-areas, phases, road numbers, sectors, and localities where {keyword} businesses might be found.
+Be very specific — include road numbers, phase numbers, colony names, sector numbers.
+Example for KPHB Hyderabad: ["KPHB Phase 1", "KPHB Phase 2", "KPHB Phase 3", "KPHB Phase 4", "KPHB Phase 5", "KPHB Phase 6", "KPHB Colony Road 1", "KPHB Colony Road 2", "KPHB Main Road", "Kukatpally Housing Board"]
+Return ONLY a JSON array of strings. No other text. No markdown."""
+
+            response = model.generate_content(prompt)
+            raw = response.text.strip().replace("```json","").replace("```","").strip()
+            import json
+            sub_regions = json.loads(raw)
+            if isinstance(sub_regions, list) and len(sub_regions) > 0:
+                return sub_regions[:15]
+        except Exception as e:
+            st.session_state.logs += f"[SYS] AI sub-region failed: {e}\n"
+
+    # Fallback hardcoded sub-regions
+    fallback = {
+        "kphb": ["KPHB Phase 1", "KPHB Phase 2", "KPHB Phase 3", "KPHB Phase 4", "KPHB Phase 5", "KPHB Phase 6", "KPHB Main Road", "Kukatpally Main Road", "JNTU Road KPHB", "KPHB Colony"],
+        "banjara hills": ["Banjara Hills Road 1", "Banjara Hills Road 2", "Banjara Hills Road 3", "Banjara Hills Road 10", "Banjara Hills Road 12", "Banjara Hills Road 13", "Banjara Hills Road 14"],
+        "jubilee hills": ["Jubilee Hills Road 36", "Jubilee Hills Road 45", "Jubilee Hills Check Post", "Jubilee Hills Main Road"],
+        "hitech city": ["Hitech City Main Road", "Madhapur Hitech City", "Cyber Towers Hitech City", "Hitech City Phase 1", "Hitech City Phase 2"],
+        "gachibowli": ["Gachibowli Main Road", "Gachibowli Stadium Road", "Financial District Gachibowli", "ISB Road Gachibowli"],
+        "kukatpally": ["Kukatpally Main Road", "KPHB Kukatpally", "Moosapet Kukatpally", "Bhavani Nagar Kukatpally"],
+        "ameerpet": ["Ameerpet Main Road", "SR Nagar Ameerpet", "Punjagutta Ameerpet", "Erramanzil Ameerpet"],
+        "secunderabad": ["Secunderabad Main Road", "SD Road Secunderabad", "MG Road Secunderabad", "Paradise Secunderabad"],
+        "begumpet": ["Begumpet Main Road", "Begumpet Colony", "Somajiguda Begumpet", "Raj Bhavan Road Begumpet"],
+        "t nagar": ["T Nagar Main Road", "Usman Road T Nagar", "Venkatnarayana Road T Nagar", "GN Chetty Road T Nagar"],
+        "anna nagar": ["Anna Nagar Main Road", "Anna Nagar 2nd Avenue", "Anna Nagar Tower", "Anna Nagar West"],
+        "koramangala": ["Koramangala 1st Block", "Koramangala 4th Block", "Koramangala 5th Block", "Koramangala 6th Block", "Koramangala 7th Block"],
+        "indiranagar": ["Indiranagar 100 Feet Road", "Indiranagar 12th Main", "Indiranagar CMH Road", "Indiranagar Double Road"],
+    }
+
+    region_lower = region.lower()
+    for key, regions in fallback.items():
+        if key in region_lower:
+            return regions
+
+    # Generic fallback — use city sub-regions
+    city_fallback = {
+        "hyderabad": ["Banjara Hills", "Jubilee Hills", "Hitech City", "Gachibowli", "Secunderabad", "Kukatpally", "Ameerpet", "Madhapur", "Begumpet", "Kondapur", "Manikonda", "Miyapur", "LB Nagar", "Dilsukhnagar", "Mehdipatnam"],
+        "chennai": ["T Nagar", "Anna Nagar", "Adyar", "Velachery", "Nungambakkam", "Mylapore", "Tambaram", "OMR", "Porur", "Chromepet"],
+        "bangalore": ["Koramangala", "Indiranagar", "Whitefield", "Electronic City", "Jayanagar", "HSR Layout", "Marathahalli", "JP Nagar", "Bannerghatta", "BTM Layout"],
+        "vijayawada": ["Benz Circle", "MG Road", "Governorpet", "Labbipet", "Patamata", "Gunadala", "Suryaraopet", "Eluru Road", "Auto Nagar", "Kandrika"],
+        "guntur": ["Brodipet", "Arundelpet", "Kothapet", "AT Agraharam", "Old Town", "Amaravathi Road", "Vidyanagar", "Nallapadu", "Naaz Centre", "Brindavan Gardens"],
+    }
+
+    city_lower = city.lower()
+    for key, regions in city_fallback.items():
+        if key in city_lower:
+            return regions
+
+    return [region or city]
+
 def generation_ui(label_suffix=""):
     st.markdown(f"### 🔍 Start New Extraction {label_suffix}")
-    
+
     with st.container():
-        st.markdown('<div class="metric-card" style="text-align: left; padding: 20px;">', unsafe_allow_html=True)
-        c1, c2, c3 = st.columns([2, 2, 1])
+        # Row 1 — Category and Business Type
+        c1, c2 = st.columns(2)
         with c1:
-            keyword = st.text_input("Target Keyword", placeholder="e.g. Real Estate", key=f"kw_{label_suffix}")
+            category = st.selectbox(
+                "Business Category",
+                [
+                    "Restaurants", "Hotels", "Hospitals", "Clinics",
+                    "IT Companies", "Schools", "Colleges", "Banks",
+                    "Gyms", "Salons", "Bakeries", "Cafes",
+                    "Pharmacies", "Real Estate", "Law Firms",
+                    "Chartered Accountants", "Architects", "Dentists",
+                    "Coaching Centers", "Garments", "Electronics",
+                    "Auto Dealers", "Logistics", "Custom..."
+                ],
+                key=f"cat_{label_suffix}"
+            )
         with c2:
-            location = st.text_input("Location", placeholder="e.g. Hyderabad", key=f"loc_{label_suffix}")
+            custom_keyword = st.text_input(
+                "Custom Keyword (optional)",
+                placeholder="e.g. Biryani shops, Car wash",
+                key=f"custom_{label_suffix}"
+            )
+
+        # Row 2 — City and Region
+        c3, c4 = st.columns(2)
         with c3:
-            source = st.selectbox("Source", ["Google Maps", "LinkedIn", "Website"], key=f"src_{label_suffix}")
-            
-        c4, c5, c6 = st.columns([2, 1, 1])
+            city = st.text_input(
+                "City",
+                placeholder="e.g. Hyderabad",
+                key=f"city_{label_suffix}"
+            )
         with c4:
-            max_leads = st.slider("Max Leads / Session", min_value=10, max_value=1000, value=100, step=10, key=f"max_{label_suffix}")
+            region = st.text_input(
+                "Region / Area",
+                placeholder="e.g. KPHB, Banjara Hills",
+                key=f"region_{label_suffix}"
+            )
+
+        # Row 3 — Max leads, AI toggle, Source
+        c5, c6, c7 = st.columns([2, 1, 1])
         with c5:
-            st.markdown("<br>", unsafe_allow_html=True)
-            use_ai = st.toggle("🤖 Enable AI Scoring", value=False, key=f"ai_{label_suffix}")
+            max_leads = st.slider(
+                "Max Leads / Session",
+                min_value=10,
+                max_value=100,
+                value=50,
+                step=10,
+                key=f"max_{label_suffix}"
+            )
         with c6:
             st.markdown("<br>", unsafe_allow_html=True)
-            btn_generate = st.button("🚀 Generate Leads", disabled=st.session_state.is_scraping, key=f"btn_{label_suffix}", use_container_width=True)
-        st.markdown('</div><br>', unsafe_allow_html=True)
-        
-    if btn_generate:
-        query = f"{keyword} in {location}" if keyword and location else keyword or location
-        if not query:
-            st.warning("Please enter at least a Keyword or Location.")
-        elif source == "LinkedIn":
-            st.session_state.is_scraping = True
-            st.session_state.session_leads = []
-            progress_bar = st.progress(0)
-            status_text = st.empty()
-            table_placeholder = st.empty()
-            metrics_placeholder = st.empty()
-            with metrics_placeholder.container():
-                m1, m2, m3 = st.columns(3)
-                m1_metric = m1.empty()
-                m2_metric = m2.empty()
-                m3_metric = m3.empty()
-            status_text.text("🔍 Searching LinkedIn profiles...")
-            try:
-                from linkedin_scraper import scrape_linkedin
-                
-                # Fetch existing maps leads for cross-linking
-                try:
-                    df_master = database.load_db()
-                    maps_leads = df_master.to_dict('records') if not df_master.empty else []
-                except:
-                    maps_leads = []
-                    
-                profiles = scrape_linkedin(keyword, location, maps_leads=maps_leads, limit=max_leads)
-                
-                for i, profile in enumerate(profiles):
-                    # Apply AI Scoring here so UI updates per lead
-                    if use_ai:
-                        try:
-                            from ai_engine import analyze_single_lead
-                            profile = analyze_single_lead(profile, use_ai=True)
-                        except Exception as e:
-                            print(f"LOG:AI Enrichment Error: {e}", flush=True)
-                            
-                    st.session_state.session_leads.append(profile)
-                    progress_bar.progress((i+1)/max(len(profiles),1))
-                    status_text.text(f"LinkedIn: {i+1}/{len(profiles)} profiles collected & scored...")
-                    m1_metric.metric("Total Scraped", i+1)
-                    m2_metric.metric("Valid Leads", i+1)
-                    m3_metric.metric("Duplicates Skipped", 0)
-                    with table_placeholder.container():
-                        df_view = pd.DataFrame(st.session_state.session_leads)
-                        cols = [c for c in ["full_name","job_title","company_name","linkedin_url","validation_status"] if c in df_view.columns]
-                        st.dataframe(df_view[cols] if cols else df_view, hide_index=True)
-                database.save_to_db(st.session_state.session_leads)
-                success, msg = google_sheets.save_to_google_sheets(st.session_state.session_leads)
-                if success:
-                    st.success(f"✅ {len(profiles)} LinkedIn profiles saved!")
-                else:
-                    st.warning(f"Saved locally. Sheets: {msg}")
-            except Exception as e:
-                st.error(f"LinkedIn error: {e}")
-            st.session_state.is_scraping = False
-            time.sleep(1)
-            st.rerun()
+            use_ai = st.toggle(
+                "🤖 Enable AI Scoring",
+                value=False,
+                key=f"ai_{label_suffix}"
+            )
+        with c7:
+            st.markdown("<br>", unsafe_allow_html=True)
+            btn_generate = st.button(
+                "🚀 Generate Leads",
+                disabled=st.session_state.is_scraping,
+                key=f"btn_{label_suffix}",
+                use_container_width=True
+            )
 
-        elif source == "Website":
-            st.info("Website scraper runs automatically during Google Maps extraction.")
+    if btn_generate:
+        # Build keyword
+        keyword = custom_keyword.strip() if custom_keyword.strip() else category
+
+        if not city:
+            st.warning("Please enter a city name.")
+            return
+
+        # Build base query
+        if region.strip():
+            base_query = f"{keyword} in {region} {city}"
         else:
-            st.session_state.is_scraping = True
-            st.session_state.session_leads = []
-            st.session_state.logs = ""
-            database.log_action(st.session_state.username, f"Started Scraping: {query}")
-            
-            # Progress bar
-            progress_bar = st.progress(0)
-            status_text = st.empty()
-            
-            log_placeholder = st.empty()
-            metrics_placeholder = st.empty()
-            table_placeholder = st.empty()
-            
-            target_total = max_leads
-            batch_size = 10
-            collected_count = 0
-            
-            with metrics_placeholder.container():
-                m1, m2, m3 = st.columns(3)
-                m1_metric = m1.empty()
-                m2_metric = m2.empty()
-                m3_metric = m3.empty()
-            
-            while collected_count < target_total:
-                batch_target = min(batch_size, target_total - collected_count)
-                status_text.text(f"🔄 Batch Extraction: {collected_count}/{target_total} leads collected...")
-                
-                ai_flag = "1" if use_ai else "0"
-                process = subprocess.Popen(
-                    [sys.executable, "scraper.py", query, str(batch_target), ai_flag],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT,
-                    text=True,
-                    bufsize=1,
-                    universal_newlines=True
-                )
-                
-                duplicates_skipped = 0
-                for line in process.stdout:
-                    if line.startswith("DATA:"):
-                        try:
-                            data = json.loads(line.replace("DATA:", "").strip())
-                            # Unique by name check
-                            if not any(l.get('name') == data.get('name') for l in st.session_state.session_leads):
-                                st.session_state.session_leads.append(data)
-                                database.save_to_db([data])
-                                collected_count = len(st.session_state.session_leads)
-                            else:
-                                duplicates_skipped += 1
-                            
-                            valid_count = len([x for x in st.session_state.session_leads if x.get('validation_status') == 'Valid'])
-                            m1_metric.metric("Total Scraped", collected_count)
-                            m2_metric.metric("Valid Leads", valid_count)
-                            m3_metric.metric("Duplicates Skipped", duplicates_skipped)
-                            
-                            progress_bar.progress(min(collected_count / target_total, 1.0))
-                            
-                            with table_placeholder.container():
-                                df_view = pd.DataFrame(st.session_state.session_leads).iloc[::-1]
-                                cols = [c for c in ["name", "phone", "email", "validation_status"] if c in df_view.columns]
-                                st.dataframe(df_view[cols] if cols else df_view, width="stretch", hide_index=True)
-                        except: pass
-                    elif line.startswith("LOG:"):
-                        msg = line.replace("LOG:", "").strip()
-                        st.session_state.logs += f"[SYS] {msg}\n"
-                        log_placeholder.markdown(f'<div class="log-box">{st.session_state.logs[-3000:]}</div>', unsafe_allow_html=True)
-                
-                process.wait()
-                if collected_count >= target_total: break
-                time.sleep(3) # Memory cooldown for Render
-            
-            status_text.text("✅ Extraction Complete! Syncing to Cloud...")
-            success, msg = google_sheets.save_to_google_sheets(st.session_state.session_leads)
-            if success: st.success(msg)
-            
-            st.session_state.is_scraping = False
-            time.sleep(2)
-            st.rerun()
+            base_query = f"{keyword} in {city}"
+
+        st.session_state.is_scraping = True
+        st.session_state.session_leads = []
+        st.session_state.logs = ""
+
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+        log_placeholder = st.empty()
+        metrics_placeholder = st.empty()
+        table_placeholder = st.empty()
+
+        with metrics_placeholder.container():
+            m1, m2, m3 = st.columns(3)
+            m1_metric = m1.empty()
+            m2_metric = m2.empty()
+            m3_metric = m3.empty()
+
+        # Step 1 — Generate sub-regions using AI
+        status_text.text(f"🤖 AI analyzing sub-regions for {region or city}...")
+        st.session_state.logs += f"[SYS] Generating sub-regions for {region or city}...\n"
+        log_placeholder.markdown(
+            f'<div class="log-box">{st.session_state.logs}</div>',
+            unsafe_allow_html=True
+        )
+
+        sub_regions = get_sub_regions_ai(keyword, region or city, city)
+
+        st.session_state.logs += f"[SYS] Found {len(sub_regions)} sub-regions\n"
+        for sr in sub_regions:
+            st.session_state.logs += f"[SYS]  → {sr}\n"
+        log_placeholder.markdown(
+            f'<div class="log-box">{st.session_state.logs[-3000:]}</div>',
+            unsafe_allow_html=True
+        )
+
+        # Step 2 — Scrape each sub-region
+        collected_count = 0
+        duplicates_skipped = 0
+        target_total = max_leads
+
+        for sub_region in sub_regions:
+            if collected_count >= target_total:
+                break
+
+            query = f"{keyword} in {sub_region} {city}"
+            status_text.text(f"🔄 Scraping: {query} ({collected_count}/{target_total})")
+            st.session_state.logs += f"[SYS] Scraping: {query}\n"
+            log_placeholder.markdown(
+                f'<div class="log-box">{st.session_state.logs[-3000:]}</div>',
+                unsafe_allow_html=True
+            )
+
+            ai_flag = "1" if use_ai else "0"
+            batch_target = min(10, target_total - collected_count)
+
+            process = subprocess.Popen(
+                [sys.executable, "scraper.py", query, str(batch_target), ai_flag],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1,
+                universal_newlines=True
+            )
+
+            for line in process.stdout:
+                line = line.strip()
+                if line.startswith("DATA:"):
+                    try:
+                        data = json.loads(line.replace("DATA:", "").strip())
+                        # Check duplicate by name
+                        existing_names = [l.get("name","").lower() for l in st.session_state.session_leads]
+                        if data.get("name","").lower() not in existing_names:
+                            st.session_state.session_leads.append(data)
+                            database.save_to_db([data])
+                            collected_count = len(st.session_state.session_leads)
+                        else:
+                            duplicates_skipped += 1
+
+                        valid_count = len([x for x in st.session_state.session_leads if x.get("validation_status") == "Valid"])
+                        m1_metric.metric("Total Scraped", collected_count)
+                        m2_metric.metric("Valid Leads", valid_count)
+                        m3_metric.metric("Duplicates Skipped", duplicates_skipped)
+                        progress_bar.progress(min(collected_count / target_total, 1.0))
+
+                        with table_placeholder.container():
+                            df_view = pd.DataFrame(st.session_state.session_leads).iloc[::-1]
+                            cols = [c for c in ["name", "phone", "email", "sub_region", "validation_status"] if c in df_view.columns]
+                            st.dataframe(df_view[cols] if cols else df_view, hide_index=True)
+                    except: pass
+
+                elif line.startswith("LOG:"):
+                    msg = line.replace("LOG:", "").strip()
+                    st.session_state.logs += f"[SYS] {msg}\n"
+                    log_placeholder.markdown(
+                        f'<div class="log-box">{st.session_state.logs[-3000:]}</div>',
+                        unsafe_allow_html=True
+                    )
+
+            process.wait()
+
+            if collected_count >= target_total:
+                break
+
+        # Step 3 — Save to Google Sheets
+        status_text.text("✅ Extraction Complete! Syncing to Cloud...")
+        success, msg = google_sheets.save_to_google_sheets(st.session_state.session_leads)
+        if success:
+            st.success(f"✅ {collected_count} leads collected from {len(sub_regions)} sub-regions!")
+
+        st.session_state.is_scraping = False
+        import time
+        time.sleep(2)
+        st.rerun()
+           st.rerun()
 
 # ==========================================
 # USER DASHBOARD
