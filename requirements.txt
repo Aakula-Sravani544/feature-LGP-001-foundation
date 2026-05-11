@@ -19,3 +19,4 @@ httpx
 tenacity
 bcrypt
 pyyaml
+stripe

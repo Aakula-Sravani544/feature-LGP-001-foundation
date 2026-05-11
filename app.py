@@ -20,9 +20,17 @@ from auth import (
     check_session_expiry, get_user_info, get_all_users,
     register_user, delete_user, update_user_plan, update_password
 )
+from stripe_handler import (
+    render_billing_tab,
+    render_admin_billing,
+    check_payment_success
+)
 
 # Initialize session
 init_session()
+
+# Check for payment success from Stripe redirect
+check_payment_success()
 
 # Check session expiry
 if st.session_state.authenticated and check_session_expiry():
@@ -624,29 +632,38 @@ def show_user_dashboard():
     with c4: st.markdown(f'<div class="metric-card"><div class="metric-label">Cloud Sync</div><div class="metric-value" style="color: {gs_color}; font-size: 1.4rem;">{gs_text}</div></div>', unsafe_allow_html=True)
     
     st.markdown("<br><hr><br>", unsafe_allow_html=True)
-    generation_ui()
     
-    if not st.session_state.is_scraping:
-        if st.session_state.session_leads:
-            st.markdown("### ⚡ My Leads Table (Session Results)")
-            df = pd.DataFrame(st.session_state.session_leads)
-            
-            # Filtering UI
-            col1, col2 = st.columns([2, 2])
-            status_filter = col1.multiselect("Filter by Validation Status", options=df['validation_status'].unique() if 'validation_status' in df.columns else ["Valid"])
-            if status_filter and 'validation_status' in df.columns:
-                df = df[df['validation_status'].isin(status_filter)]
+    # In show_user_dashboard() add a Billing tab
+    tabs = st.tabs(["🚀 Generate", "⚡ My Leads", "💳 Billing"])
+
+    with tabs[0]:
+        generation_ui()
+
+    with tabs[1]:
+        if not st.session_state.is_scraping:
+            if st.session_state.session_leads:
+                st.markdown("### ⚡ My Leads Table (Session Results)")
+                df = pd.DataFrame(st.session_state.session_leads)
                 
-            user_cols = ["name", "business_name", "address", "phone", "email", "rating", "reviews", "review_count", "category", "validation_status"]
-            st.dataframe(df[[c for c in user_cols if c in df.columns]], width="stretch", hide_index=True)
-            
-            c1, c2, c3 = st.columns([1, 1, 2])
-            csv = df.to_csv(index=False).encode('utf-8')
-            c1.download_button("📥 Export CSV", csv, "session_leads.csv", "text/csv", use_container_width=True)
-            json_data = df.to_json(orient='records').encode('utf-8')
-            c2.download_button("📥 Export JSON", json_data, "session_leads.json", "application/json", use_container_width=True)
-        else:
-            st.info("💡 Your session results will appear here. Start an extraction above to begin!")
+                # Filtering UI
+                col1, col2 = st.columns([2, 2])
+                status_filter = col1.multiselect("Filter by Validation Status", options=df['validation_status'].unique() if 'validation_status' in df.columns else ["Valid"])
+                if status_filter and 'validation_status' in df.columns:
+                    df = df[df['validation_status'].isin(status_filter)]
+                    
+                user_cols = ["name", "business_name", "address", "phone", "email", "rating", "reviews", "review_count", "category", "validation_status"]
+                st.dataframe(df[[c for c in user_cols if c in df.columns]], width="stretch", hide_index=True)
+                
+                c1, c2, c3 = st.columns([1, 1, 2])
+                csv = df.to_csv(index=False).encode('utf-8')
+                c1.download_button("📥 Export CSV", csv, "session_leads.csv", "text/csv", use_container_width=True)
+                json_data = df.to_json(orient='records').encode('utf-8')
+                c2.download_button("📥 Export JSON", json_data, "session_leads.json", "application/json", use_container_width=True)
+            else:
+                st.info("💡 Your session results will appear here. Start an extraction above to begin!")
+
+    with tabs[2]:
+        render_billing_tab()
 
 # ==========================================
 # ADMIN DASHBOARD
@@ -665,7 +682,15 @@ def show_admin_dashboard():
     
     st.markdown("<br><hr><br>", unsafe_allow_html=True)
     
-    tabs = st.tabs(["🚀 Generate", "🗄️ Master Database", "👥 User Management", "📜 Activity Logs", "🛠️ System Settings"])
+    # In show_admin_dashboard() tabs list add Revenue
+    tabs = st.tabs([
+        "🚀 Generate",
+        "🗄️ Master Database",
+        "👥 User Management",
+        "📜 Activity Logs",
+        "💰 Revenue",
+        "🛠️ System Settings"
+    ])
     
     with tabs[0]:
         generation_ui("(Admin)")
@@ -761,7 +786,11 @@ def show_admin_dashboard():
         st.markdown("### User System Logs")
         st.dataframe(database.get_logs(), width="stretch")
 
+    # Add this tab handler
     with tabs[4]:
+        render_admin_billing()
+
+    with tabs[5]:
         st.markdown("### Advanced Settings")
         if st.button("🔄 Force Cloud Sync"):
             with st.spinner("Syncing..."):
