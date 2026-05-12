@@ -790,29 +790,166 @@ def show_admin_dashboard():
     with tabs[4]:
         render_admin_billing()
 
-    with tabs[5]:
-        st.markdown("### Advanced Settings")
-        if st.button("🔄 Force Cloud Sync"):
-            with st.spinner("Syncing..."):
-                df_local = database.load_db()
-                if not df_local.empty:
-                    success, msg = google_sheets.save_to_google_sheets(df_local.to_dict('records'))
-                    if success: st.success(msg)
-                    else: st.error(msg)
-        
-        db_type = "PostgreSQL (Render)" if os.environ.get("DATABASE_URL") else "SQLite (Local)"
-        st.info(f"💾 **Active Database Backend:** {db_type}")
-        
-        if not google_sheets.check_connection():
-            st.error(f"⚠️ Connection Error: {google_sheets.get_last_error()}")
-            
+    with tabs[5]:  # System Settings tab
+        st.markdown("### ⚙️ System Settings")
+
+        # ==========================================
+        # SECTION 1 — Cloud Sync
+        # ==========================================
+        st.markdown("#### ☁️ Google Sheets Sync")
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("🔄 Force Cloud Sync", use_container_width=True):
+                with st.spinner("Syncing..."):
+                    df_local = database.load_db()
+                    if not df_local.empty:
+                        success, msg = google_sheets.save_to_google_sheets(
+                            df_local.to_dict("records")
+                        )
+                        if success:
+                            st.success(f"✅ {msg}")
+                        else:
+                            st.error(f"❌ {msg}")
+                    else:
+                        st.warning("No leads to sync")
+        with col2:
+            gs_connected = google_sheets.check_connection()
+            if gs_connected:
+                st.success("✅ Google Sheets: Connected")
+            else:
+                st.error(f"❌ Google Sheets: Offline")
+
         st.markdown("---")
-        if st.button("🚨 Wipe Entire System"):
-            database.clear_all_leads()
-            google_sheets.clear_sheet_data()
-            st.success("Wipe Complete")
-            time.sleep(1)
-            st.rerun()
+
+        # ==========================================
+        # SECTION 2 — Database Info
+        # ==========================================
+        st.markdown("#### 💾 Database")
+        db_type = "PostgreSQL (Render)" if os.environ.get("DATABASE_URL") else "SQLite (Local)"
+        df_master = database.load_db()
+        col3, col4, col5 = st.columns(3)
+        with col3:
+            st.metric("Database Type", db_type)
+        with col4:
+            st.metric("Total Leads", len(df_master))
+        with col5:
+            valid_count = len(df_master[df_master["validation_status"] == "Valid"]) if "validation_status" in df_master.columns else 0
+            st.metric("Valid Leads", valid_count)
+
+        st.markdown("---")
+
+        # ==========================================
+        # SECTION 3 — API Keys Status
+        # ==========================================
+        st.markdown("#### 🔑 API Keys Status")
+        api_keys = {
+            "SERPER_API_KEY": os.environ.get("SERPER_API_KEY", ""),
+            "GEMINI_API_KEY": os.environ.get("GEMINI_API_KEY", ""),
+            "APOLLO_API_KEY": os.environ.get("APOLLO_API_KEY", ""),
+            "STRIPE_SECRET_KEY": os.environ.get("STRIPE_SECRET_KEY", ""),
+            "APIFY_API_TOKEN": os.environ.get("APIFY_API_TOKEN", "")
+        }
+        col6, col7 = st.columns(2)
+        for i, (key, value) in enumerate(api_keys.items()):
+            with col6 if i % 2 == 0 else col7:
+                if value:
+                    masked = value[:8] + "..." + value[-4:]
+                    st.success(f"✅ {key}: {masked}")
+                else:
+                    st.error(f"❌ {key}: Not configured")
+
+        st.markdown("---")
+
+        # ==========================================
+        # SECTION 4 — Scraping Settings
+        # ==========================================
+        st.markdown("#### 🕷️ Scraping Settings")
+        col8, col9 = st.columns(2)
+        with col8:
+            scrape_delay = st.slider(
+                "Scrape Delay (seconds)",
+                min_value=1,
+                max_value=10,
+                value=int(os.environ.get("SCRAPE_DELAY_SECONDS", 3)),
+                help="Minimum delay between requests"
+            )
+            st.caption(f"Current: {os.environ.get('SCRAPE_DELAY_SECONDS', '3')}s")
+        with col9:
+            app_env = os.environ.get("APP_ENV", "development")
+            st.info(f"**Environment:** {app_env}")
+            st.info(f"**App URL:** {os.environ.get('APP_URL', 'Not set')}")
+
+        st.markdown("---")
+
+        # ==========================================
+        # SECTION 5 — Data Management
+        # ==========================================
+        st.markdown("#### 🗑️ Data Management")
+        col10, col11, col12 = st.columns(3)
+        with col10:
+            if st.button("📥 Export Master CSV", use_container_width=True):
+                if not df_master.empty:
+                    csv = df_master.to_csv(index=False).encode("utf-8")
+                    st.download_button(
+                        "Download CSV",
+                        csv,
+                        "leadpulse_master.csv",
+                        "text/csv"
+                    )
+        with col11:
+            if st.button("📊 Export Master JSON", use_container_width=True):
+                if not df_master.empty:
+                    json_data = df_master.to_json(orient="records").encode("utf-8")
+                    st.download_button(
+                        "Download JSON",
+                        json_data,
+                        "leadpulse_master.json",
+                        "application/json"
+                    )
+        with col12:
+            st.markdown("<br>", unsafe_allow_html=True)
+            if st.button("🚨 Wipe Entire System", use_container_width=True, type="primary"):
+                database.clear_all_leads()
+                google_sheets.clear_sheet_data()
+                st.success("✅ System wiped")
+                time.sleep(1)
+                st.rerun()
+
+        st.markdown("---")
+
+        # ==========================================
+        # SECTION 6 — System Health
+        # ==========================================
+        st.markdown("#### 🏥 System Health")
+        col13, col14, col15, col16 = st.columns(4)
+        with col13:
+            st.metric("Serper Credits", "Check serper.dev")
+        with col14:
+            st.metric("Gemini Quota", "60 req/min free")
+        with col15:
+            st.metric("Apollo Credits", "Check apollo.io")
+        with col16:
+            st.metric("Render Plan", "Free Tier")
+
+        st.markdown("---")
+
+        # ==========================================
+        # SECTION 7 — About
+        # ==========================================
+        st.markdown("#### ℹ️ About LeadPulse Pro")
+        st.markdown("""
+        | Item | Detail |
+        |---|---|
+        | **Version** | v1.0 — Phase 2 Complete |
+        | **Project Code** | LGP-2025-001 |
+        | **Build Days** | 14 of 21 complete |
+        | **Stack** | Streamlit + Python + Serper + Gemini + Stripe |
+        | **Deployment** | Render Free Tier |
+        | **Database** | SQLite / PostgreSQL |
+        | **AI Provider** | Google Gemini 1.5 Flash |
+        | **Search API** | Serper Maps |
+        | **Payment** | Stripe Test Mode |
+        """)
 
 # ==========================================
 # MAIN ROUTING
