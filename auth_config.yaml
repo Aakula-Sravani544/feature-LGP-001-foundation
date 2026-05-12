@@ -1,0 +1,15 @@
+users:
+  admin:
+    created_at: '2026-05-12'
+    email: admin@leadpulse.com
+    name: Admin User
+    password: $2b$12$yLA./u66O7c8cUgikAhlz.PIOvtcnLSyENwM0gmrf/0BE7HWBWPqq
+    plan: Enterprise
+    role: admin
+  user:
+    created_at: '2026-05-12'
+    email: user@leadpulse.com
+    name: Regular User
+    password: $2b$12$KiEWn5nGxlVuYPv4X4WfY.CChnCIPlRDHdR4s9RroIUymC7JVysMe
+    plan: Starter
+    role: user
