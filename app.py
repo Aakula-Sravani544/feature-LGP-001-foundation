@@ -612,57 +612,297 @@ def generation_ui(label_suffix=""):
 # ==========================================
 # USER DASHBOARD
 # ==========================================
+def show_user_analytics(username: str) -> None:
+    """
+    Day 15 — User Dashboard Analytics
+    5 charts using plotly:
+    1. Leads this month counter
+    2. Valid/Invalid donut chart
+    3. Top categories bar chart
+    4. Leads by sub-region chart
+    5. Session history table
+    """
+    try:
+        import plotly.express as px
+        import plotly.graph_objects as go
+        import pandas as pd
+        from datetime import datetime, timedelta
+
+        # Load user leads from database
+        df = database.load_db()
+
+        if df.empty:
+            st.info("No leads data yet. Generate leads to see analytics.")
+            return
+
+        # ==========================================
+        # METRIC 1 — Leads This Month Counter
+        # ==========================================
+        st.markdown("### 📊 Your Analytics Dashboard")
+
+        today = datetime.now()
+        current_month = today.strftime("%Y-%m")
+        last_month = (today - timedelta(days=30)).strftime("%Y-%m")
+
+        date_col = "scraped_date" if "scraped_date" in df.columns else "timestamp"
+        if date_col in df.columns:
+            df[date_col] = df[date_col].astype(str)
+            this_month_leads = df[df[date_col].str.startswith(current_month)]
+            last_month_leads = df[df[date_col].str.startswith(last_month)]
+            this_count = len(this_month_leads)
+            last_month_leads_list = last_month_leads.to_dict('records')
+            last_count = len(last_month_leads_list)
+            delta = this_count - last_count
+        else:
+            this_count = len(df)
+            delta = 0
+
+        # Metric cards row
+        m1, m2, m3, m4 = st.columns(4)
+        with m1:
+            st.metric(
+                "Leads This Month",
+                this_count,
+                delta=f"{delta:+d} vs last month"
+            )
+        with m2:
+            valid = len(df[df.get("validation_status", pd.Series(dtype='object')) == "Valid"]) if "validation_status" in df.columns else 0
+            st.metric("Valid Leads", valid)
+        with m3:
+            total = len(df)
+            quality = int((valid / total * 100)) if total > 0 else 0
+            st.metric("Data Quality", f"{quality}%")
+        with m4:
+            categories = df["category"].nunique() if "category" in df.columns else 0
+            st.metric("Categories", categories)
+
+        st.markdown("---")
+
+        # ==========================================
+        # CHART 1 — Valid/Invalid Donut Chart
+        # ==========================================
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.markdown("**Validation Status Distribution**")
+            if "validation_status" in df.columns:
+                status_counts = df["validation_status"].value_counts().reset_index()
+                status_counts.columns = ["Status", "Count"]
+                colors = {
+                    "Valid": "#22C55E",
+                    "Invalid": "#EF4444",
+                    "Pending": "#F59E0B"
+                }
+                color_list = [colors.get(s, "#94A3B8") for s in status_counts["Status"]]
+                fig1 = go.Figure(data=[go.Pie(
+                    labels=status_counts["Status"],
+                    values=status_counts["Count"],
+                    hole=0.5,
+                    marker_colors=color_list
+                )])
+                fig1.update_layout(
+                    height=300,
+                    margin=dict(t=20, b=20, l=20, r=20),
+                    showlegend=True,
+                    paper_bgcolor="rgba(0,0,0,0)",
+                    plot_bgcolor="rgba(0,0,0,0)"
+                )
+                st.plotly_chart(fig1, use_container_width=True)
+            else:
+                st.info("No validation data available")
+
+        # ==========================================
+        # CHART 2 — Top Categories Bar Chart
+        # ==========================================
+        with col2:
+            st.markdown("**Top 10 Business Categories**")
+            if "category" in df.columns:
+                cat_counts = df["category"].value_counts().head(10).reset_index()
+                cat_counts.columns = ["Category", "Count"]
+                fig2 = px.bar(
+                    cat_counts,
+                    x="Count",
+                    y="Category",
+                    orientation="h",
+                    color="Count",
+                    color_continuous_scale="Blues",
+                    height=300
+                )
+                fig2.update_layout(
+                    margin=dict(t=20, b=20, l=20, r=20),
+                    paper_bgcolor="rgba(0,0,0,0)",
+                    plot_bgcolor="rgba(0,0,0,0)",
+                    showlegend=False,
+                    coloraxis_showscale=False
+                )
+                fig2.update_xaxes(showgrid=False)
+                fig2.update_yaxes(showgrid=False)
+                st.plotly_chart(fig2, use_container_width=True)
+            else:
+                st.info("No category data available")
+
+        st.markdown("---")
+
+        # ==========================================
+        # CHART 3 — Leads by Sub-Region Chart
+        # ==========================================
+        col3, col4 = st.columns(2)
+
+        with col3:
+            st.markdown("**Leads by Sub-Region**")
+            if "sub_region" in df.columns:
+                region_counts = df[df["sub_region"].notna() & (df["sub_region"] != "")]
+                if not region_counts.empty:
+                    region_counts = region_counts["sub_region"].value_counts().head(10).reset_index()
+                    region_counts.columns = ["Sub-Region", "Count"]
+                    fig3 = px.bar(
+                        region_counts,
+                        x="Sub-Region",
+                        y="Count",
+                        color="Count",
+                        color_continuous_scale="Greens",
+                        height=300
+                    )
+                    fig3.update_layout(
+                        margin=dict(t=20, b=20, l=20, r=20),
+                        paper_bgcolor="rgba(0,0,0,0)",
+                        plot_bgcolor="rgba(0,0,0,0)",
+                        xaxis_tickangle=-45,
+                        coloraxis_showscale=False
+                    )
+                    fig3.update_xaxes(showgrid=False)
+                    fig3.update_yaxes(showgrid=False)
+                    st.plotly_chart(fig3, use_container_width=True)
+                else:
+                    st.info("No sub-region data available")
+            else:
+                st.info("No sub-region data available")
+
+        # ==========================================
+        # CHART 4 — Leads Over Time Line Chart
+        # ==========================================
+        with col4:
+            st.markdown("**Leads Collected Over Time**")
+            if date_col in df.columns:
+                try:
+                    df["date_only"] = pd.to_datetime(
+                        df[date_col].str[:10],
+                        errors="coerce"
+                    )
+                    daily = df.groupby("date_only").size().reset_index(name="Count")
+                    daily = daily.sort_values("date_only")
+                    fig4 = px.line(
+                        daily,
+                        x="date_only",
+                        y="Count",
+                        markers=True,
+                        height=300,
+                        color_discrete_sequence=["#2563EB"]
+                    )
+                    fig4.update_layout(
+                        margin=dict(t=20, b=20, l=20, r=20),
+                        paper_bgcolor="rgba(0,0,0,0)",
+                        plot_bgcolor="rgba(0,0,0,0)",
+                        xaxis_title="Date",
+                        yaxis_title="Leads"
+                    )
+                    fig4.update_xaxes(showgrid=False)
+                    fig4.update_yaxes(showgrid=False)
+                    st.plotly_chart(fig4, use_container_width=True)
+                except Exception as e:
+                    st.info(f"Timeline chart unavailable: {e}")
+            else:
+                st.info("No date data available")
+
+        st.markdown("---")
+
+        # ==========================================
+        # CHART 5 — Session History Table
+        # ==========================================
+        st.markdown("**📋 Session History**")
+        if date_col in df.columns:
+            try:
+                df["date_only"] = pd.to_datetime(
+                    df[date_col].str[:10],
+                    errors="coerce"
+                )
+                session_history = df.groupby("date_only").agg(
+                    leads_collected=("lead_id", "count"),
+                    valid_leads=("validation_status", lambda x: (x == "Valid").sum()),
+                    categories=("category", lambda x: ", ".join(x.unique()[:3]))
+                ).reset_index()
+                session_history = session_history.sort_values(
+                    "date_only", ascending=False
+                ).head(10)
+                session_history.columns = [
+                    "Date", "Leads Collected",
+                    "Valid Leads", "Categories"
+                ]
+                st.dataframe(
+                    session_history,
+                    hide_index=True,
+                    use_container_width=True
+                )
+            except Exception as e:
+                st.info(f"Session history unavailable: {e}")
+        else:
+            st.info("No session history available")
+
+    except ImportError:
+        st.error("Plotly not installed. Add 'plotly' to requirements.txt")
+    except Exception as e:
+        st.error(f"Analytics error: {e}")
+
 def show_user_dashboard():
     st.markdown('<h1 class="main-title">User Workspace</h1>', unsafe_allow_html=True)
-    st.markdown('<p class="sub-title">Session results, filtering, and lead monitoring</p>', unsafe_allow_html=True)
-    
+
+    # Metric cards at top
     total_db, today_db, quality_pct = get_stats()
-    
     c1, c2, c3, c4 = st.columns(4)
-    with c1: st.markdown(f'<div class="metric-card"><div class="metric-label">Session Leads</div><div class="metric-value">{len(st.session_state.session_leads)}</div></div>', unsafe_allow_html=True)
-    with c2: st.markdown(f'<div class="metric-card"><div class="metric-label">Data Accuracy</div><div class="metric-value">{quality_pct}%</div></div>', unsafe_allow_html=True)
-    
-    status_text = "ACTIVE" if st.session_state.is_scraping else "IDLE"
-    status_badge = "badge-success" if st.session_state.is_scraping else "badge-idle"
-    with c3: st.markdown(f'<div class="metric-card"><div class="metric-label">Engine Status</div><div class="metric-value"><span class="badge {status_badge}">{status_text}</span></div></div>', unsafe_allow_html=True)
-    
-    gs_connected = google_sheets.check_connection()
-    gs_color = "#22C55E" if gs_connected else "#EF4444"
-    gs_text = "Connected" if gs_connected else "Offline"
-    with c4: st.markdown(f'<div class="metric-card"><div class="metric-label">Cloud Sync</div><div class="metric-value" style="color: {gs_color}; font-size: 1.4rem;">{gs_text}</div></div>', unsafe_allow_html=True)
-    
+    with c1:
+        st.markdown(f'<div class="metric-card"><div class="metric-label">Session Leads</div><div class="metric-value">{len(st.session_state.session_leads)}</div></div>', unsafe_allow_html=True)
+    with c2:
+        st.markdown(f'<div class="metric-card"><div class="metric-label">Data Accuracy</div><div class="metric-value">{quality_pct}%</div></div>', unsafe_allow_html=True)
+    with c3:
+        status_text = "ACTIVE" if st.session_state.is_scraping else "IDLE"
+        st.markdown(f'<div class="metric-card"><div class="metric-label">Engine Status</div><div class="metric-value">{status_text}</div></div>', unsafe_allow_html=True)
+    with c4:
+        gs_connected = google_sheets.check_connection()
+        gs_text = "Connected" if gs_connected else "Offline"
+        st.markdown(f'<div class="metric-card"><div class="metric-label">Cloud Sync</div><div class="metric-value">{gs_text}</div></div>', unsafe_allow_html=True)
+
     st.markdown("<br><hr><br>", unsafe_allow_html=True)
-    
-    # In show_user_dashboard() add a Billing tab
-    tabs = st.tabs(["🚀 Generate", "⚡ My Leads", "💳 Billing"])
+
+    # Tabs
+    tabs = st.tabs(["🚀 Generate", "⚡ My Leads", "📊 Analytics", "💳 Billing"])
 
     with tabs[0]:
         generation_ui()
 
     with tabs[1]:
-        if not st.session_state.is_scraping:
-            if st.session_state.session_leads:
-                st.markdown("### ⚡ My Leads Table (Session Results)")
-                df = pd.DataFrame(st.session_state.session_leads)
-                
-                # Filtering UI
-                col1, col2 = st.columns([2, 2])
-                status_filter = col1.multiselect("Filter by Validation Status", options=df['validation_status'].unique() if 'validation_status' in df.columns else ["Valid"])
-                if status_filter and 'validation_status' in df.columns:
-                    df = df[df['validation_status'].isin(status_filter)]
-                    
-                user_cols = ["name", "business_name", "address", "phone", "email", "rating", "reviews", "review_count", "category", "validation_status"]
-                st.dataframe(df[[c for c in user_cols if c in df.columns]], width="stretch", hide_index=True)
-                
-                c1, c2, c3 = st.columns([1, 1, 2])
-                csv = df.to_csv(index=False).encode('utf-8')
-                c1.download_button("📥 Export CSV", csv, "session_leads.csv", "text/csv", use_container_width=True)
-                json_data = df.to_json(orient='records').encode('utf-8')
-                c2.download_button("📥 Export JSON", json_data, "session_leads.json", "application/json", use_container_width=True)
-            else:
-                st.info("💡 Your session results will appear here. Start an extraction above to begin!")
+        if st.session_state.session_leads:
+            st.markdown("### ⚡ My Leads Table")
+            df = pd.DataFrame(st.session_state.session_leads)
+            status_filter = st.multiselect(
+                "Filter by Status",
+                options=df["validation_status"].unique() if "validation_status" in df.columns else []
+            )
+            if status_filter and "validation_status" in df.columns:
+                df = df[df["validation_status"].isin(status_filter)]
+            user_cols = ["name", "address", "phone", "email", "rating", "reviews", "category", "validation_status"]
+            st.dataframe(df[[c for c in user_cols if c in df.columns]], hide_index=True)
+            c1, c2 = st.columns(2)
+            csv = df.to_csv(index=False).encode("utf-8")
+            c1.download_button("📥 Export CSV", csv, "leads.csv", "text/csv")
+            json_data = df.to_json(orient="records").encode("utf-8")
+            c2.download_button("📥 Export JSON", json_data, "leads.json", "application/json")
+        else:
+            st.info("💡 Generate leads first to see your leads table.")
 
     with tabs[2]:
+        show_user_analytics(st.session_state.get("username", ""))
+
+    with tabs[3]:
         render_billing_tab()
 
 # ==========================================
