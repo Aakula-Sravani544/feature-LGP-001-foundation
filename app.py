@@ -829,7 +829,7 @@ def show_user_analytics(username: str) -> None:
                 session_history = df.groupby("date_only").agg(
                     leads_collected=("lead_id", "count"),
                     valid_leads=("validation_status", lambda x: (x == "Valid").sum()),
-                    categories=("category", lambda x: ", ".join(x.unique()[:3]))
+                    categories=("category", lambda x: ", ".join([str(i) for i in x.dropna().unique()[:3]]))
                 ).reset_index()
                 session_history = session_history.sort_values(
                     "date_only", ascending=False
