@@ -911,131 +911,284 @@ def show_user_dashboard():
 def show_admin_dashboard():
     st.markdown('<h1 class="main-title">Admin Dashboard</h1>', unsafe_allow_html=True)
     st.markdown('<p class="sub-title">Full system access, user management, and master database control</p>', unsafe_allow_html=True)
-    
-    total_db, today_db, quality_pct = get_stats()
-    
-    c1, c2, c3, c4 = st.columns(4)
-    with c1: st.markdown(f'<div class="metric-card"><div class="metric-label">Total Leads</div><div class="metric-value">{total_db}</div></div>', unsafe_allow_html=True)
-    with c2: st.markdown(f'<div class="metric-card"><div class="metric-label">Active Users</div><div class="metric-value">2</div></div>', unsafe_allow_html=True)
-    with c3: st.markdown(f'<div class="metric-card"><div class="metric-label">Global Quality</div><div class="metric-value">{quality_pct}%</div></div>', unsafe_allow_html=True)
-    with c4: st.markdown(f'<div class="metric-card"><div class="metric-label">Active Subscriptions</div><div class="metric-value">0</div></div>', unsafe_allow_html=True)
-    
+
+    # ==========================================
+    # PLATFORM OVERVIEW PANEL
+    # ==========================================
+    from auth import get_all_users
+    from subscription import get_plan
+
+    all_users = get_all_users()
+    df_master = database.load_db()
+    total_leads = len(df_master)
+    valid_leads = len(df_master[df_master["validation_status"] == "Valid"]) if "validation_status" in df_master.columns else 0
+    quality_pct = int((valid_leads / total_leads * 100)) if total_leads > 0 else 0
+
+    # Calculate MRR
+    plan_revenue = {"Free": 0, "Starter": 29, "Pro": 79, "Enterprise": 500}
+    mrr = sum(plan_revenue.get(u.get("plan", "Free"), 0) for u in all_users)
+
+    # Top row metrics
+    c1, c2, c3, c4, c5 = st.columns(5)
+    with c1:
+        st.markdown(f'<div class="metric-card"><div class="metric-label">Total Leads</div><div class="metric-value">{total_leads}</div></div>', unsafe_allow_html=True)
+    with c2:
+        st.markdown(f'<div class="metric-card"><div class="metric-label">Active Users</div><div class="metric-value">{len(all_users)}</div></div>', unsafe_allow_html=True)
+    with c3:
+        st.markdown(f'<div class="metric-card"><div class="metric-label">Global Quality</div><div class="metric-value">{quality_pct}%</div></div>', unsafe_allow_html=True)
+    with c4:
+        st.markdown(f'<div class="metric-card"><div class="metric-label">MRR</div><div class="metric-value">${mrr}</div></div>', unsafe_allow_html=True)
+    with c5:
+        paid_users = sum(1 for u in all_users if u.get("plan", "Free") != "Free")
+        st.markdown(f'<div class="metric-card"><div class="metric-label">Paid Users</div><div class="metric-value">{paid_users}</div></div>', unsafe_allow_html=True)
+
     st.markdown("<br><hr><br>", unsafe_allow_html=True)
-    
-    # In show_admin_dashboard() tabs list add Revenue
+
+    # ==========================================
+    # TABS
+    # ==========================================
     tabs = st.tabs([
         "🚀 Generate",
         "🗄️ Master Database",
         "👥 User Management",
         "📜 Activity Logs",
+        "📊 Analytics",
         "💰 Revenue",
         "🛠️ System Settings"
     ])
-    
+
+    # ==========================================
+    # TAB 1 — Generate
+    # ==========================================
     with tabs[0]:
         generation_ui("(Admin)")
         if not st.session_state.is_scraping and st.session_state.session_leads:
             st.markdown("### ⚡ Session Preview")
-            st.dataframe(pd.DataFrame(st.session_state.session_leads), width="stretch")
+            st.dataframe(pd.DataFrame(st.session_state.session_leads), hide_index=True)
 
+    # ==========================================
+    # TAB 2 — Master Database
+    # ==========================================
     with tabs[1]:
-        st.markdown("### Master Lead Repository")
-        df_master = database.load_db()
+        st.markdown("### 🗄️ Master Lead Repository")
         if not df_master.empty:
-            # Analytics UI
-            c1, c2 = st.columns(2)
-            with c1:
+            # Analytics charts
+            import plotly.express as px
+            col1, col2 = st.columns(2)
+            with col1:
                 st.markdown("**Top Categories**")
-                cat_counts = df_master['category'].value_counts().head(5)
-                if not cat_counts.empty:
-                    st.bar_chart(cat_counts)
-                else:
-                    st.info("No category data available for charting.")
-            
-            with c2:
-                st.markdown("**Validation Status Distribution**")
-                val_counts = df_master['validation_status'].value_counts()
-                if not val_counts.empty:
-                    st.bar_chart(val_counts)
-                else:
-                    st.info("No validation data available for charting.")
-            
+                if "category" in df_master.columns:
+                    cat_counts = df_master["category"].value_counts().head(8).reset_index()
+                    cat_counts.columns = ["Category", "Count"]
+                    fig = px.bar(cat_counts, x="Category", y="Count", color="Count", color_continuous_scale="Blues", height=280)
+                    fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", margin=dict(t=10,b=10,l=10,r=10), coloraxis_showscale=False)
+                    fig.update_xaxes(showgrid=False, tickangle=-45)
+                    fig.update_yaxes(showgrid=False)
+                    st.plotly_chart(fig, use_container_width=True)
+            with col2:
+                st.markdown("**Validation Distribution**")
+                if "validation_status" in df_master.columns:
+                    val_counts = df_master["validation_status"].value_counts().reset_index()
+                    val_counts.columns = ["Status", "Count"]
+                    colors = {"Valid": "#22C55E", "Invalid": "#EF4444", "Pending": "#F59E0B"}
+                    color_list = [colors.get(s, "#94A3B8") for s in val_counts["Status"]]
+                    import plotly.graph_objects as go
+                    fig2 = go.Figure(data=[go.Pie(labels=val_counts["Status"], values=val_counts["Count"], hole=0.5, marker_colors=color_list)])
+                    fig2.update_layout(paper_bgcolor="rgba(0,0,0,0)", height=280, margin=dict(t=10,b=10,l=10,r=10))
+                    st.plotly_chart(fig2, use_container_width=True)
+
             st.markdown("---")
-            st.dataframe(df_master, width="stretch", hide_index=True)
-            
-            col1, col2 = st.columns([1, 3])
-            csv_master = df_master.to_csv(index=False).encode('utf-8')
-            col1.download_button("📥 Export Master CSV", csv_master, "leadpulse_master.csv", "text/csv", use_container_width=True)
+            # Filter options
+            col3, col4, col5 = st.columns(3)
+            with col3:
+                status_filter = st.multiselect("Filter by Status", df_master["validation_status"].unique() if "validation_status" in df_master.columns else [])
+            with col4:
+                cat_filter = st.multiselect("Filter by Category", df_master["category"].unique() if "category" in df_master.columns else [])
+            with col5:
+                search_term = st.text_input("Search by name", placeholder="Type to search...")
+
+            filtered_df = df_master.copy()
+            if status_filter:
+                filtered_df = filtered_df[filtered_df["validation_status"].isin(status_filter)]
+            if cat_filter:
+                filtered_df = filtered_df[filtered_df["category"].isin(cat_filter)]
+            if search_term:
+                filtered_df = filtered_df[filtered_df["name"].str.contains(search_term, case=False, na=False)]
+
+            st.markdown(f"**Showing {len(filtered_df)} of {len(df_master)} leads**")
+            st.dataframe(filtered_df, hide_index=True, use_container_width=True)
+
+            # Export buttons
+            col6, col7, col8 = st.columns(3)
+            with col6:
+                csv = filtered_df.to_csv(index=False).encode("utf-8")
+                st.download_button("📥 Export CSV", csv, "master_leads.csv", "text/csv", use_container_width=True)
+            with col7:
+                json_data = filtered_df.to_json(orient="records").encode("utf-8")
+                st.download_button("📥 Export JSON", json_data, "master_leads.json", "application/json", use_container_width=True)
+            with col8:
+                st.metric("Filtered Leads", len(filtered_df))
         else:
-            st.info("No leads in database yet. Start an extraction to see results here!")
+            st.info("No leads in database yet.")
 
+    # ==========================================
+    # TAB 3 — User Management (CRUD)
+    # ==========================================
     with tabs[2]:
-        st.markdown("### User Management")
+        st.markdown("### 👥 User Management")
 
-        # Show all users
-        users_list = get_all_users()
-        df_users = pd.DataFrame(users_list)
-        st.dataframe(df_users, hide_index=True, width="stretch")
+        # Users table
+        if all_users:
+            df_users = pd.DataFrame(all_users)
+            st.dataframe(df_users, hide_index=True, use_container_width=True)
+        else:
+            st.info("No users found")
 
-        # Create new user
-        with st.expander("+ Create New User"):
-            u_name = st.text_input("Username", key="new_u_name")
-            u_pass = st.text_input("Password", type="password", key="new_u_pass")
-            u_role = st.selectbox("Role", ["user", "admin"], key="new_u_role")
-            u_plan = st.selectbox("Plan", ["Free","Starter","Pro","Enterprise"], key="new_u_plan")
-            u_email = st.text_input("Email", key="new_u_email")
-            if st.button("Create User", key="create_user_btn"):
-                success, msg = register_user(u_name, u_pass, u_role, u_plan, u_name, u_email)
-                if success:
-                    st.success(msg)
-                    st.rerun()
-                else:
-                    st.error(msg)
+        st.markdown("---")
 
-        # Delete user
-        with st.expander("Delete User"):
-            del_username = st.text_input("Username to delete", key="del_u_name")
-            if st.button("Delete User", key="del_user_btn"):
-                if delete_user(del_username):
-                    st.success(f"User {del_username} deleted")
-                    st.rerun()
-                else:
-                    st.error("Cannot delete user")
+        # CRUD operations
+        crud_col1, crud_col2 = st.columns(2)
 
-        # Update plan
-        with st.expander("Update User Plan"):
-            plan_username = st.text_input("Username", key="plan_u_name")
-            new_plan = st.selectbox("New Plan", ["Free","Starter","Pro","Enterprise"], key="new_plan")
-            if st.button("Update Plan", key="update_plan_btn"):
-                if update_user_plan(plan_username, new_plan):
-                    st.success(f"Plan updated for {plan_username}")
-                else:
-                    st.error("Failed to update plan")
+        with crud_col1:
+            with st.expander("➕ Create New User"):
+                from auth import register_user
+                u_name = st.text_input("Username", key="crud_u_name")
+                u_pass = st.text_input("Password", type="password", key="crud_u_pass")
+                u_role = st.selectbox("Role", ["user", "admin"], key="crud_u_role")
+                u_plan = st.selectbox("Plan", ["Free", "Starter", "Pro", "Enterprise"], key="crud_u_plan")
+                u_email = st.text_input("Email", key="crud_u_email")
+                if st.button("Create User", key="crud_create"):
+                    success, msg = register_user(u_name, u_pass, u_role, u_plan, u_name, u_email)
+                    st.success(msg) if success else st.error(msg)
+                    if success:
+                        st.rerun()
 
-        # Reset password
-        with st.expander("Reset Password"):
-            reset_username = st.text_input("Username", key="reset_u_name")
-            reset_pass = st.text_input("New Password", type="password", key="reset_pass")
-            if st.button("Reset Password", key="reset_pass_btn"):
-                if update_password(reset_username, reset_pass):
-                    st.success(f"Password reset for {reset_username}")
-                else:
-                    st.error("Failed to reset password")
+            with st.expander("✏️ Edit User Plan"):
+                from auth import update_user_plan
+                edit_username = st.text_input("Username to edit", key="crud_edit_name")
+                new_plan = st.selectbox("New Plan", ["Free", "Starter", "Pro", "Enterprise"], key="crud_edit_plan")
+                if st.button("Update Plan", key="crud_update"):
+                    if update_user_plan(edit_username, new_plan):
+                        st.success(f"Plan updated for {edit_username}")
+                        st.rerun()
+                    else:
+                        st.error("User not found")
 
+        with crud_col2:
+            with st.expander("🔑 Reset Password"):
+                from auth import update_password
+                reset_user = st.text_input("Username", key="crud_reset_name")
+                reset_pass = st.text_input("New Password", type="password", key="crud_reset_pass")
+                if st.button("Reset Password", key="crud_reset"):
+                    if update_password(reset_user, reset_pass):
+                        st.success(f"Password reset for {reset_user}")
+                    else:
+                        st.error("User not found")
+
+            with st.expander("🚫 Suspend / Delete User"):
+                from auth import delete_user
+                del_user = st.text_input("Username to delete", key="crud_del_name")
+                st.warning("⚠️ This action is permanent")
+                if st.button("Delete User", key="crud_delete", type="primary"):
+                    if delete_user(del_user):
+                        st.success(f"User {del_user} deleted")
+                        st.rerun()
+                    else:
+                        st.error("Cannot delete user or user not found")
+
+    # ==========================================
+    # TAB 4 — Activity Logs
+    # ==========================================
     with tabs[3]:
-        st.markdown("### User System Logs")
-        st.dataframe(database.get_logs(), width="stretch")
+        st.markdown("### 📜 System Activity Logs")
+        try:
+            logs_df = database.get_logs()
+            if not logs_df.empty:
+                st.dataframe(logs_df, hide_index=True, use_container_width=True)
+            else:
+                st.info("No activity logs yet")
+        except Exception as e:
+            st.info(f"Logs unavailable: {e}")
 
-    # Add this tab handler
+    # ==========================================
+    # TAB 5 — Analytics
+    # ==========================================
     with tabs[4]:
+        st.markdown("### 📊 Platform Analytics")
+        if not df_master.empty:
+            import plotly.express as px
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+                st.markdown("**Leads Per Day**")
+                date_col = "scraped_date" if "scraped_date" in df_master.columns else "timestamp"
+                if date_col in df_master.columns:
+                    try:
+                        df_master["date_only"] = pd.to_datetime(df_master[date_col].str[:10], errors="coerce")
+                        daily = df_master.groupby("date_only").size().reset_index(name="Count")
+                        fig = px.line(daily, x="date_only", y="Count", markers=True, color_discrete_sequence=["#2563EB"], height=280)
+                        fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", margin=dict(t=10,b=10,l=10,r=10))
+                        fig.update_xaxes(showgrid=False)
+                        fig.update_yaxes(showgrid=False)
+                        st.plotly_chart(fig, use_container_width=True)
+                    except Exception as e:
+                        st.info(f"Chart unavailable: {e}")
+
+            with col2:
+                st.markdown("**Users by Plan**")
+                plan_counts = {}
+                for u in all_users:
+                    plan = u.get("plan", "Free")
+                    plan_counts[plan] = plan_counts.get(plan, 0) + 1
+                plan_df = pd.DataFrame(list(plan_counts.items()), columns=["Plan", "Users"])
+                fig3 = px.pie(plan_df, names="Plan", values="Users", hole=0.4, color_discrete_sequence=px.colors.qualitative.Set2, height=280)
+                fig3.update_layout(paper_bgcolor="rgba(0,0,0,0)", margin=dict(t=10,b=10,l=10,r=10))
+                st.plotly_chart(fig3, use_container_width=True)
+
+            # Scraper performance stats
+            st.markdown("---")
+            st.markdown("**Scraper Performance**")
+            perf_col1, perf_col2, perf_col3, perf_col4 = st.columns(4)
+            with perf_col1:
+                avg_per_session = total_leads // max(len(all_users), 1)
+                st.metric("Avg Leads/User", avg_per_session)
+            with perf_col2:
+                st.metric("Total Valid", valid_leads)
+            with perf_col3:
+                categories_count = df_master["category"].nunique() if "category" in df_master.columns else 0
+                st.metric("Categories Scraped", categories_count)
+            with perf_col4:
+                sources = df_master["source"].nunique() if "source" in df_master.columns else 1
+                st.metric("Data Sources", sources)
+
+            # Lead quality report
+            st.markdown("---")
+            st.markdown("**Lead Quality Report**")
+            if "validation_status" in df_master.columns:
+                quality_data = {
+                    "Valid": len(df_master[df_master["validation_status"] == "Valid"]),
+                    "Invalid": len(df_master[df_master["validation_status"] == "Invalid"]),
+                    "Pending": len(df_master[df_master["validation_status"] == "Pending"])
+                }
+                for status, count in quality_data.items():
+                    pct = int(count / total_leads * 100) if total_leads > 0 else 0
+                    st.progress(pct / 100, text=f"{status}: {count} leads ({pct}%)")
+        else:
+            st.info("Generate leads to see analytics")
+
+    # ==========================================
+    # TAB 6 — Revenue
+    # ==========================================
+    with tabs[5]:
         render_admin_billing()
 
-    with tabs[5]:  # System Settings tab
+    # ==========================================
+    # TAB 7 — System Settings
+    # ==========================================
+    with tabs[6]:
         st.markdown("### ⚙️ System Settings")
 
-        # ==========================================
-        # SECTION 1 — Cloud Sync
-        # ==========================================
         st.markdown("#### ☁️ Google Sheets Sync")
         col1, col2 = st.columns(2)
         with col1:
@@ -1043,44 +1196,15 @@ def show_admin_dashboard():
                 with st.spinner("Syncing..."):
                     df_local = database.load_db()
                     if not df_local.empty:
-                        success, msg = google_sheets.save_to_google_sheets(
-                            df_local.to_dict("records")
-                        )
-                        if success:
-                            st.success(f"✅ {msg}")
-                        else:
-                            st.error(f"❌ {msg}")
+                        success, msg = google_sheets.save_to_google_sheets(df_local.to_dict("records"))
+                        st.success(f"✅ {msg}") if success else st.error(f"❌ {msg}")
                     else:
                         st.warning("No leads to sync")
         with col2:
-            gs_connected = google_sheets.check_connection()
-            if gs_connected:
-                st.success("✅ Google Sheets: Connected")
-            else:
-                st.error(f"❌ Google Sheets: Offline")
+            gs_status = "✅ Connected" if google_sheets.check_connection() else "❌ Offline"
+            st.info(f"Google Sheets: {gs_status}")
 
         st.markdown("---")
-
-        # ==========================================
-        # SECTION 2 — Database Info
-        # ==========================================
-        st.markdown("#### 💾 Database")
-        db_type = "PostgreSQL (Render)" if os.environ.get("DATABASE_URL") else "SQLite (Local)"
-        df_master = database.load_db()
-        col3, col4, col5 = st.columns(3)
-        with col3:
-            st.metric("Database Type", db_type)
-        with col4:
-            st.metric("Total Leads", len(df_master))
-        with col5:
-            valid_count = len(df_master[df_master["validation_status"] == "Valid"]) if "validation_status" in df_master.columns else 0
-            st.metric("Valid Leads", valid_count)
-
-        st.markdown("---")
-
-        # ==========================================
-        # SECTION 3 — API Keys Status
-        # ==========================================
         st.markdown("#### 🔑 API Keys Status")
         api_keys = {
             "SERPER_API_KEY": os.environ.get("SERPER_API_KEY", ""),
@@ -1089,9 +1213,9 @@ def show_admin_dashboard():
             "STRIPE_SECRET_KEY": os.environ.get("STRIPE_SECRET_KEY", ""),
             "APIFY_API_TOKEN": os.environ.get("APIFY_API_TOKEN", "")
         }
-        col6, col7 = st.columns(2)
+        col3, col4 = st.columns(2)
         for i, (key, value) in enumerate(api_keys.items()):
-            with col6 if i % 2 == 0 else col7:
+            with col3 if i % 2 == 0 else col4:
                 if value:
                     masked = value[:8] + "..." + value[-4:]
                     st.success(f"✅ {key}: {masked}")
@@ -1099,56 +1223,27 @@ def show_admin_dashboard():
                     st.error(f"❌ {key}: Not configured")
 
         st.markdown("---")
-
-        # ==========================================
-        # SECTION 4 — Scraping Settings
-        # ==========================================
-        st.markdown("#### 🕷️ Scraping Settings")
-        col8, col9 = st.columns(2)
-        with col8:
-            scrape_delay = st.slider(
-                "Scrape Delay (seconds)",
-                min_value=1,
-                max_value=10,
-                value=int(os.environ.get("SCRAPE_DELAY_SECONDS", 3)),
-                help="Minimum delay between requests"
-            )
-            st.caption(f"Current: {os.environ.get('SCRAPE_DELAY_SECONDS', '3')}s")
-        with col9:
-            app_env = os.environ.get("APP_ENV", "development")
-            st.info(f"**Environment:** {app_env}")
-            st.info(f"**App URL:** {os.environ.get('APP_URL', 'Not set')}")
+        st.markdown("#### 💾 Database Info")
+        db_col1, db_col2, db_col3 = st.columns(3)
+        db_type = "PostgreSQL (Render)" if os.environ.get("DATABASE_URL") else "SQLite (Local)"
+        with db_col1:
+            st.metric("Database", db_type)
+        with db_col2:
+            st.metric("Total Leads", total_leads)
+        with db_col3:
+            st.metric("Valid Leads", valid_leads)
 
         st.markdown("---")
-
-        # ==========================================
-        # SECTION 5 — Data Management
-        # ==========================================
         st.markdown("#### 🗑️ Data Management")
-        col10, col11, col12 = st.columns(3)
-        with col10:
-            if st.button("📥 Export Master CSV", use_container_width=True):
-                if not df_master.empty:
-                    csv = df_master.to_csv(index=False).encode("utf-8")
-                    st.download_button(
-                        "Download CSV",
-                        csv,
-                        "leadpulse_master.csv",
-                        "text/csv"
-                    )
-        with col11:
-            if st.button("📊 Export Master JSON", use_container_width=True):
-                if not df_master.empty:
-                    json_data = df_master.to_json(orient="records").encode("utf-8")
-                    st.download_button(
-                        "Download JSON",
-                        json_data,
-                        "leadpulse_master.json",
-                        "application/json"
-                    )
-        with col12:
-            st.markdown("<br>", unsafe_allow_html=True)
-            if st.button("🚨 Wipe Entire System", use_container_width=True, type="primary"):
+        dm_col1, dm_col2, dm_col3 = st.columns(3)
+        with dm_col1:
+            csv_master = df_master.to_csv(index=False).encode("utf-8")
+            st.download_button("📥 Master CSV", csv_master, "master.csv", "text/csv", use_container_width=True)
+        with dm_col2:
+            json_master = df_master.to_json(orient="records").encode("utf-8")
+            st.download_button("📥 Master JSON", json_master, "master.json", "application/json", use_container_width=True)
+        with dm_col3:
+            if st.button("🚨 Wipe System", use_container_width=True):
                 database.clear_all_leads()
                 google_sheets.clear_sheet_data()
                 st.success("✅ System wiped")
@@ -1156,39 +1251,16 @@ def show_admin_dashboard():
                 st.rerun()
 
         st.markdown("---")
-
-        # ==========================================
-        # SECTION 6 — System Health
-        # ==========================================
-        st.markdown("#### 🏥 System Health")
-        col13, col14, col15, col16 = st.columns(4)
-        with col13:
-            st.metric("Serper Credits", "Check serper.dev")
-        with col14:
-            st.metric("Gemini Quota", "60 req/min free")
-        with col15:
-            st.metric("Apollo Credits", "Check apollo.io")
-        with col16:
-            st.metric("Render Plan", "Free Tier")
-
-        st.markdown("---")
-
-        # ==========================================
-        # SECTION 7 — About
-        # ==========================================
         st.markdown("#### ℹ️ About LeadPulse Pro")
         st.markdown("""
         | Item | Detail |
         |---|---|
         | **Version** | v1.0 — Phase 2 Complete |
         | **Project Code** | LGP-2025-001 |
-        | **Build Days** | 14 of 21 complete |
-        | **Stack** | Streamlit + Python + Serper + Gemini + Stripe |
+        | **Build Days** | 16 of 21 complete |
+        | **Stack** | Streamlit + Serper + Gemini + Stripe |
         | **Deployment** | Render Free Tier |
-        | **Database** | SQLite / PostgreSQL |
         | **AI Provider** | Google Gemini 1.5 Flash |
-        | **Search API** | Serper Maps |
-        | **Payment** | Stripe Test Mode |
         """)
 
 # ==========================================
