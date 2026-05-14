@@ -26,9 +26,14 @@ from stripe_handler import (
     check_payment_success
 )
 from export_module import render_export_ui
+from scheduler import render_scheduler_ui, start_scheduler
 
 # Initialize session
 init_session()
+
+# Initialize scheduler once
+if "scheduler" not in st.session_state:
+    st.session_state.scheduler = start_scheduler()
 
 # Check for payment success from Stripe redirect
 check_payment_success()
@@ -953,6 +958,7 @@ def show_admin_dashboard():
         "📜 Activity Logs",
         "📊 Analytics",
         "💰 Revenue",
+        "⏰ Scheduler",
         "🛠️ System Settings"
     ])
 
@@ -1176,9 +1182,15 @@ def show_admin_dashboard():
         render_admin_billing()
 
     # ==========================================
-    # TAB 7 — System Settings
+    # TAB 7 — Scheduler
     # ==========================================
     with tabs[6]:
+        render_scheduler_ui(st.session_state.get("plan", "Free"))
+
+    # ==========================================
+    # TAB 8 — System Settings
+    # ==========================================
+    with tabs[7]:
         st.markdown("### ⚙️ System Settings")
 
         st.markdown("#### ☁️ Google Sheets Sync")
