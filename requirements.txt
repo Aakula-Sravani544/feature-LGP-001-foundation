@@ -21,3 +21,5 @@ bcrypt
 pyyaml
 stripe
 plotly
+openpyxl
+reportlab

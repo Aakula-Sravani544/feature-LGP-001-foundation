@@ -25,6 +25,7 @@ from stripe_handler import (
     render_admin_billing,
     check_payment_success
 )
+from export_module import render_export_ui
 
 # Initialize session
 init_session()
@@ -890,12 +891,10 @@ def show_user_dashboard():
             if status_filter and "validation_status" in df.columns:
                 df = df[df["validation_status"].isin(status_filter)]
             user_cols = ["name", "address", "phone", "email", "rating", "reviews", "category", "validation_status"]
-            st.dataframe(df[[c for c in user_cols if c in df.columns]], hide_index=True)
-            c1, c2 = st.columns(2)
-            csv = df.to_csv(index=False).encode("utf-8")
-            c1.download_button("📥 Export CSV", csv, "leads.csv", "text/csv")
-            json_data = df.to_json(orient="records").encode("utf-8")
-            c2.download_button("📥 Export JSON", json_data, "leads.json", "application/json")
+            st.dataframe(df_leads[[c for c in user_cols if c in df_leads.columns]], hide_index=True)
+            st.markdown("---")
+            # Export UI
+            render_export_ui(df_leads, "Export My Leads")
         else:
             st.info("💡 Generate leads first to see your leads table.")
 
@@ -1018,16 +1017,9 @@ def show_admin_dashboard():
             st.markdown(f"**Showing {len(filtered_df)} of {len(df_master)} leads**")
             st.dataframe(filtered_df, hide_index=True, use_container_width=True)
 
-            # Export buttons
-            col6, col7, col8 = st.columns(3)
-            with col6:
-                csv = filtered_df.to_csv(index=False).encode("utf-8")
-                st.download_button("📥 Export CSV", csv, "master_leads.csv", "text/csv", use_container_width=True)
-            with col7:
-                json_data = filtered_df.to_json(orient="records").encode("utf-8")
-                st.download_button("📥 Export JSON", json_data, "master_leads.json", "application/json", use_container_width=True)
-            with col8:
-                st.metric("Filtered Leads", len(filtered_df))
+            # Export UI
+            st.markdown("---")
+            render_export_ui(filtered_df, "Export Master Database")
         else:
             st.info("No leads in database yet.")
 
