@@ -235,13 +235,41 @@ def export_json(df: pd.DataFrame) -> bytes:
 # EXPORT FORMAT 4 — Google Sheets Link
 # ==========================================
 def get_google_sheets_link() -> str:
-    """Get Google Sheets sharing link."""
+    """Get Google Sheets sharing link from environment."""
     try:
+        # Try to get from google_sheets module directly
         import google_sheets
+        # Check if module has sheet URL stored
+        if hasattr(google_sheets, "SHEET_URL"):
+            return google_sheets.SHEET_URL
         if hasattr(google_sheets, "get_sheet_url"):
             return google_sheets.get_sheet_url()
+
+        # Get spreadsheet ID from credentials
+        import os
+        import json
+        creds_json = os.environ.get("GOOGLE_SHEETS_CREDENTIALS", "")
         sheet_name = os.environ.get("SHEET_NAME", "LeadPulse_Data")
-        return f"https://docs.google.com/spreadsheets/d/search?q={sheet_name}"
+
+        if creds_json:
+            try:
+                import gspread
+                from google.oauth2.service_account import Credentials
+                creds_dict = json.loads(creds_json)
+                scopes = [
+                    "https://spreadsheets.google.com/feeds",
+                    "https://www.googleapis.com/auth/drive"
+                ]
+                creds = Credentials.from_service_account_info(
+                    creds_dict, scopes=scopes
+                )
+                client = gspread.authorize(creds)
+                sheet = client.open(sheet_name)
+                return f"https://docs.google.com/spreadsheets/d/{sheet.id}"
+            except Exception as e:
+                logger.debug(f"Could not get sheet ID: {e}")
+
+        return ""
     except Exception as e:
         logger.error(f"Sheets link error: {e}")
         return ""
