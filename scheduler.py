@@ -88,14 +88,24 @@ def run_scraping_job(
             send_job_notification(job_id, query, len(leads))
 
         # Update job history
+        updated = False
         for job in job_history:
             if job["job_id"] == job_id:
                 job["status"] = "completed"
                 job["leads_collected"] = len(leads)
                 job["completed_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                updated = True
                 break
-
-        logger.info(f"Job {job_id} completed: {len(leads)} leads")
+        if not updated:
+            job_history.append({
+                "job_id": job_id,
+                "query": f"{keyword} in {location}",
+                "status": "completed",
+                "started_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "leads_collected": len(leads),
+                "completed_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            })
+        logger.info(f"Job {job_id} completed: {len(leads)} leads collected")
 
     except Exception as e:
         logger.error(f"Job {job_id} failed: {e}")
@@ -357,10 +367,42 @@ def render_scheduler_ui(plan: str) -> None:
 
     # Job history
     st.markdown("#### 📜 Job History")
+    col_refresh, col_clear = st.columns(2)
+    with col_refresh:
+        if st.button("🔄 Refresh Job History", use_container_width=True, key="refresh_history"):
+            st.rerun()
+    with col_clear:
+        if st.button("🗑️ Clear History", use_container_width=True, key="clear_history"):
+            job_history.clear()
+            st.rerun()
+
     if job_history:
         import pandas as pd
         history_df = pd.DataFrame(job_history)
-        st.dataframe(history_df, hide_index=True, use_container_width=True)
+        # Color status column
+        def color_status(val):
+            if val == "completed":
+                return "background-color: #DCFCE7"
+            elif val == "running":
+                return "background-color: #FEF9C3"
+            elif val == "failed":
+                return "background-color: #FEE2E2"
+            return ""
+        display_cols = ["job_id", "query", "status", "started_at", "leads_collected", "completed_at"]
+        available = [c for c in display_cols if c in history_df.columns]
+        st.dataframe(history_df[available], hide_index=True, use_container_width=True)
+
+        # Show summary
+        completed = len([j for j in job_history if j.get("status") == "completed"])
+        running = len([j for j in job_history if j.get("status") == "running"])
+        failed = len([j for j in job_history if j.get("status") == "failed"])
+        total_leads = sum(j.get("leads_collected", 0) for j in job_history)
+
+        m1, m2, m3, m4 = st.columns(4)
+        m1.metric("Completed", completed)
+        m2.metric("Running", running)
+        m3.metric("Failed", failed)
+        m4.metric("Total Leads Collected", total_leads)
     else:
         st.info("No jobs have run yet.")
 
