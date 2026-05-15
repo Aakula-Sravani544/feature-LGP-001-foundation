@@ -32,31 +32,36 @@ def run_scraping_job(
     max_leads: int = 50,
     use_ai: bool = False
 ) -> None:
-    """
-    Execute a scraping job in background thread.
-    Auto-saves results to database and Google Sheets.
-    """
+    """Execute scraping job in background thread."""
+    import os
     query = f"{keyword} in {location}"
-    logger.info(f"Starting scheduled job {job_id}: {query}")
+    logger.info(f"Starting job {job_id}: {query}")
 
-    job_history.append({
-        "job_id": job_id,
-        "query": query,
-        "status": "running",
-        "started_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "leads_collected": 0,
-        "completed_at": ""
-    })
+    # Update status to running
+    for job in job_history:
+        if job["job_id"] == job_id:
+            job["status"] = "running"
+            break
 
     leads = []
     try:
+        # Get correct scraper path
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        scraper_path = os.path.join(current_dir, "scraper.py")
+
+        if not os.path.exists(scraper_path):
+            scraper_path = "scraper.py"
+
         ai_flag = "1" if use_ai else "0"
+        logger.info(f"Running: {scraper_path} {query} {max_leads}")
+
         process = subprocess.Popen(
-            [sys.executable, "scraper.py", query, str(max_leads), ai_flag],
+            [sys.executable, scraper_path, query, str(max_leads), ai_flag],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
-            bufsize=1
+            bufsize=1,
+            cwd=current_dir
         )
 
         for line in process.stdout:
@@ -65,55 +70,61 @@ def run_scraping_job(
                 try:
                     lead = json.loads(line.replace("DATA:", ""))
                     leads.append(lead)
-                except:
-                    pass
+                    logger.info(f"Job {job_id}: collected {lead.get('name','')[:30]}")
+                except Exception as e:
+                    logger.debug(f"Parse error: {e}")
+            elif line.startswith("LOG:"):
+                logger.info(f"Job {job_id}: {line.replace('LOG:','')}")
 
-        process.wait()
+        process.wait(timeout=300)
+        logger.info(f"Job {job_id}: scraper finished with {len(leads)} leads")
 
         # Save to database
         if leads:
-            import database
-            database.save_to_db(leads)
-            logger.info(f"Job {job_id}: saved {len(leads)} leads to database")
+            try:
+                import database
+                database.save_to_db(leads)
+                logger.info(f"Job {job_id}: saved {len(leads)} to database")
+            except Exception as e:
+                logger.error(f"Job {job_id}: database save error {e}")
 
             # Save to Google Sheets
             try:
                 import google_sheets
                 success, msg = google_sheets.save_to_google_sheets(leads)
-                logger.info(f"Job {job_id}: sheets sync {msg}")
+                logger.info(f"Job {job_id}: sheets {msg}")
             except Exception as e:
                 logger.error(f"Job {job_id}: sheets error {e}")
 
             # Email notification
             send_job_notification(job_id, query, len(leads))
 
-        # Update job history
-        updated = False
+    except subprocess.TimeoutExpired:
+        logger.error(f"Job {job_id}: timeout after 300 seconds")
+        process.kill()
+    except Exception as e:
+        logger.error(f"Job {job_id} error: {e}")
+
+    finally:
+        # Always update job history when done
+        completed = False
         for job in job_history:
             if job["job_id"] == job_id:
-                job["status"] = "completed"
+                job["status"] = "completed" if leads else "failed"
                 job["leads_collected"] = len(leads)
                 job["completed_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                updated = True
+                completed = True
                 break
-        if not updated:
+        if not completed:
             job_history.append({
                 "job_id": job_id,
-                "query": f"{keyword} in {location}",
-                "status": "completed",
+                "query": query,
+                "status": "completed" if leads else "failed",
                 "started_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 "leads_collected": len(leads),
                 "completed_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             })
-        logger.info(f"Job {job_id} completed: {len(leads)} leads collected")
-
-    except Exception as e:
-        logger.error(f"Job {job_id} failed: {e}")
-        for job in job_history:
-            if job["job_id"] == job_id:
-                job["status"] = "failed"
-                job["completed_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                break
+        logger.info(f"Job {job_id} finished: {len(leads)} leads")
 
 
 def send_job_notification(job_id: str, query: str, leads_count: int) -> None:
