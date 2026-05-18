@@ -76,152 +76,485 @@ st.set_page_config(
 # MODERN SAAS UI CSS
 # ==========================================
 st.markdown("""
-    <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-    
-    :root {
-        --primary: #2563EB;
-        --secondary: #0F172A;
-        --sidebar-bg: #0F172A;
-        --bg: #F8FAFC;
-        --card: #FFFFFF;
-        --text-primary: #0F172A;
-        --text-secondary: #64748B;
-        --success: #22C55E;
-    }
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+@import url('https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css');
 
-    html, body, [class*="css"] { 
-        font-family: 'Inter', sans-serif; 
-        background-color: var(--bg);
-    }
-    
-    .stApp { background-color: var(--bg); }
+* { font-family: 'Inter', sans-serif !important; }
 
-    /* Centered Headings */
-    .main-title {
-        text-align: center;
-        font-weight: 800;
-        font-size: 2.2rem;
-        color: var(--secondary);
-        margin-bottom: 0.5rem;
-    }
-    .sub-title {
-        text-align: center;
-        color: var(--text-secondary);
-        margin-bottom: 2rem;
-        font-size: 1rem;
-    }
+/* ==================== BACKGROUND ==================== */
+.stApp { background: #F8FAFC !important; }
+[data-testid="stAppViewContainer"] { background: #F8FAFC !important; }
+[data-testid="stHeader"] { background: transparent !important; }
 
-    /* Metric Card Styling */
-    .metric-card { 
-        background: var(--card); 
-        padding: 24px; 
-        border-radius: 12px; 
-        border: 1px solid #E2E8F0; 
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); 
-        text-align: center;
-        transition: all 0.3s ease;
-    }
-    .metric-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-    }
-    .metric-label { 
-        color: var(--text-secondary); 
-        font-size: 0.7rem; 
-        font-weight: 700; 
-        text-transform: uppercase; 
-        letter-spacing: 0.08em;
-        margin-bottom: 8px; 
-    }
-    .metric-value { 
-        color: var(--text-primary); 
-        font-size: 1.6rem; 
-        font-weight: 800; 
-    }
+/* ==================== SIDEBAR ==================== */
+[data-testid="stSidebar"] {
+    background: #0F172A !important;
+    border-right: 0.5px solid rgba(255,255,255,0.06) !important;
+    min-width: 220px !important;
+    max-width: 220px !important;
+}
+[data-testid="stSidebar"] * {
+    color: rgba(255,255,255,0.7) !important;
+}
+[data-testid="stSidebar"] .stMarkdown h1,
+[data-testid="stSidebar"] .stMarkdown h2,
+[data-testid="stSidebar"] .stMarkdown h3 {
+    color: #fff !important;
+}
 
-    /* Sidebar Styling */
-    [data-testid="stSidebar"] {
-        background-color: var(--sidebar-bg);
-        color: white;
-    }
-    [data-testid="stSidebar"] * { color: white !important; }
-    
-    .sidebar-logo {
-        padding: 2rem 1rem 1rem 1rem;
-        text-align: left;
-        font-size: 1.5rem;
-        font-weight: 800;
-        color: white !important;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-    .sidebar-logo span { color: var(--primary); }
-    
-    .user-info {
-        padding: 0 1rem 1.5rem 1rem;
-        font-size: 0.8rem;
-        color: #94A3B8 !important;
-    }
-    .user-info strong { color: white !important; font-weight: 600; }
-    
-    .sidebar-divider {
-        border-top: 1px solid rgba(255,255,255,0.1);
-        margin: 0.5rem 1rem 1.5rem 1rem;
-    }
+/* ==================== MAIN CONTENT ==================== */
+[data-testid="stMainBlockContainer"] {
+    padding: 0 !important;
+    max-width: 100% !important;
+}
+.main-content {
+    padding: 24px 28px !important;
+}
+.block-container {
+    padding: 24px 28px !important;
+    max-width: 100% !important;
+}
 
-    /* Active Menu Highlight */
-    .nav-item-active {
-        background: rgba(37, 99, 235, 0.15);
-        border-left: 4px solid var(--primary);
-        padding: 10px 15px;
-        margin: 5px 0;
-        border-radius: 0 8px 8px 0;
-        font-weight: 600;
-    }
+/* ==================== TOPBAR ==================== */
+.topbar {
+    background: #fff;
+    border-bottom: 0.5px solid #E2E8F0;
+    padding: 0 28px;
+    height: 52px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: -24px -28px 24px -28px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+.topbar-title {
+    font-size: 15px;
+    font-weight: 500;
+    color: #0F172A;
+}
 
-    /* Modern Buttons */
-    div.stButton > button:first-child { 
-        background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%) !important;
-        color: white !important; 
-        border: none !important; 
-        border-radius: 10px !important; 
-        padding: 12px 24px !important; 
-        font-weight: 600 !important; 
-        width: 100%; 
-        transition: all 0.2s ease;
-    }
-    div.stButton > button:hover { 
-        transform: scale(1.02);
-        box-shadow: 0 5px 15px rgba(37, 99, 235, 0.3);
-    }
-    
-    /* Logout Button Specific (if different) */
-    .logout-btn button {
-        background: rgba(255,255,255,0.05) !important;
-        border: 1px solid rgba(255,255,255,0.1) !important;
-    }
+/* ==================== METRIC CARDS ==================== */
+.metric-card {
+    background: #fff;
+    border: 0.5px solid #E2E8F0;
+    border-radius: 10px;
+    padding: 16px 18px;
+    transition: box-shadow 0.15s;
+}
+.metric-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+}
+.metric-label {
+    font-size: 11px;
+    font-weight: 500;
+    color: #64748B;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 8px;
+}
+.metric-value {
+    font-size: 26px;
+    font-weight: 500;
+    color: #0F172A;
+    line-height: 1;
+}
+.metric-delta {
+    font-size: 11px;
+    color: #22C55E;
+    margin-top: 4px;
+}
 
-    /* Log Box */
-    .log-box { 
-        background-color: #0F172A; 
-        color: #10B981; 
-        padding: 20px; 
-        border-radius: 12px; 
-        font-family: 'Monaco', 'Consolas', monospace; 
-        font-size: 0.8rem; 
-        height: 300px; 
-        overflow-y: auto;
-        border: 1px solid #1E293B;
-    }
+/* ==================== CARDS ==================== */
+.lp-card {
+    background: #fff;
+    border: 0.5px solid #E2E8F0;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 16px;
+}
+.lp-card-title {
+    font-size: 12px;
+    font-weight: 500;
+    color: #64748B;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 16px;
+}
 
-    /* Badge */
-    .badge { padding: 4px 10px; border-radius: 99px; font-size: 0.7rem; font-weight: 700; }
-    .badge-success { background: #DCFCE7; color: #166534; }
-    .badge-idle { background: #F1F5F9; color: #475569; }
-    </style>
-    """, unsafe_allow_html=True)
+/* ==================== BUTTONS ==================== */
+div.stButton > button {
+    background: #2563EB !important;
+    color: #fff !important;
+    border: none !important;
+    border-radius: 8px !important;
+    padding: 9px 18px !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    letter-spacing: -0.1px !important;
+    transition: all 0.15s !important;
+    box-shadow: none !important;
+}
+div.stButton > button:hover {
+    background: #1D4ED8 !important;
+    box-shadow: 0 4px 12px rgba(37,99,235,0.25) !important;
+    transform: translateY(-1px) !important;
+}
+div.stButton > button:disabled {
+    background: #94A3B8 !important;
+    cursor: not-allowed !important;
+    transform: none !important;
+}
+
+/* ==================== INPUTS ==================== */
+.stTextInput > div > div > input,
+.stSelectbox > div > div,
+.stMultiSelect > div > div {
+    border: 0.5px solid #E2E8F0 !important;
+    border-radius: 8px !important;
+    background: #F8FAFC !important;
+    font-size: 13px !important;
+    color: #0F172A !important;
+}
+.stTextInput > div > div > input:focus {
+    border-color: #2563EB !important;
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.1) !important;
+}
+.stTextInput label,
+.stSelectbox label,
+.stSlider label,
+.stMultiSelect label {
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    color: #475569 !important;
+    margin-bottom: 4px !important;
+}
+
+/* ==================== DATAFRAME ==================== */
+.stDataFrame {
+    border: 0.5px solid #E2E8F0 !important;
+    border-radius: 10px !important;
+    overflow: hidden !important;
+}
+.stDataFrame thead th {
+    background: #F1F5F9 !important;
+    font-size: 11px !important;
+    font-weight: 500 !important;
+    color: #64748B !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.06em !important;
+    padding: 10px 16px !important;
+    border-bottom: 0.5px solid #E2E8F0 !important;
+}
+.stDataFrame tbody td {
+    font-size: 12px !important;
+    color: #334155 !important;
+    padding: 9px 16px !important;
+    border-bottom: 0.5px solid #F1F5F9 !important;
+}
+.stDataFrame tbody tr:hover td {
+    background: #F8FAFC !important;
+}
+
+/* ==================== TABS ==================== */
+.stTabs [data-baseweb="tab-list"] {
+    background: transparent !important;
+    border-bottom: 0.5px solid #E2E8F0 !important;
+    gap: 0 !important;
+    padding: 0 !important;
+}
+.stTabs [data-baseweb="tab"] {
+    background: transparent !important;
+    border: none !important;
+    padding: 10px 18px !important;
+    font-size: 13px !important;
+    font-weight: 400 !important;
+    color: #64748B !important;
+    border-bottom: 2px solid transparent !important;
+    margin-bottom: -1px !important;
+}
+.stTabs [aria-selected="true"] {
+    color: #2563EB !important;
+    border-bottom-color: #2563EB !important;
+    font-weight: 500 !important;
+    background: transparent !important;
+}
+.stTabs [data-baseweb="tab-panel"] {
+    padding: 20px 0 0 0 !important;
+}
+
+/* ==================== LOG BOX ==================== */
+.log-box {
+    background: #0F172A;
+    color: #10B981;
+    padding: 16px;
+    border-radius: 8px;
+    font-family: 'Monaco', 'Menlo', 'Consolas', monospace !important;
+    font-size: 11px !important;
+    line-height: 1.6;
+    height: 220px;
+    overflow-y: auto;
+    border: 0.5px solid #1E293B;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+/* ==================== STATUS BADGES ==================== */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+    gap: 4px;
+}
+.badge-valid { background: #DCFCE7; color: #16A34A; }
+.badge-invalid { background: #FEE2E2; color: #DC2626; }
+.badge-pending { background: #FEF9C3; color: #CA8A04; }
+.badge-idle { background: #F1F5F9; color: #475569; }
+.badge-active { background: #DBEAFE; color: #2563EB; }
+.badge-enterprise { background: #FEF3C7; color: #B45309; }
+.badge-pro { background: #EDE9FE; color: #7C3AED; }
+.badge-starter { background: #DBEAFE; color: #2563EB; }
+.badge-free { background: #F1F5F9; color: #64748B; }
+
+/* ==================== SIDEBAR COMPONENTS ==================== */
+.sidebar-logo {
+    padding: 20px 16px 14px;
+    border-bottom: 0.5px solid rgba(255,255,255,0.06);
+}
+.sidebar-logo h1 {
+    font-size: 17px !important;
+    font-weight: 500 !important;
+    color: #fff !important;
+    letter-spacing: -0.3px !important;
+    margin: 0 !important;
+}
+.sidebar-logo p {
+    font-size: 10px !important;
+    color: rgba(255,255,255,0.3) !important;
+    margin: 2px 0 0 !important;
+}
+.sidebar-user {
+    padding: 12px 16px;
+    border-bottom: 0.5px solid rgba(255,255,255,0.06);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.sidebar-avatar {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: #2563EB;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: 500;
+    color: #fff;
+    flex-shrink: 0;
+}
+.sidebar-user-info { flex: 1; }
+.sidebar-user-name {
+    font-size: 12px;
+    font-weight: 500;
+    color: #fff !important;
+}
+.sidebar-user-plan {
+    font-size: 10px;
+    color: #22C55E !important;
+}
+.nav-item-active {
+    background: rgba(37,99,235,0.12);
+    border-left: 2px solid #2563EB;
+    padding: 8px 16px;
+    margin: 2px 0;
+    border-radius: 0 6px 6px 0;
+    font-size: 13px;
+    font-weight: 500;
+    color: #fff !important;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.engine-status-bar {
+    padding: 12px 16px;
+    border-top: 0.5px solid rgba(255,255,255,0.06);
+    margin-top: auto;
+}
+.engine-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #22C55E;
+    display: inline-block;
+    margin-right: 6px;
+}
+
+/* ==================== PRIVACY BAR ==================== */
+.privacy-bar {
+    background: #EFF6FF;
+    border: 0.5px solid #BFDBFE;
+    border-radius: 8px;
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: #1E40AF;
+    margin-bottom: 16px;
+}
+
+/* ==================== AI INFO BOX ==================== */
+.ai-info-box {
+    background: #EFF6FF;
+    border: 0.5px solid #BFDBFE;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 12px;
+    color: #1E40AF;
+    margin: 10px 0;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+/* ==================== PROGRESS BAR ==================== */
+.stProgress > div > div {
+    background: #2563EB !important;
+    border-radius: 4px !important;
+}
+.stProgress > div {
+    background: #E2E8F0 !important;
+    border-radius: 4px !important;
+    height: 6px !important;
+}
+
+/* ==================== ALERTS ==================== */
+.stAlert {
+    border-radius: 8px !important;
+    border: 0.5px solid !important;
+    font-size: 13px !important;
+}
+[data-baseweb="notification"] {
+    border-radius: 8px !important;
+}
+
+/* ==================== METRICS (Streamlit native) ==================== */
+[data-testid="stMetric"] {
+    background: #fff !important;
+    border: 0.5px solid #E2E8F0 !important;
+    border-radius: 10px !important;
+    padding: 14px 16px !important;
+}
+[data-testid="stMetricLabel"] {
+    font-size: 11px !important;
+    font-weight: 500 !important;
+    color: #64748B !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.06em !important;
+}
+[data-testid="stMetricValue"] {
+    font-size: 24px !important;
+    font-weight: 500 !important;
+    color: #0F172A !important;
+}
+[data-testid="stMetricDelta"] {
+    font-size: 11px !important;
+}
+
+/* ==================== EXPANDERS ==================== */
+.streamlit-expanderHeader {
+    background: #F8FAFC !important;
+    border: 0.5px solid #E2E8F0 !important;
+    border-radius: 8px !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    color: #334155 !important;
+    padding: 10px 14px !important;
+}
+.streamlit-expanderContent {
+    border: 0.5px solid #E2E8F0 !important;
+    border-top: none !important;
+    border-radius: 0 0 8px 8px !important;
+    background: #fff !important;
+    padding: 16px !important;
+}
+
+/* ==================== DIVIDERS ==================== */
+hr {
+    border: none !important;
+    border-top: 0.5px solid #E2E8F0 !important;
+    margin: 20px 0 !important;
+}
+
+/* ==================== TOGGLE ==================== */
+.stCheckbox > label,
+[data-testid="stToggle"] > label {
+    font-size: 13px !important;
+    color: #334155 !important;
+}
+
+/* ==================== SLIDER ==================== */
+.stSlider [data-baseweb="slider"] [data-testid="stTickBar"] {
+    color: #64748B !important;
+    font-size: 11px !important;
+}
+
+/* ==================== DOWNLOAD BUTTON ==================== */
+div.stDownloadButton > button {
+    background: #F1F5F9 !important;
+    color: #334155 !important;
+    border: 0.5px solid #E2E8F0 !important;
+    border-radius: 8px !important;
+    font-size: 12px !important;
+    font-weight: 500 !important;
+}
+div.stDownloadButton > button:hover {
+    background: #E2E8F0 !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+/* ==================== SCROLLBAR ==================== */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+
+/* ==================== TITLE ==================== */
+.main-title {
+    font-size: 20px !important;
+    font-weight: 500 !important;
+    color: #0F172A !important;
+    letter-spacing: -0.3px !important;
+    margin-bottom: 4px !important;
+}
+.sub-title {
+    font-size: 13px !important;
+    color: #64748B !important;
+    margin-bottom: 20px !important;
+    font-weight: 400 !important;
+}
+
+/* ==================== SECTION HEADERS ==================== */
+h3 {
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    color: #0F172A !important;
+    letter-spacing: -0.2px !important;
+}
+
+/* Hide Streamlit default branding */
+#MainMenu { visibility: hidden; }
+footer { visibility: hidden; }
+header { visibility: hidden; }
+</style>
+""", unsafe_allow_html=True)
 
 # Session state initialized via auth.init_session()
 
@@ -292,10 +625,19 @@ def get_sub_regions_ai(keyword: str, region: str, city: str) -> list:
             import google.generativeai as genai
             genai.configure(api_key=gemini_key)
             model = genai.GenerativeModel("gemini-1.5-flash")
-            prompt = f"""You are a local area expert for {city}, India.
-For the area "{region}" in {city}, list all specific sub-areas, phases, road numbers, sectors, and localities where {keyword} businesses might be found.
-Be very specific — include road numbers, phase numbers, colony names, sector numbers.
-Return ONLY a JSON array of strings. No other text. No markdown."""
+            prompt = f"""You are a hyper-local area expert for India.
+I need very specific sub-locations WITHIN the area "{region}" only.
+Do NOT list areas from the broader city "{city}".
+Focus only on what exists inside "{region}" itself.
+
+For example if region is "KPHB":
+Return things like: KPHB Phase 1, KPHB Phase 2, KPHB Phase 3, KPHB Phase 4, KPHB Phase 5, KPHB Phase 6, KPHB Road No 1, KPHB Road No 2, KPHB Main Road, Kukatpally Housing Board Colony
+
+For example if region is "Banjara Hills":
+Return things like: Banjara Hills Road No 1, Banjara Hills Road No 2, Banjara Hills Road No 3, Banjara Hills Road No 10, Banjara Hills Road No 12, Banjara Hills Road No 13
+
+Now list specific sub-locations inside "{region}" where {keyword} businesses would be found.
+Return ONLY a JSON array of strings. No other text. No markdown. No explanation."""
             response = model.generate_content(prompt)
             raw = response.text.strip().replace("```json","").replace("```","").strip()
             import json
@@ -305,41 +647,20 @@ Return ONLY a JSON array of strings. No other text. No markdown."""
         except Exception as e:
             st.session_state.logs += f"[SYS] AI sub-region failed: {e}\n"
 
-    # 2. If AI failed, try hardcoded area fallback
-    if not specific_regions:
-        region_lower = region.lower()
-        for key, regions in specific_area_fallback.items():
-            if key in region_lower:
-                specific_regions = regions
-                break
-
-    # 3. Get City Hubs Fallback
-    city_hubs = []
+    if specific_regions:
+        return specific_regions[:25]
+        
+    region_lower = region.lower().strip()
+    for key, regions in specific_area_fallback.items():
+        if key in region_lower or region_lower in key:
+            return regions
+            
     city_lower = city.lower()
     for key, regions in city_hubs_fallback.items():
         if key in city_lower:
-            city_hubs = regions
-            break
-
-    # 4. Combine Everything
-    # Rules: Specific first, then City Hubs, No Duplicates
-    combined = []
-    seen = set()
-    
-    for r in specific_regions:
-        if r.lower() not in seen:
-            combined.append(r)
-            seen.add(r.lower())
+            return regions
             
-    for r in city_hubs:
-        if r.lower() not in seen:
-            combined.append(r)
-            seen.add(r.lower())
-            
-    if not combined:
-        return [region or city]
-        
-    return combined[:25] # Return top 25 areas to ensure we hit 100 leads
+    return [f"{region}", f"{region} Main Road", f"{region} Colony", f"{region} Extension"]
 
 def generation_ui(label_suffix=""):
     # Import subscription module
@@ -394,6 +715,14 @@ def generation_ui(label_suffix=""):
                 placeholder="e.g. KPHB, Banjara Hills",
                 key=f"region_{label_suffix}"
             )
+            if region.strip():
+                st.markdown(f"""
+                    <div class="ai-info-box">
+                        ✨ AI will analyse <strong>{region}</strong> and extract specific sub-areas,
+                        phases, road numbers and localities to maximise unique lead coverage.
+                        Sub-regions are derived from <strong>{region}</strong> — not the broader city.
+                    </div>
+                """, unsafe_allow_html=True)
 
         # Row 3 — Max leads, AI toggle, Source
         c5, c6, c7 = st.columns([2, 1, 1])
@@ -861,6 +1190,14 @@ def show_user_analytics(username: str) -> None:
 
 def show_user_dashboard():
     st.markdown('<h1 class="main-title">User Workspace</h1>', unsafe_allow_html=True)
+    st.markdown('<p class="sub-title">Generate leads, view analytics and manage exports</p>', unsafe_allow_html=True)
+
+    # Privacy bar
+    st.markdown("""
+        <div class="privacy-bar">
+            🔒 Your data is protected — leads stored securely and never shared with third parties
+        </div>
+    """, unsafe_allow_html=True)
 
     # Metric cards at top
     total_db, today_db, quality_pct = get_stats()
@@ -913,8 +1250,8 @@ def show_user_dashboard():
 # ADMIN DASHBOARD
 # ==========================================
 def show_admin_dashboard():
-    st.markdown('<h1 class="main-title">Admin Dashboard</h1>', unsafe_allow_html=True)
-    st.markdown('<p class="sub-title">Full system access, user management, and master database control</p>', unsafe_allow_html=True)
+    st.markdown('<h1 class="main-title">Admin Console</h1>', unsafe_allow_html=True)
+    st.markdown('<p class="sub-title">Platform overview, user management and system control</p>', unsafe_allow_html=True)
 
     # ==========================================
     # PLATFORM OVERVIEW PANEL
@@ -1271,46 +1608,73 @@ def show_admin_dashboard():
 # MAIN ROUTING
 # ==========================================
 with st.sidebar:
+    # Logo
+    username = st.session_state.username or ""
+    plan = st.session_state.get("plan", "Free")
+    role = st.session_state.get("role", "user")
+    initials = username[:2].upper() if username else "LP"
+    avatar_color = "#F59E0B" if role == "admin" else "#2563EB"
+    plan_colors = {
+        "Free": "#64748B", "Starter": "#2563EB",
+        "Pro": "#7C3AED", "Enterprise": "#B45309"
+    }
+    plan_color = plan_colors.get(plan, "#64748B")
+
     st.markdown(f"""
         <div class="sidebar-logo">
-            🚀 LeadPulse <span>Pro</span>
+            <div style="font-size:17px; font-weight:500; color:#fff; letter-spacing:-0.3px;">
+                🚀 LeadPulse Pro
+            </div>
+            <div style="font-size:10px; color:rgba(255,255,255,0.3); margin-top:2px;">
+                Lead Engine v1.0
+            </div>
         </div>
-        <div class="sidebar-divider"></div>
-    """, unsafe_allow_html=True)
-    
-    # Show plan badge in sidebar
-    plan_colors = {
-        "Free": "#94A3B8",
-        "Starter": "#22C55E",
-        "Pro": "#3B82F6",
-        "Enterprise": "#F59E0B"
-    }
-    current_plan = st.session_state.get("plan", "Free")
-    plan_color = plan_colors.get(current_plan, "#94A3B8")
-    st.markdown(f"""
-        <div style="padding:0 1rem 1rem 1rem;">
-            Logged in as: <strong>{st.session_state.username}</strong><br>
-            Plan: <span style="color:{plan_color}; font-weight:700;">{current_plan}</span>
-        </div>
-    """, unsafe_allow_html=True)
-    st.markdown('<div class="sidebar-divider"></div>', unsafe_allow_html=True)
-    
-    role_label = "Admin Workspace" if st.session_state.role == "admin" else "User Workspace"
-    st.markdown(f'<div class="nav-item-active">🏠 {role_label}</div>', unsafe_allow_html=True)
-    st.markdown("<br><br><br>", unsafe_allow_html=True)
-    
-    st.markdown(f"""
-        <div style="padding: 1rem; background: rgba(255,255,255,0.03); border-radius: 8px;">
-            <p style="margin:0; font-size: 0.7rem; color: #94A3B8 !important;">ENGINE STATUS</p>
-            <p style="margin:0; font-weight: 700; color: {'#34D399' if not st.session_state.is_scraping else '#FB923C'} !important;">
-                {'● IDLE' if not st.session_state.is_scraping else '● EXTRACTING...'}
-            </p>
+        <div class="sidebar-user">
+            <div class="sidebar-avatar" style="background:{avatar_color};">
+                {initials}
+            </div>
+            <div class="sidebar-user-info">
+                <div class="sidebar-user-name">{username}</div>
+                <div class="sidebar-user-plan" style="color:{plan_color} !important;">
+                    {plan} Plan
+                </div>
+            </div>
         </div>
     """, unsafe_allow_html=True)
+
     st.markdown("<br>", unsafe_allow_html=True)
-    
-    # Render logout button from auth.py
-    render_logout_button()
+
+    # Navigation label
+    workspace = "Admin Console" if role == "admin" else "User Workspace"
+    st.markdown(f"""
+        <div class="nav-item-active">
+            {'🏛️' if role == 'admin' else '🏠'} {workspace}
+        </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # Engine status
+    is_scraping = st.session_state.get("is_scraping", False)
+    engine_color = "#FB923C" if is_scraping else "#22C55E"
+    engine_text = "EXTRACTING..." if is_scraping else "IDLE"
+    st.markdown(f"""
+        <div class="engine-status-bar">
+            <div style="font-size:10px; color:rgba(255,255,255,0.3); margin-bottom:4px;">ENGINE STATUS</div>
+            <div style="display:flex; align-items:center; gap:6px; font-size:12px; color:{engine_color}; font-weight:500;">
+                <div style="width:7px; height:7px; border-radius:50%; background:{engine_color};"></div>
+                ● {engine_text}
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # Logout button
+    if st.button("Sign Out Session", use_container_width=True):
+        for key in list(st.session_state.keys()):
+            del st.session_state[key]
+        st.rerun()
 
 if st.session_state.role == "admin":
     show_admin_dashboard()
