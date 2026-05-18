@@ -213,6 +213,7 @@ st.markdown("""
 
 /* ==================== SIDEBAR ==================== */
 [data-testid="stSidebar"] {
+    display: flex !important;
     background: linear-gradient(180deg, #1E1B4B 0%, #4C1D95 100%) !important;
     border-right: none !important;
     min-width: 260px !important;
@@ -226,6 +227,9 @@ st.markdown("""
 [data-testid="stSidebar"] .stMarkdown h2,
 [data-testid="stSidebar"] .stMarkdown h3 {
     color: #fff !important;
+}
+[data-testid="stHeader"] {
+    display: block !important;
 }
 
 /* ==================== SIDEBAR BUTTON NAVIGATION OVERRIDES ==================== */
@@ -263,8 +267,11 @@ st.markdown("""
 
 /* ==================== MAIN CONTENT ==================== */
 [data-testid="stMainBlockContainer"] {
-    padding: 0 !important;
+    padding: 24px 28px !important;
     max-width: 100% !important;
+    margin-left: 0 !important;
+    width: 100% !important;
+    display: block !important;
 }
 .main-content {
     padding: 24px 28px !important;
