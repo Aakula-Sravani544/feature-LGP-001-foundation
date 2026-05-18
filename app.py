@@ -30,6 +30,10 @@ from scheduler import render_scheduler_ui, start_scheduler
 
 # Initialize session
 init_session()
+if "user_nav" not in st.session_state:
+    st.session_state["user_nav"] = "Generate"
+if "admin_nav" not in st.session_state:
+    st.session_state["admin_nav"] = "Generate"
 
 # Initialize scheduler once
 if "scheduler" not in st.session_state:
@@ -222,6 +226,39 @@ st.markdown("""
 [data-testid="stSidebar"] .stMarkdown h2,
 [data-testid="stSidebar"] .stMarkdown h3 {
     color: #fff !important;
+}
+
+/* ==================== SIDEBAR BUTTON NAVIGATION OVERRIDES ==================== */
+[data-testid="stSidebar"] div.stButton > button {
+    background: transparent !important;
+    color: rgba(255, 255, 255, 0.7) !important;
+    border: none !important;
+    border-radius: 12px !important;
+    padding: 10px 16px !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    letter-spacing: normal !important;
+    transition: all 0.2s ease !important;
+    box-shadow: none !important;
+    text-align: left !important;
+    justify-content: flex-start !important;
+    width: 100% !important;
+    margin-bottom: 4px !important;
+}
+[data-testid="stSidebar"] div.stButton > button:hover {
+    background: rgba(255, 255, 255, 0.08) !important;
+    color: #ffffff !important;
+    transform: none !important;
+}
+[data-testid="stSidebar"] div.stButton > button[data-testid*="primary"] {
+    background: linear-gradient(135deg, #7C3AED 0%, #4F46E5 100%) !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 14px rgba(124, 58, 237, 0.4) !important;
+    font-weight: 600 !important;
+}
+[data-testid="stSidebar"] div.stButton > button[data-testid*="primary"]:hover {
+    box-shadow: 0 6px 18px rgba(124, 58, 237, 0.6) !important;
+    transform: translateY(-1px) !important;
 }
 
 /* ==================== MAIN CONTENT ==================== */
@@ -1335,13 +1372,12 @@ def show_user_dashboard():
 
     st.markdown("<br><hr><br>", unsafe_allow_html=True)
 
-    # Tabs
-    tabs = st.tabs(["🚀 Generate", "⚡ My Leads", "📊 Analytics", "💳 Billing"])
+    # Navigation display based on selected sidebar item
+    current_nav = st.session_state.get("user_nav", "Generate")
 
-    with tabs[0]:
+    if current_nav == "Generate":
         generation_ui()
-
-    with tabs[1]:
+    elif current_nav == "My Leads":
         if st.session_state.session_leads:
             st.markdown("### ⚡ My Leads Table")
             df = pd.DataFrame(st.session_state.session_leads)
@@ -1352,17 +1388,15 @@ def show_user_dashboard():
             if status_filter and "validation_status" in df.columns:
                 df = df[df["validation_status"].isin(status_filter)]
             user_cols = ["name", "address", "phone", "email", "rating", "reviews", "category", "validation_status"]
-            st.dataframe(df_leads[[c for c in user_cols if c in df_leads.columns]], hide_index=True)
+            st.dataframe(df[[c for c in user_cols if c in df.columns]], hide_index=True)
             st.markdown("---")
             # Export UI
-            render_export_ui(df_leads, "Export My Leads")
+            render_export_ui(df, "Export My Leads")
         else:
             st.info("💡 Generate leads first to see your leads table.")
-
-    with tabs[2]:
+    elif current_nav == "Analytics":
         show_user_analytics(st.session_state.get("username", ""))
-
-    with tabs[3]:
+    elif current_nav == "Billing":
         render_billing_tab()
 
 # ==========================================
@@ -1407,30 +1441,16 @@ def show_admin_dashboard():
     # ==========================================
     # TABS
     # ==========================================
-    tabs = st.tabs([
-        "🚀 Generate",
-        "🗄️ Master Database",
-        "👥 User Management",
-        "📜 Activity Logs",
-        "📊 Analytics",
-        "💰 Revenue",
-        "⏰ Scheduler",
-        "🛠️ System Settings"
-    ])
+    # Navigation display based on selected sidebar item
+    current_nav = st.session_state.get("admin_nav", "Generate")
 
-    # ==========================================
-    # TAB 1 — Generate
-    # ==========================================
-    with tabs[0]:
+    if current_nav == "Generate":
         generation_ui("(Admin)")
         if not st.session_state.is_scraping and st.session_state.session_leads:
             st.markdown("### ⚡ Session Preview")
             st.dataframe(pd.DataFrame(st.session_state.session_leads), hide_index=True)
 
-    # ==========================================
-    # TAB 2 — Master Database
-    # ==========================================
-    with tabs[1]:
+    elif current_nav == "Master Database":
         st.markdown("### 🗄️ Master Lead Repository")
         if not df_master.empty:
             # Analytics charts
@@ -1485,10 +1505,7 @@ def show_admin_dashboard():
         else:
             st.info("No leads in database yet.")
 
-    # ==========================================
-    # TAB 3 — User Management (CRUD)
-    # ==========================================
-    with tabs[2]:
+    elif current_nav == "User Management":
         st.markdown("### 👥 User Management")
 
         # Users table
@@ -1550,10 +1567,7 @@ def show_admin_dashboard():
                     else:
                         st.error("Cannot delete user or user not found")
 
-    # ==========================================
-    # TAB 4 — Activity Logs
-    # ==========================================
-    with tabs[3]:
+    elif current_nav == "Activity Logs":
         st.markdown("### 📜 System Activity Logs")
         try:
             logs_df = database.get_logs()
@@ -1564,10 +1578,7 @@ def show_admin_dashboard():
         except Exception as e:
             st.info(f"Logs unavailable: {e}")
 
-    # ==========================================
-    # TAB 5 — Analytics
-    # ==========================================
-    with tabs[4]:
+    elif current_nav == "Analytics":
         st.markdown("### 📊 Platform Analytics")
         if not df_master.empty:
             import plotly.express as px
@@ -1631,22 +1642,13 @@ def show_admin_dashboard():
         else:
             st.info("Generate leads to see analytics")
 
-    # ==========================================
-    # TAB 6 — Revenue
-    # ==========================================
-    with tabs[5]:
+    elif current_nav == "Revenue & Billing":
         render_admin_billing()
 
-    # ==========================================
-    # TAB 7 — Scheduler
-    # ==========================================
-    with tabs[6]:
+    elif current_nav == "Scheduler":
         render_scheduler_ui(st.session_state.get("plan", "Free"))
 
-    # ==========================================
-    # TAB 8 — System Settings
-    # ==========================================
-    with tabs[7]:
+    elif current_nav == "System Settings":
         st.markdown("### ⚙️ System Settings")
 
         st.markdown("#### ☁️ Google Sheets Sync")
@@ -1765,25 +1767,37 @@ with st.sidebar:
 
     # Navigation label
     if role == "admin":
-        st.markdown(f"""
-            <div class="nav-menu" style="padding:0 8px;">
-                <div class="nav-item-active">🏛️ Admin Workspace</div>
-                <div class="nav-item" style="padding:8px 16px; color:#cbd5e1; font-size:13px; opacity:0.6;">👥 User Management</div>
-                <div class="nav-item" style="padding:8px 16px; color:#cbd5e1; font-size:13px; opacity:0.6;">🗄️ Master Database</div>
-                <div class="nav-item" style="padding:8px 16px; color:#cbd5e1; font-size:13px; opacity:0.6;">📜 Activity Logs</div>
-                <div class="nav-item" style="padding:8px 16px; color:#cbd5e1; font-size:13px; opacity:0.6;">💰 Revenue & Billing</div>
-                <div class="nav-item" style="padding:8px 16px; color:#cbd5e1; font-size:13px; opacity:0.6;">🛠️ System Settings</div>
-            </div>
-        """, unsafe_allow_html=True)
+        st.markdown('<div style="font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.4); padding: 0 16px; margin-bottom: 8px; letter-spacing: 0.5px;">ADMIN WORKSPACE</div>', unsafe_allow_html=True)
+        admin_navs = [
+            ("🚀 Generate", "Generate"),
+            ("🗄️ Master Database", "Master Database"),
+            ("👥 User Management", "User Management"),
+            ("📜 Activity Logs", "Activity Logs"),
+            ("📊 Analytics", "Analytics"),
+            ("💰 Revenue & Billing", "Revenue & Billing"),
+            ("⏰ Scheduler", "Scheduler"),
+            ("🛠️ System Settings", "System Settings")
+        ]
+        for label, val in admin_navs:
+            is_active = st.session_state.get("admin_nav", "Generate") == val
+            btn_type = "primary" if is_active else "secondary"
+            if st.button(label, key=f"admin_nav_{val}", type=btn_type, use_container_width=True):
+                st.session_state["admin_nav"] = val
+                st.rerun()
     else:
-        st.markdown(f"""
-            <div class="nav-menu" style="padding:0 8px;">
-                <div class="nav-item-active">🏠 User Workspace</div>
-                <div class="nav-item" style="padding:8px 16px; color:#cbd5e1; font-size:13px; opacity:0.6;">⚡ My Leads</div>
-                <div class="nav-item" style="padding:8px 16px; color:#cbd5e1; font-size:13px; opacity:0.6;">📊 Analytics</div>
-                <div class="nav-item" style="padding:8px 16px; color:#cbd5e1; font-size:13px; opacity:0.6;">💳 Billing</div>
-            </div>
-        """, unsafe_allow_html=True)
+        st.markdown('<div style="font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.4); padding: 0 16px; margin-bottom: 8px; letter-spacing: 0.5px;">USER WORKSPACE</div>', unsafe_allow_html=True)
+        user_navs = [
+            ("🚀 Generate", "Generate"),
+            ("⚡ My Leads", "My Leads"),
+            ("📊 Analytics", "Analytics"),
+            ("💳 Billing", "Billing")
+        ]
+        for label, val in user_navs:
+            is_active = st.session_state.get("user_nav", "Generate") == val
+            btn_type = "primary" if is_active else "secondary"
+            if st.button(label, key=f"user_nav_{val}", type=btn_type, use_container_width=True):
+                st.session_state["user_nav"] = val
+                st.rerun()
 
     st.markdown("<br>", unsafe_allow_html=True)
 
