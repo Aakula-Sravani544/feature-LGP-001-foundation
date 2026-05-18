@@ -9,17 +9,24 @@ st.set_page_config(
 # Force sidebar to always stay open using specific CSS styles (STEP 2)
 st.markdown("""
 <style>
-/* Always show sidebar, never collapse */
-[data-testid="stSidebar"] {
-    display: block !important;
-    visibility: visible !important;
-    min-width: 260px !important;
-    max-width: 260px !important;
-    transform: translateX(0) !important;
-    background: linear-gradient(180deg, #0f0c29 0%, #302b63 50%, #24243e 100%) !important;
+#MainMenu, footer, header {visibility: hidden !important;}
+
+.main .block-container {
+    padding: 1.5rem 2rem !important;
+    background: #f9fafb !important;
 }
 
-/* Hide collapse controls and native toggle buttons permanently */
+[data-testid="stSidebar"] {
+    background: linear-gradient(180deg, #1e1b4b 0%, 
+                #2d1b69 60%, #1e0a3c 100%) !important;
+    min-width: 220px !important;
+    max-width: 220px !important;
+}
+[data-testid="stSidebar"] > div:first-child {
+    background: transparent !important;
+    padding: 1.2rem 0.8rem !important;
+}
+[data-testid="stSidebarNav"] {display: none !important;}
 [data-testid="collapsedControl"],
 [data-testid="collapsedSidebarIconButton"],
 button[class*="HeaderOpenCloseButton"],
@@ -28,109 +35,53 @@ button[class*="collapsedSidebarIconButton"] {
     visibility: hidden !important;
 }
 
-/* Remove gap between nav items */
+div[data-testid="stSidebar"] 
+div[data-testid="stVerticalBlock"] {
+    gap: 0rem !important;
+}
 div[data-testid="stSidebar"] .stButton {
-    margin-bottom: 0px !important;
-    padding: 0px !important;
+    margin: 0 !important;
+    padding: 0 !important;
 }
-
 div[data-testid="stSidebar"] .stButton > button {
-    margin: 0px 0px 2px 0px !important;
-    padding: 8px 14px !important;
-    line-height: 1.4 !important;
-    height: auto !important;
-    min-height: 0px !important;
-}
-
-/* Remove default Streamlit vertical block spacing in sidebar */
-div[data-testid="stSidebar"] .block-container {
-    padding: 0 !important;
-    gap: 0 !important;
-}
-
-div[data-testid="stSidebar"] .element-container {
-    margin: 0 !important;
-    padding: 0 !important;
-}
-
-div[data-testid="stSidebar"] div[data-testid="stVerticalBlock"] {
-    gap: 0px !important;
-}
-
-div[data-testid="stSidebar"] div[data-testid="stVerticalBlockBorderWrapper"] {
-    padding: 0 !important;
-    margin: 0 !important;
-}
-
-/* Sidebar inner content transparent */
-[data-testid="stSidebar"] > div:first-child {
-    background: transparent !important;
-    padding: 1.5rem 1rem !important;
-}
-
-/* Hide default Streamlit sidebar nav links */
-[data-testid="stSidebarNav"] {
-    display: none !important;
-}
-
-/* Nav button styles */
-div[data-testid="stSidebar"] button {
     width: 100% !important;
     text-align: left !important;
+    padding: 8px 12px !important;
+    margin: 1px 0 !important;
+    min-height: 36px !important;
+    height: auto !important;
+    font-size: 13px !important;
+    border-radius: 8px !important;
+    border: none !important;
     background: transparent !important;
     color: rgba(255,255,255,0.75) !important;
-    border: none !important;
-    padding: 10px 14px !important;
-    border-radius: 10px !important;
-    font-size: 14px !important;
-    margin-bottom: 4px !important;
-    transition: all 0.2s ease !important;
 }
-
-div[data-testid="stSidebar"] button:hover {
+div[data-testid="stSidebar"] .stButton > button:hover {
     background: rgba(255,255,255,0.08) !important;
     color: white !important;
 }
-
-/* Active nav button */
-.active-nav button {
-    background: linear-gradient(135deg, #6c3fc5 0%, #8b5cf6 100%) !important;
+.active-nav-item .stButton > button {
+    background: linear-gradient(135deg, 
+                #6d28d9, #7c3aed) !important;
     color: white !important;
     font-weight: 600 !important;
-    box-shadow: 0 4px 12px rgba(108, 63, 197, 0.4) !important;
 }
 
-/* Admin profile card */
-.admin-profile {
-    background: rgba(255,255,255,0.07);
-    border-radius: 12px;
-    padding: 12px;
-    margin-bottom: 24px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
+.stTabs [data-baseweb="tab-list"] {
+    gap: 4px !important;
+    border-bottom: 2px solid #e5e7eb !important;
 }
-
-.admin-avatar {
-    width: 38px;
-    height: 38px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #f97316, #fb923c);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700;
-    color: white;
-    font-size: 14px;
-    flex-shrink: 0;
+.stTabs [data-baseweb="tab"] {
+    padding: 8px 18px !important;
+    font-size: 14px !important;
+    color: #6b7280 !important;
+    border-radius: 6px 6px 0 0 !important;
 }
-
-.section-label {
-    color: rgba(255,255,255,0.3);
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 1.5px;
-    margin: 20px 0 8px 4px;
+.stTabs [aria-selected="true"] {
+    color: #7c3aed !important;
+    font-weight: 700 !important;
+    border-bottom: 3px solid #7c3aed !important;
+    background: transparent !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -1498,15 +1449,12 @@ def show_user_analytics(username: str) -> None:
         st.error(f"Analytics error: {e}")
 
 def show_user_dashboard():
-    st.markdown('<h1 class="main-title">LeadPulse Pro Workspace</h1>', unsafe_allow_html=True)
-    st.markdown('<p class="sub-title">Generate leads, monitor quality, and manage exports securely.</p>', unsafe_allow_html=True)
-
     # Privacy bar
-    st.markdown("""
+    st.markdown('''
         <div class="privacy-bar">
-            🔒 Your lead data is protected — stored securely and never shared with third parties.
+            🛡️ Your lead data is protected — stored securely and never shared with third parties.
         </div>
-    """, unsafe_allow_html=True)
+    ''', unsafe_allow_html=True)
 
     # Metric cards at top
     total_db, today_db, quality_pct = get_stats()
@@ -1525,45 +1473,61 @@ def show_user_dashboard():
 
     st.markdown("<br><hr><br>", unsafe_allow_html=True)
 
-    # Navigation display based on selected sidebar item
-    current_nav = st.session_state.get("user_nav", "Generate")
+    # 4 horizontal tabs matching My Leads etc.
+    tab1, tab2, tab3, tab4 = st.tabs([
+        "🚀 Generate",
+        "📋 My Leads",
+        "📊 Analytics",
+        "💰 Billing"
+    ])
 
-    if current_nav == "Generate":
+    with tab1:
         generation_ui()
-    elif current_nav == "My Leads":
+        if not st.session_state.is_scraping and st.session_state.session_leads:
+            st.markdown("### ⚡ Session Preview")
+            import pandas as pd
+            st.dataframe(pd.DataFrame(st.session_state.session_leads), hide_index=True)
+
+    with tab2:
         if st.session_state.session_leads:
-            st.markdown("### ⚡ My Leads Table")
+            st.markdown("### 📋 My Leads Table")
+            import pandas as pd
             df = pd.DataFrame(st.session_state.session_leads)
             status_filter = st.multiselect(
                 "Filter by Status",
-                options=df["validation_status"].unique() if "validation_status" in df.columns else []
+                options=df["validation_status"].unique() if "validation_status" in df.columns else [],
+                key="usr_filt_status"
             )
             if status_filter and "validation_status" in df.columns:
                 df = df[df["validation_status"].isin(status_filter)]
             user_cols = ["name", "address", "phone", "email", "rating", "reviews", "category", "validation_status"]
             st.dataframe(df[[c for c in user_cols if c in df.columns]], hide_index=True)
             st.markdown("---")
-            # Export UI
             render_export_ui(df, "Export My Leads")
         else:
             st.info("💡 Generate leads first to see your leads table.")
-    elif current_nav == "Analytics":
+
+    with tab3:
         show_user_analytics(st.session_state.get("username", ""))
-    elif current_nav == "Billing":
+
+    with tab4:
         render_billing_tab()
+
 
 # ==========================================
 # ADMIN DASHBOARD
 # ==========================================
 def show_admin_dashboard():
-    st.markdown('<h1 class="main-title">LeadPulse Command Center</h1>', unsafe_allow_html=True)
-    st.markdown('<p class="sub-title">Monitor users, revenue, subscriptions, and platform-wide lead intelligence.</p>', unsafe_allow_html=True)
-
     # ==========================================
     # PLATFORM OVERVIEW PANEL
     # ==========================================
     from auth import get_all_users
     from subscription import get_plan
+    import pandas as pd
+    import json
+    import subprocess
+    import sys
+    import time
 
     all_users = get_all_users()
     df_master = database.load_db()
@@ -1571,42 +1535,202 @@ def show_admin_dashboard():
     valid_leads = len(df_master[df_master["validation_status"] == "Valid"]) if "validation_status" in df_master.columns else 0
     quality_pct = int((valid_leads / total_leads * 100)) if total_leads > 0 else 0
 
-    # Calculate MRR
-    plan_revenue = {"Free": 0, "Starter": 29, "Pro": 79, "Enterprise": 500}
-    mrr = sum(plan_revenue.get(u.get("plan", "Free"), 0) for u in all_users)
+    active_users = len(all_users)
+    paid_users = sum(1 for u in all_users if u.get("plan", "Free") != "Free")
 
-    # Top row metrics
-    c1, c2, c3, c4, c5 = st.columns(5)
-    with c1:
-        st.markdown(f'<div class="metric-card"><div class="metric-label">Total Leads</div><div class="metric-value">{total_leads}</div></div>', unsafe_allow_html=True)
-    with c2:
-        st.markdown(f'<div class="metric-card"><div class="metric-label">Active Users</div><div class="metric-value">{len(all_users)}</div></div>', unsafe_allow_html=True)
-    with c3:
-        st.markdown(f'<div class="metric-card"><div class="metric-label">Global Quality</div><div class="metric-value">{quality_pct}%</div></div>', unsafe_allow_html=True)
-    with c4:
-        st.markdown(f'<div class="metric-card"><div class="metric-label">MRR</div><div class="metric-value">${mrr}</div></div>', unsafe_allow_html=True)
-    with c5:
-        paid_users = sum(1 for u in all_users if u.get("plan", "Free") != "Free")
-        st.markdown(f'<div class="metric-card"><div class="metric-label">Paid Users</div><div class="metric-value">{paid_users}</div></div>', unsafe_allow_html=True)
+    # 4 metrics cards matching the screenshot
+    c1, c2, c3, c4 = st.columns(4)
+    cards = [
+        (c1, "TOTAL LEADS", total_leads),
+        (c2, "ACTIVE USERS", active_users),
+        (c3, "GLOBAL QUALITY", f"{quality_pct}%"),
+        (c4, "ACTIVE SUBSCRIPTIONS", paid_users),
+    ]
+    for col, label, value in cards:
+        with col:
+            st.markdown(f'''
+            <div style="background:white; border:1px solid #e5e7eb; border-radius:8px; padding:20px; text-align:center; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+                <div style="font-size:11px; font-weight:700; color:#6b7280; letter-spacing:0.5px; margin-bottom:8px;">{label}</div>
+                <div style="font-size:32px; font-weight:800; color:#111827;">{value}</div>
+            </div>
+            ''', unsafe_allow_html=True)
 
-    st.markdown("<br><hr><br>", unsafe_allow_html=True)
+    st.markdown("<hr style='border:0; border-top:1px solid #e5e7eb; margin:24px 0;' />", unsafe_allow_html=True)
 
-    # ==========================================
-    # TABS
-    # ==========================================
-    # Navigation display based on selected sidebar item
-    current_nav = st.session_state.get("admin_nav", "Generate")
+    # 6 horizontal tabs matching the screenshot
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+        "🚀 Generate",
+        "🗄️ Master Database",
+        "👥 User Management",
+        "📋 Activity Logs",
+        "💰 Revenue",
+        "⚙️ System Settings"
+    ])
 
-    if current_nav == "Generate":
-        generation_ui("(Admin)")
-        if not st.session_state.is_scraping and st.session_state.session_leads:
-            st.markdown("### ⚡ Session Preview")
-            st.dataframe(pd.DataFrame(st.session_state.session_leads), hide_index=True)
+    with tab1:
+        st.markdown("<h2 style='font-size:20px; font-weight:700; margin-bottom:16px;'>🔍 Start New Extraction (Admin)</h2>", unsafe_allow_html=True)
+        col1, col2, col3 = st.columns([2,2,1])
+        with col1:
+            category = st.selectbox("Business Category",
+                ["Restaurants", "Hotels", "Hospitals", "Clinics",
+                 "IT Companies", "Schools", "Colleges", "Banks",
+                 "Gyms", "Salons", "Bakeries", "Cafes",
+                 "Pharmacies", "Real Estate", "Law Firms",
+                 "Chartered Accountants", "Architects", "Dentists",
+                 "Coaching Centers", "Garments", "Electronics",
+                 "Auto Dealers", "Logistics", "Custom..."], key="adm_ext_cat")
+        with col2:
+            keyword = st.text_input("Custom Keyword (optional)",
+                placeholder="e.g. Biryani shops, Car wash", key="adm_ext_kw")
+        with col3:
+            source = st.selectbox("Source",
+                ["Google Maps", "LinkedIn"], key="adm_ext_src")
 
-    elif current_nav == "Master Database":
+        col1, col2 = st.columns(2)
+        with col1:
+            city = st.text_input("City", placeholder="e.g. Hyderabad", key="adm_ext_city")
+        with col2:
+            region = st.text_input("Region / Area", placeholder="e.g. KPHB, Banjara Hills", key="adm_ext_region")
+
+        if region.strip():
+            st.markdown('''
+            <div style="background:#faf5ff; border:1px solid #e9d5ff; border-radius:10px; padding:10px 16px; margin:12px 0; color:#7c3aed; font-size:13px;">
+                🤖 AI will analyze your city/region and automatically search nearby sub-regions to improve lead coverage.
+            </div>
+            ''', unsafe_allow_html=True)
+
+        col1, col2, col3 = st.columns([3,1,1])
+        with col1:
+            max_leads = st.slider(
+                "Max Leads / Session (Plan limit: 999999)",
+                min_value=10, max_value=999999,
+                value=50, step=10, key="adm_ext_max")
+            st.caption("You can extract up to 999999 leads per session.")
+        with col2:
+            ai_scoring = st.toggle("🤖 Enable AI Scoring", help="Uses Gemini AI to score leads 0-100", key="adm_ext_ai")
+        with col3:
+            st.markdown("<div style='margin-top:24px;'>", unsafe_allow_html=True)
+            generate_btn = st.button("🚀 Generate Leads", type="primary", use_container_width=True, key="adm_ext_gen")
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        if generate_btn:
+            keyword_str = keyword.strip() if keyword.strip() else category
+            if not city:
+                st.warning("Please enter a city name.")
+            else:
+                st.session_state.is_scraping = True
+                st.session_state.session_leads = []
+                st.session_state.logs = ""
+
+                progress_bar = st.progress(0)
+                status_text = st.empty()
+                log_placeholder = st.empty()
+                metrics_placeholder = st.empty()
+                table_placeholder = st.empty()
+
+                with metrics_placeholder.container():
+                    m1_met, m2_met, m3_met = st.columns(3)
+                    m1_metric = m1_met.empty()
+                    m2_metric = m2_met.empty()
+                    m3_metric = m3_met.empty()
+
+                if source == "LinkedIn":
+                    status_text.text("🔍 Searching LinkedIn profiles...")
+                    try:
+                        from linkedin_scraper import scrape_linkedin
+                        try:
+                            df_master_dict = df_master.to_dict('records') if not df_master.empty else []
+                        except:
+                            df_master_dict = []
+                        profiles = scrape_linkedin(keyword_str, city if not region else f"{region} {city}", maps_leads=df_master_dict, limit=max_leads)
+                        for i, profile in enumerate(profiles):
+                            if ai_scoring:
+                                try:
+                                    from ai_engine import analyze_single_lead
+                                    profile = analyze_single_lead(profile)
+                                except Exception as e:
+                                    print(f"AI enrichment error: {e}", flush=True)
+                            st.session_state.session_leads.append(profile)
+                            progress_bar.progress((i+1)/max(len(profiles), 1))
+                            status_text.text(f"LinkedIn: {i+1}/{len(profiles)} profiles collected...")
+                            m1_metric.metric("Total Scraped", i+1)
+                            m2_metric.metric("Valid Leads", i+1)
+                            m3_metric.metric("Duplicates Skipped", 0)
+                            with table_placeholder.container():
+                                df_view = pd.DataFrame(st.session_state.session_leads)
+                                cols = [c for c in ["name","description","website","validation_status"] if c in df_view.columns]
+                                st.dataframe(df_view[cols] if cols else df_view, hide_index=True)
+                        database.save_to_db(st.session_state.session_leads)
+                        google_sheets.save_to_google_sheets(st.session_state.session_leads)
+                    except Exception as e:
+                        st.error(f"LinkedIn error: {e}")
+                    st.session_state.is_scraping = False
+                    st.rerun()
+                else:
+                    status_text.text("🤖 AI analyzing sub-regions...")
+                    sub_regions = get_sub_regions_ai(keyword_str, region or city, city)
+                    collected_count = 0
+                    duplicates_skipped = 0
+                    target_total = max_leads
+
+                    for sub_region in sub_regions:
+                        if collected_count >= target_total:
+                            break
+                        query = f"{keyword_str} in {sub_region} {city}"
+                        status_text.text(f"🔄 Scraping: {query} ({collected_count}/{target_total})")
+                        batch_target = min(10, target_total - collected_count)
+                        ai_flag = "1" if ai_scoring else "0"
+
+                        process = subprocess.Popen(
+                            [sys.executable, "scraper.py", query, str(batch_target), ai_flag],
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.STDOUT,
+                            text=True,
+                            bufsize=1,
+                            universal_newlines=True
+                        )
+
+                        for line in process.stdout:
+                            line = line.strip()
+                            if line.startswith("DATA:"):
+                                try:
+                                    data = json.loads(line.replace("DATA:", "").strip())
+                                    existing_names = [l.get("name","").lower() for l in st.session_state.session_leads]
+                                    if data.get("name","").lower() not in existing_names:
+                                        st.session_state.session_leads.append(data)
+                                        database.save_to_db([data])
+                                        collected_count = len(st.session_state.session_leads)
+                                    else:
+                                        duplicates_skipped += 1
+
+                                    valid_count = len([x for x in st.session_state.session_leads if x.get("validation_status") == "Valid"])
+                                    m1_metric.metric("Total Scraped", collected_count)
+                                    m2_metric.metric("Valid Leads", valid_count)
+                                    m3_metric.metric("Duplicates Skipped", duplicates_skipped)
+                                    progress_bar.progress(min(collected_count / target_total, 1.0))
+
+                                    with table_placeholder.container():
+                                        df_view = pd.DataFrame(st.session_state.session_leads).iloc[::-1]
+                                        cols = [c for c in ["name", "phone", "email", "sub_region", "validation_status"] if c in df_view.columns]
+                                        st.dataframe(df_view[cols] if cols else df_view, hide_index=True)
+                                except:
+                                    pass
+                            elif line.startswith("LOG:"):
+                                msg = line.replace("LOG:", "").strip()
+                                st.session_state.logs += f"[SYS] {msg}\n"
+                        process.wait()
+                        if collected_count >= target_total:
+                            break
+
+                    status_text.text("✅ Syncing to Google Sheets...")
+                    google_sheets.save_to_google_sheets(st.session_state.session_leads)
+                    st.session_state.is_scraping = False
+                    time.sleep(2)
+                    st.rerun()
+
+    with tab2:
         st.markdown("### 🗄️ Master Lead Repository")
         if not df_master.empty:
-            # Analytics charts
             import plotly.express as px
             col1, col2 = st.columns(2)
             with col1:
@@ -1632,14 +1756,13 @@ def show_admin_dashboard():
                     st.plotly_chart(fig2, use_container_width=True)
 
             st.markdown("---")
-            # Filter options
             col3, col4, col5 = st.columns(3)
             with col3:
-                status_filter = st.multiselect("Filter by Status", df_master["validation_status"].unique() if "validation_status" in df_master.columns else [])
+                status_filter = st.multiselect("Filter Status", df_master["validation_status"].unique() if "validation_status" in df_master.columns else [], key="adm_filt_stat")
             with col4:
-                cat_filter = st.multiselect("Filter by Category", df_master["category"].unique() if "category" in df_master.columns else [])
+                cat_filter = st.multiselect("Filter Category", df_master["category"].unique() if "category" in df_master.columns else [], key="adm_filt_cat")
             with col5:
-                search_term = st.text_input("Search by name", placeholder="Type to search...")
+                search_term = st.text_input("Search name", placeholder="Type to search...", key="adm_filt_search")
 
             filtered_df = df_master.copy()
             if status_filter:
@@ -1652,16 +1775,13 @@ def show_admin_dashboard():
             st.markdown(f"**Showing {len(filtered_df)} of {len(df_master)} leads**")
             st.dataframe(filtered_df, hide_index=True, use_container_width=True)
 
-            # Export UI
             st.markdown("---")
             render_export_ui(filtered_df, "Export Master Database")
         else:
             st.info("No leads in database yet.")
 
-    elif current_nav == "User Management":
+    with tab3:
         st.markdown("### 👥 User Management")
-
-        # Users table
         if all_users:
             df_users = pd.DataFrame(all_users)
             st.dataframe(df_users, hide_index=True, use_container_width=True)
@@ -1669,29 +1789,25 @@ def show_admin_dashboard():
             st.info("No users found")
 
         st.markdown("---")
-
-        # CRUD operations
         crud_col1, crud_col2 = st.columns(2)
-
         with crud_col1:
             with st.expander("➕ Create New User"):
                 from auth import register_user
-                u_name = st.text_input("Username", key="crud_u_name")
-                u_pass = st.text_input("Password", type="password", key="crud_u_pass")
-                u_role = st.selectbox("Role", ["user", "admin"], key="crud_u_role")
-                u_plan = st.selectbox("Plan", ["Free", "Starter", "Pro", "Enterprise"], key="crud_u_plan")
-                u_email = st.text_input("Email", key="crud_u_email")
-                if st.button("Create User", key="crud_create"):
+                u_name = st.text_input("Username", key="adm_crud_u_name")
+                u_pass = st.text_input("Password", type="password", key="adm_crud_u_pass")
+                u_role = st.selectbox("Role", ["user", "admin"], key="adm_crud_u_role")
+                u_plan = st.selectbox("Plan", ["Free", "Starter", "Pro", "Enterprise"], key="adm_crud_u_plan")
+                u_email = st.text_input("Email", key="adm_crud_u_email")
+                if st.button("Create User", key="adm_crud_create"):
                     success, msg = register_user(u_name, u_pass, u_role, u_plan, u_name, u_email)
                     st.success(msg) if success else st.error(msg)
-                    if success:
-                        st.rerun()
+                    if success: st.rerun()
 
             with st.expander("✏️ Edit User Plan"):
                 from auth import update_user_plan
-                edit_username = st.text_input("Username to edit", key="crud_edit_name")
-                new_plan = st.selectbox("New Plan", ["Free", "Starter", "Pro", "Enterprise"], key="crud_edit_plan")
-                if st.button("Update Plan", key="crud_update"):
+                edit_username = st.text_input("Username to edit", key="adm_crud_edit_name")
+                new_plan = st.selectbox("New Plan", ["Free", "Starter", "Pro", "Enterprise"], key="adm_crud_edit_plan")
+                if st.button("Update Plan", key="adm_crud_update"):
                     if update_user_plan(edit_username, new_plan):
                         st.success(f"Plan updated for {edit_username}")
                         st.rerun()
@@ -1701,9 +1817,9 @@ def show_admin_dashboard():
         with crud_col2:
             with st.expander("🔑 Reset Password"):
                 from auth import update_password
-                reset_user = st.text_input("Username", key="crud_reset_name")
-                reset_pass = st.text_input("New Password", type="password", key="crud_reset_pass")
-                if st.button("Reset Password", key="crud_reset"):
+                reset_user = st.text_input("Username", key="adm_crud_reset_name")
+                reset_pass = st.text_input("New Password", type="password", key="adm_crud_reset_pass")
+                if st.button("Reset Password", key="adm_crud_reset"):
                     if update_password(reset_user, reset_pass):
                         st.success(f"Password reset for {reset_user}")
                     else:
@@ -1711,17 +1827,17 @@ def show_admin_dashboard():
 
             with st.expander("🚫 Suspend / Delete User"):
                 from auth import delete_user
-                del_user = st.text_input("Username to delete", key="crud_del_name")
+                del_user = st.text_input("Username to delete", key="adm_crud_del_name")
                 st.warning("⚠️ This action is permanent")
-                if st.button("Delete User", key="crud_delete", type="primary"):
+                if st.button("Delete User", key="adm_crud_delete", type="primary"):
                     if delete_user(del_user):
                         st.success(f"User {del_user} deleted")
                         st.rerun()
                     else:
                         st.error("Cannot delete user or user not found")
 
-    elif current_nav == "Activity Logs":
-        st.markdown("### 📜 System Activity Logs")
+    with tab4:
+        st.markdown("### 📋 System Activity Logs")
         try:
             logs_df = database.get_logs()
             if not logs_df.empty:
@@ -1731,83 +1847,16 @@ def show_admin_dashboard():
         except Exception as e:
             st.info(f"Logs unavailable: {e}")
 
-    elif current_nav == "Analytics":
-        st.markdown("### 📊 Platform Analytics")
-        if not df_master.empty:
-            import plotly.express as px
-
-            col1, col2 = st.columns(2)
-
-            with col1:
-                st.markdown("**Leads Per Day**")
-                date_col = "scraped_date" if "scraped_date" in df_master.columns else "timestamp"
-                if date_col in df_master.columns:
-                    try:
-                        df_master["date_only"] = pd.to_datetime(df_master[date_col].str[:10], errors="coerce")
-                        daily = df_master.groupby("date_only").size().reset_index(name="Count")
-                        fig = px.line(daily, x="date_only", y="Count", markers=True, color_discrete_sequence=["#2563EB"], height=280)
-                        fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", margin=dict(t=10,b=10,l=10,r=10))
-                        fig.update_xaxes(showgrid=False)
-                        fig.update_yaxes(showgrid=False)
-                        st.plotly_chart(fig, use_container_width=True)
-                    except Exception as e:
-                        st.info(f"Chart unavailable: {e}")
-
-            with col2:
-                st.markdown("**Users by Plan**")
-                plan_counts = {}
-                for u in all_users:
-                    plan = u.get("plan", "Free")
-                    plan_counts[plan] = plan_counts.get(plan, 0) + 1
-                plan_df = pd.DataFrame(list(plan_counts.items()), columns=["Plan", "Users"])
-                fig3 = px.pie(plan_df, names="Plan", values="Users", hole=0.4, color_discrete_sequence=px.colors.qualitative.Set2, height=280)
-                fig3.update_layout(paper_bgcolor="rgba(0,0,0,0)", margin=dict(t=10,b=10,l=10,r=10))
-                st.plotly_chart(fig3, use_container_width=True)
-
-            # Scraper performance stats
-            st.markdown("---")
-            st.markdown("**Scraper Performance**")
-            perf_col1, perf_col2, perf_col3, perf_col4 = st.columns(4)
-            with perf_col1:
-                avg_per_session = total_leads // max(len(all_users), 1)
-                st.metric("Avg Leads/User", avg_per_session)
-            with perf_col2:
-                st.metric("Total Valid", valid_leads)
-            with perf_col3:
-                categories_count = df_master["category"].nunique() if "category" in df_master.columns else 0
-                st.metric("Categories Scraped", categories_count)
-            with perf_col4:
-                sources = df_master["source"].nunique() if "source" in df_master.columns else 1
-                st.metric("Data Sources", sources)
-
-            # Lead quality report
-            st.markdown("---")
-            st.markdown("**Lead Quality Report**")
-            if "validation_status" in df_master.columns:
-                quality_data = {
-                    "Valid": len(df_master[df_master["validation_status"] == "Valid"]),
-                    "Invalid": len(df_master[df_master["validation_status"] == "Invalid"]),
-                    "Pending": len(df_master[df_master["validation_status"] == "Pending"])
-                }
-                for status, count in quality_data.items():
-                    pct = int(count / total_leads * 100) if total_leads > 0 else 0
-                    st.progress(pct / 100, text=f"{status}: {count} leads ({pct}%)")
-        else:
-            st.info("Generate leads to see analytics")
-
-    elif current_nav == "Revenue & Billing":
+    with tab5:
         render_admin_billing()
 
-    elif current_nav == "Scheduler":
-        render_scheduler_ui(st.session_state.get("plan", "Free"))
-
-    elif current_nav == "System Settings":
+    with tab6:
         st.markdown("### ⚙️ System Settings")
-
+        
         st.markdown("#### ☁️ Google Sheets Sync")
         col1, col2 = st.columns(2)
         with col1:
-            if st.button("🔄 Force Cloud Sync", use_container_width=True):
+            if st.button("🔄 Force Cloud Sync", use_container_width=True, key="adm_force_sync"):
                 with st.spinner("Syncing..."):
                     df_local = database.load_db()
                     if not df_local.empty:
@@ -1818,6 +1867,12 @@ def show_admin_dashboard():
         with col2:
             gs_status = "✅ Connected" if google_sheets.check_connection() else "❌ Offline"
             st.info(f"Google Sheets: {gs_status}")
+
+        st.markdown("---")
+        
+        # Scheduler expander inside System Settings
+        with st.expander("📅 Automated Extraction Scheduler"):
+            render_scheduler_ui(st.session_state.get("plan", "Free"))
 
         st.markdown("---")
         st.markdown("#### 🔑 API Keys Status")
@@ -1853,12 +1908,12 @@ def show_admin_dashboard():
         dm_col1, dm_col2, dm_col3 = st.columns(3)
         with dm_col1:
             csv_master = df_master.to_csv(index=False).encode("utf-8")
-            st.download_button("📥 Master CSV", csv_master, "master.csv", "text/csv", use_container_width=True)
+            st.download_button("📥 Master CSV", csv_master, "master.csv", "text/csv", use_container_width=True, key="adm_down_csv")
         with dm_col2:
             json_master = df_master.to_json(orient="records").encode("utf-8")
-            st.download_button("📥 Master JSON", json_master, "master.json", "application/json", use_container_width=True)
+            st.download_button("📥 Master JSON", json_master, "master.json", "application/json", use_container_width=True, key="adm_down_json")
         with dm_col3:
-            if st.button("🚨 Wipe System", use_container_width=True):
+            if st.button("🚨 Wipe System", use_container_width=True, key="adm_wipe_sys"):
                 database.clear_all_leads()
                 google_sheets.clear_sheet_data()
                 st.success("✅ System wiped")
@@ -1867,7 +1922,7 @@ def show_admin_dashboard():
 
         st.markdown("---")
         st.markdown("#### ℹ️ About LeadPulse Pro")
-        st.markdown("""
+        st.markdown('''
         | Item | Detail |
         |---|---|
         | **Version** | v1.0 — Phase 2 Complete |
@@ -1875,121 +1930,63 @@ def show_admin_dashboard():
         | **Build Days** | 16 of 21 complete |
         | **Stack** | Streamlit + Serper + Gemini + Stripe |
         | **Deployment** | Render Free Tier |
-        | **AI Provider** | Google Gemini 1.5 Flash |
-        """)
+        ''')
 
-# ==========================================
-# MAIN ROUTING
-# ==========================================
+
 with st.sidebar:
-    # Logo
-    st.markdown("""
-    <div style="color:white; font-size:20px; font-weight:700; 
-                margin-bottom:4px;">🚀 LeadPulse Pro</div>
-    <div style="color:rgba(255,255,255,0.4); font-size:11px; 
-                margin-bottom:20px;">Lead Engine v1.0</div>
-    """, unsafe_allow_html=True)
-
+    role = st.session_state.get("role", "user")
     username = st.session_state.get("username", "user")
     plan = st.session_state.get("plan", "Free Plan")
-    role = st.session_state.get("role", "user")
-    initials = username[:2].upper() if username else "LP"
-
-    if role == "admin":
-        # Admin profile
-        st.markdown(f"""
-        <div class="admin-profile">
-            <div class="admin-avatar">{initials}</div>
-            <div>
-                <div style="color:white; font-weight:600; 
-                            font-size:14px;">{username}</div>
-                <div style="color:#4ade80; font-size:11px;">{plan}</div>
-            </div>
-        </div>
-        <div class="section-label">ADMIN WORKSPACE</div>
-        """, unsafe_allow_html=True)
-
-        # Navigation items
-        nav_items = [
-            ("🚀", "Generate"),
-            ("🗄️", "Master Database"),
-            ("👥", "User Management"),
-            ("📋", "Activity Logs"),
-            ("📊", "Analytics"),
-            ("💰", "Revenue & Billing"),
-            ("📅", "Scheduler"),
-            ("⚙️", "Settings"),
-        ]
-
-        if "admin_page" not in st.session_state:
-            st.session_state.admin_page = "Generate"
-
-        for icon, page in nav_items:
-            is_active = st.session_state.admin_page == page
-            st.markdown(
-                f'<div class="{"active-nav" if is_active else ""}">',
-                unsafe_allow_html=True
-            )
-            if st.button(f"{icon}  {page}", key=f"admin_nav_{page}"):
-                st.session_state.admin_page = page
-                nav_target = "System Settings" if page == "Settings" else page
-                st.session_state["admin_nav"] = nav_target
-                st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
-    else:
-        # User profile
-        st.markdown(f"""
-        <div class="admin-profile">
-            <div class="admin-avatar" style="background: linear-gradient(135deg, #3b82f6, #60a5fa);">{initials}</div>
-            <div>
-                <div style="color:white; font-weight:600; 
-                            font-size:14px;">{username}</div>
-                <div style="color:#60a5fa; font-size:11px;">{plan}</div>
-            </div>
-        </div>
-        <div class="section-label">USER WORKSPACE</div>
-        """, unsafe_allow_html=True)
-
-        # Navigation items
-        user_items = [
-            ("🚀", "Generate"),
-            ("⚡", "My Leads"),
-            ("📊", "Analytics"),
-            ("💳", "Billing"),
-        ]
-
-        if "user_page" not in st.session_state:
-            st.session_state.user_page = "Generate"
-
-        for icon, page in user_items:
-            is_active = st.session_state.user_page == page
-            st.markdown(
-                f'<div class="{"active-nav" if is_active else ""}">',
-                unsafe_allow_html=True
-            )
-            if st.button(f"{icon}  {page}", key=f"user_nav_{page}"):
-                st.session_state.user_page = page
-                st.session_state["user_nav"] = page
-                st.rerun()
-            st.markdown('</div>', unsafe_allow_html=True)
-
-    # Engine status
-    is_scraping = st.session_state.get("is_scraping", False)
-    engine_color = "#FB923C" if is_scraping else "#22C55E"
-    engine_text = "EXTRACTING..." if is_scraping else "IDLE"
+    
+    # Logo & Profile Info
     st.markdown(f"""
-        <div style="margin-top:20px; padding: 12px; background: rgba(255,255,255,0.05); border-radius: 10px;">
-            <div style="font-size:10px; color:rgba(255,255,255,0.30); margin-bottom:4px; font-weight:700; letter-spacing:1px;">ENGINE STATUS</div>
-            <div style="display:flex; align-items:center; gap:6px; font-size:12px; color:{engine_color}; font-weight:500;">
-                <div style="width:7px; height:7px; border-radius:50%; background:{engine_color};"></div>
-                ● {engine_text}
-            </div>
-        </div>
+    <div style="color:white; font-size:24px; font-weight:700; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+        🚀 LeadPulse Pro
+    </div>
+    <div style="color:rgba(255,255,255,0.8); font-size:14px; margin-bottom:4px; font-weight:500;">
+        Logged in as: <span style="font-weight:600; color:white;">{username}</span>
+    </div>
+    <div style="color:rgba(255,255,255,0.8); font-size:14px; margin-bottom:16px; font-weight:500;">
+        Plan: <span style="font-weight:600; color:white;">{plan}</span>
+    </div>
+    <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.1); margin: 16px 0;" />
     """, unsafe_allow_html=True)
 
-    # Logout at bottom
-    st.markdown("<div style='margin-top:40px;'>", unsafe_allow_html=True)
-    if st.button("🚪  Logout", key="admin_logout" if role == "admin" else "user_logout"):
+    # Active Workspace badge container matching the screenshot
+    if role == "admin":
+        st.markdown("""
+        <div style="background:#0b57d0; border-radius: 8px; padding: 12px 16px; color: white; font-weight: bold; font-size: 15px; display: flex; align-items: center; gap: 8px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(11,87,208,0.35);">
+            <span>🚨</span> Admin Workspace
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown("""
+        <div style="background:#0b57d0; border-radius: 8px; padding: 12px 16px; color: white; font-weight: bold; font-size: 15px; display: flex; align-items: center; gap: 8px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(11,87,208,0.35);">
+            <span>🏠</span> User Workspace
+        </div>
+        """, unsafe_allow_html=True)
+
+    # Spacer
+    for _ in range(12):
+        st.write("")
+
+    # Engine status at bottom matching the screenshot
+    is_scraping = st.session_state.get("is_scraping", False)
+    engine_status = "RUNNING" if is_scraping else "IDLE"
+    status_color = "#22c55e" if engine_status == "IDLE" else "#FB923C"
+    
+    st.markdown(f"""
+    <div style="background: rgba(255, 255, 255, 0.05); border-radius: 8px; padding: 12px 16px; margin-bottom: 16px;">
+        <div style="font-size: 10px; color: rgba(255,255,255,0.4); font-weight: 700; letter-spacing: 1px; margin-bottom: 4px;">ENGINE STATUS</div>
+        <div style="display: flex; align-items: center; gap: 6px; font-size: 14px; color: white; font-weight: bold;">
+            <span style="color: {status_color}; font-size: 18px; line-height: 1;">●</span> {engine_status}
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Big solid blue Sign Out Session button
+    st.markdown("<div style='margin-top:4px;'>", unsafe_allow_html=True)
+    if st.button("Sign Out Session", key="sidebar_logout_btn"):
         st.session_state.clear()
         st.rerun()
     st.markdown("</div>", unsafe_allow_html=True)
