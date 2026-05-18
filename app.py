@@ -28,6 +28,16 @@ from stripe_handler import (
 from export_module import render_export_ui
 from scheduler import render_scheduler_ui, start_scheduler
 
+# ==========================================
+# PAGE CONFIGURATION (MUST BE ABSOLUTE FIRST)
+# ==========================================
+st.set_page_config(
+    page_title="LeadPulse Pro | Modern Lead Engine",
+    page_icon="🚀",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
 # Initialize session
 init_session()
 if "user_nav" not in st.session_state:
@@ -186,15 +196,7 @@ if 'startup_sync_done' not in st.session_state:
             database.save_to_db(leads_from_sheets)
     except: pass
 
-# ==========================================
-# PAGE CONFIGURATION
-# ==========================================
-st.set_page_config(
-    page_title="LeadPulse Pro | Modern Lead Engine",
-    page_icon="🚀",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+# Startup sync complete
 
 # ==========================================
 # MODERN SAAS UI CSS
@@ -229,7 +231,21 @@ st.markdown("""
     color: #fff !important;
 }
 [data-testid="stHeader"] {
-    display: block !important;
+    display: flex !important;
+    background: transparent !important;
+}
+[data-testid="collapsedSidebarIconButton"] {
+    background: #7C3AED !important;
+    color: white !important;
+    border-radius: 50% !important;
+    padding: 6px !important;
+    box-shadow: 0 4px 10px rgba(124, 58, 237, 0.3) !important;
+    transition: all 0.2s ease !important;
+    z-index: 999999 !important;
+}
+[data-testid="collapsedSidebarIconButton"]:hover {
+    background: #4F46E5 !important;
+    transform: scale(1.1) !important;
 }
 
 /* ==================== SIDEBAR BUTTON NAVIGATION OVERRIDES ==================== */
