@@ -47,6 +47,126 @@ if st.session_state.authenticated and check_session_expiry():
 
 # Show login if not authenticated
 if not st.session_state.authenticated:
+    st.markdown("""
+    <style>
+        /* Hide sidebar on login page */
+        [data-testid="stSidebar"] { display: none !important; }
+        [data-testid="stHeader"] { display: none !important; }
+        
+        /* Create the split layout */
+        .login-split {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            display: flex;
+            z-index: 0;
+        }
+        .login-left {
+            width: 45%;
+            background: linear-gradient(135deg, #2E1065 0%, #4C1D95 50%, #3B82F6 100%);
+            padding: 60px;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .login-left h1 {
+            font-size: 3rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            color: #fff !important;
+        }
+        .login-left p {
+            font-size: 1.2rem;
+            color: #E2E8F0;
+            margin-bottom: 3rem;
+        }
+        .feature-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .feature-list li {
+            font-size: 1.1rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(255,255,255,0.1);
+            padding: 16px 20px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+        }
+        .login-right-bg {
+            width: 55%;
+            background: #F8FAFC;
+        }
+        
+        /* Position the actual Streamlit login form over the right side */
+        .stApp {
+            background: transparent !important;
+        }
+        [data-testid="stAppViewContainer"] {
+            background: transparent !important;
+            z-index: 10;
+        }
+        [data-testid="stMainBlockContainer"] {
+            margin-left: 45%; /* Shift main content to the right */
+            width: 55% !important;
+            max-width: 55% !important;
+            padding: 0 !important;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        
+        /* Style the auth card */
+        div[data-testid="column"]:nth-of-type(2) {
+            background: white;
+            padding: 40px;
+            border-radius: 24px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.08);
+            width: 100% !important;
+            max-width: 450px !important;
+            margin: 0 auto !important;
+        }
+        
+        /* Hide empty columns from auth.py */
+        div[data-testid="column"]:nth-of-type(1),
+        div[data-testid="column"]:nth-of-type(3) {
+            display: none !important;
+        }
+        
+        /* Login button gradient */
+        div.stButton > button {
+            background: linear-gradient(135deg, #4C1D95 0%, #3B82F6 100%) !important;
+            border: none !important;
+            color: white !important;
+            padding: 12px !important;
+            font-size: 16px !important;
+            border-radius: 12px !important;
+            font-weight: 600 !important;
+        }
+        div.stButton > button:hover {
+            box-shadow: 0 8px 20px rgba(76, 29, 149, 0.3) !important;
+            transform: translateY(-2px) !important;
+        }
+    </style>
+    <div class="login-split">
+        <div class="login-left">
+            <h1>LeadPulse Pro</h1>
+            <p>The ultimate lead extraction & intelligence platform.</p>
+            <ul class="feature-list">
+                <li>✨ AI-Powered Lead Generation</li>
+                <li>✅ Data Accuracy & Validation</li>
+                <li>🔒 Secure & Private</li>
+                <li>📥 Export & Integrations</li>
+            </ul>
+        </div>
+        <div class="login-right-bg"></div>
+    </div>
+    """, unsafe_allow_html=True)
     render_login_page()
     st.stop()
 
@@ -89,10 +209,11 @@ st.markdown("""
 
 /* ==================== SIDEBAR ==================== */
 [data-testid="stSidebar"] {
-    background: #0F172A !important;
-    border-right: 0.5px solid rgba(255,255,255,0.06) !important;
-    min-width: 220px !important;
-    max-width: 220px !important;
+    background: linear-gradient(180deg, #1E1B4B 0%, #4C1D95 100%) !important;
+    border-right: none !important;
+    min-width: 260px !important;
+    max-width: 260px !important;
+    box-shadow: 4px 0 15px rgba(0,0,0,0.05) !important;
 }
 [data-testid="stSidebar"] * {
     color: rgba(255,255,255,0.7) !important;
@@ -718,9 +839,7 @@ def generation_ui(label_suffix=""):
             if region.strip():
                 st.markdown(f"""
                     <div class="ai-info-box">
-                        ✨ AI will analyse <strong>{region}</strong> and extract specific sub-areas,
-                        phases, road numbers and localities to maximise unique lead coverage.
-                        Sub-regions are derived from <strong>{region}</strong> — not the broader city.
+                        🤖 AI will analyze your city/region and automatically search nearby sub-regions to improve lead coverage.
                     </div>
                 """, unsafe_allow_html=True)
 
@@ -1189,13 +1308,13 @@ def show_user_analytics(username: str) -> None:
         st.error(f"Analytics error: {e}")
 
 def show_user_dashboard():
-    st.markdown('<h1 class="main-title">User Workspace</h1>', unsafe_allow_html=True)
-    st.markdown('<p class="sub-title">Generate leads, view analytics and manage exports</p>', unsafe_allow_html=True)
+    st.markdown('<h1 class="main-title">LeadPulse Pro Workspace</h1>', unsafe_allow_html=True)
+    st.markdown('<p class="sub-title">Generate leads, monitor quality, and manage exports securely.</p>', unsafe_allow_html=True)
 
     # Privacy bar
     st.markdown("""
         <div class="privacy-bar">
-            🔒 Your data is protected — leads stored securely and never shared with third parties
+            🔒 Your lead data is protected — stored securely and never shared with third parties.
         </div>
     """, unsafe_allow_html=True)
 
@@ -1250,8 +1369,8 @@ def show_user_dashboard():
 # ADMIN DASHBOARD
 # ==========================================
 def show_admin_dashboard():
-    st.markdown('<h1 class="main-title">Admin Console</h1>', unsafe_allow_html=True)
-    st.markdown('<p class="sub-title">Platform overview, user management and system control</p>', unsafe_allow_html=True)
+    st.markdown('<h1 class="main-title">LeadPulse Command Center</h1>', unsafe_allow_html=True)
+    st.markdown('<p class="sub-title">Monitor users, revenue, subscriptions, and platform-wide lead intelligence.</p>', unsafe_allow_html=True)
 
     # ==========================================
     # PLATFORM OVERVIEW PANEL
@@ -1645,12 +1764,26 @@ with st.sidebar:
     st.markdown("<br>", unsafe_allow_html=True)
 
     # Navigation label
-    workspace = "Admin Console" if role == "admin" else "User Workspace"
-    st.markdown(f"""
-        <div class="nav-item-active">
-            {'🏛️' if role == 'admin' else '🏠'} {workspace}
-        </div>
-    """, unsafe_allow_html=True)
+    if role == "admin":
+        st.markdown(f"""
+            <div class="nav-menu" style="padding:0 8px;">
+                <div class="nav-item-active">🏛️ Admin Workspace</div>
+                <div class="nav-item" style="padding:8px 16px; color:#cbd5e1; font-size:13px; opacity:0.6;">👥 User Management</div>
+                <div class="nav-item" style="padding:8px 16px; color:#cbd5e1; font-size:13px; opacity:0.6;">🗄️ Master Database</div>
+                <div class="nav-item" style="padding:8px 16px; color:#cbd5e1; font-size:13px; opacity:0.6;">📜 Activity Logs</div>
+                <div class="nav-item" style="padding:8px 16px; color:#cbd5e1; font-size:13px; opacity:0.6;">💰 Revenue & Billing</div>
+                <div class="nav-item" style="padding:8px 16px; color:#cbd5e1; font-size:13px; opacity:0.6;">🛠️ System Settings</div>
+            </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown(f"""
+            <div class="nav-menu" style="padding:0 8px;">
+                <div class="nav-item-active">🏠 User Workspace</div>
+                <div class="nav-item" style="padding:8px 16px; color:#cbd5e1; font-size:13px; opacity:0.6;">⚡ My Leads</div>
+                <div class="nav-item" style="padding:8px 16px; color:#cbd5e1; font-size:13px; opacity:0.6;">📊 Analytics</div>
+                <div class="nav-item" style="padding:8px 16px; color:#cbd5e1; font-size:13px; opacity:0.6;">💳 Billing</div>
+            </div>
+        """, unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
 
