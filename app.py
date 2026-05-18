@@ -44,6 +44,8 @@ if "user_nav" not in st.session_state:
     st.session_state["user_nav"] = "Generate"
 if "admin_nav" not in st.session_state:
     st.session_state["admin_nav"] = "Generate"
+if "admin_page" not in st.session_state:
+    st.session_state["admin_page"] = "Generate"
 
 # Initialize scheduler once
 if "scheduler" not in st.session_state:
@@ -1767,27 +1769,138 @@ with st.sidebar:
     plan_color = plan_colors.get(plan, "#64748B")
 
     if role == "admin":
+        # Force sidebar to always stay open using specific CSS styles
         st.markdown("""
-            <div class="sidebar-logo">
-                <div style="font-size:17px; font-weight:500; color:#fff; letter-spacing:-0.3px;">
-                    🚀 LeadPulse Pro
-                </div>
-                <div style="font-size:10px; color:rgba(255,255,255,0.3); margin-top:2px;">
-                    Lead Engine v1.0
+        <style>
+        [data-testid="stSidebar"] {
+            min-width: 260px !important;
+            max-width: 260px !important;
+            background: linear-gradient(180deg, #1a1a4e 0%, #2d1b69 50%, #1e0a3c 100%) !important;
+        }
+        [data-testid="stSidebar"] > div:first-child {
+            background: transparent !important;
+            padding: 1rem;
+        }
+        [data-testid="stSidebarNav"] {
+            display: none !important;
+        }
+        section[data-testid="stSidebar"] button {
+            width: 100% !important;
+            text-align: left !important;
+            background: transparent !important;
+            color: white !important;
+            border: none !important;
+            padding: 10px 16px !important;
+            border-radius: 8px !important;
+            font-size: 14px !important;
+            cursor: pointer !important;
+        }
+        section[data-testid="stSidebar"] button:hover {
+            background: rgba(255,255,255,0.1) !important;
+        }
+        .active-nav-btn button {
+            background: linear-gradient(135deg, #6c3fc5, #8b5cf6) !important;
+            font-weight: 600 !important;
+        }
+        .sidebar-logo {
+            color: white;
+            font-size: 20px;
+            font-weight: 700;
+            padding: 10px 0;
+        }
+        .sidebar-subtitle {
+            color: rgba(255,255,255,0.5);
+            font-size: 11px;
+            margin-bottom: 20px;
+        }
+        .admin-badge {
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 10px;
+            margin-bottom: 20px;
+            color: white;
+        }
+        .section-label {
+            color: rgba(255,255,255,0.4);
+            font-size: 10px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            margin: 16px 0 8px 0;
+        }
+        </style>
+        """, unsafe_allow_html=True)
+
+        # Logo
+        st.markdown("""
+        <div class="sidebar-logo">🚀 LeadPulse Pro</div>
+        <div class="sidebar-subtitle">Lead Engine v1.0</div>
+        """, unsafe_allow_html=True)
+        
+        # Admin profile
+        st.markdown("""
+        <div class="admin-badge">
+            <div style="display:flex; align-items:center; gap:10px;">
+                <div style="width:36px;height:36px;border-radius:50%;background:#f97316;
+                            display:flex;align-items:center;justify-content:center;
+                            font-weight:700;color:white;">AD</div>
+                <div>
+                    <div style="font-weight:600;font-size:14px;">admin</div>
+                    <div style="color:#4ade80;font-size:11px;">Enterprise Plan</div>
                 </div>
             </div>
-            <div class="sidebar-user" style="padding: 12px 16px; border-bottom: 0.5px solid rgba(255,255,255,0.06); display: flex; align-items: center; gap: 10px;">
-                <div class="sidebar-avatar" style="background:#F59E0B; width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:#fff; font-size:12px; font-weight:500; flex-shrink:0;">
-                    AD
-                </div>
-                <div class="sidebar-user-info" style="flex:1;">
-                    <div class="sidebar-user-name" style="font-size:12px; font-weight:500; color:#fff !important;">admin</div>
-                    <div style="background: rgba(16, 185, 129, 0.15); color: #10B981 !important; border: 0.5px solid rgba(16, 185, 129, 0.3); font-size: 9px; font-weight: 600; padding: 2px 8px; border-radius: 12px; display: inline-block; margin-top: 2px; text-transform: uppercase; letter-spacing: 0.05em;">
-                        Enterprise Plan
-                    </div>
+        </div>
+        <div class="section-label">ADMIN WORKSPACE</div>
+        """, unsafe_allow_html=True)
+        
+        # Navigation
+        pages = [
+            ("🚀", "Generate"),
+            ("🗄️", "Master Database"),
+            ("👥", "User Management"),
+            ("📋", "Activity Logs"),
+            ("📊", "Analytics"),
+            ("💰", "Revenue & Billing"),
+            ("📅", "Scheduler"),
+            ("⚙️", "Settings"),
+        ]
+        
+        if "admin_page" not in st.session_state:
+            st.session_state.admin_page = "Generate"
+        
+        for icon, page in pages:
+            is_active = st.session_state.admin_page == page
+            btn_style = "active-nav-btn" if is_active else ""
+            st.markdown(f'<div class="{btn_style}">', unsafe_allow_html=True)
+            if st.button(f"{icon}  {page}", key=f"nav_{page}"):
+                st.session_state.admin_page = page
+                nav_target = "System Settings" if page == "Settings" else page
+                st.session_state["admin_nav"] = nav_target
+                st.rerun()
+            st.markdown('</div>', unsafe_allow_html=True)
+
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        # Engine status
+        is_scraping = st.session_state.get("is_scraping", False)
+        engine_color = "#FB923C" if is_scraping else "#22C55E"
+        engine_text = "EXTRACTING..." if is_scraping else "IDLE"
+        st.markdown(f"""
+            <div class="engine-status-bar">
+                <div style="font-size:10px; color:rgba(255,255,255,0.3); margin-bottom:4px;">ENGINE STATUS</div>
+                <div style="display:flex; align-items:center; gap:6px; font-size:12px; color:{engine_color}; font-weight:500;">
+                    <div style="width:7px; height:7px; border-radius:50%; background:{engine_color};"></div>
+                    ● {engine_text}
                 </div>
             </div>
         """, unsafe_allow_html=True)
+
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        # Logout button
+        if st.button("Sign Out Session", key="admin_logout", use_container_width=True):
+            for key in list(st.session_state.keys()):
+                del st.session_state[key]
+            st.rerun()
     else:
         st.markdown(f"""
             <div class="sidebar-logo">
@@ -1811,28 +1924,8 @@ with st.sidebar:
             </div>
         """, unsafe_allow_html=True)
 
-    st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("<br>", unsafe_allow_html=True)
 
-    # Navigation label
-    if role == "admin":
-        st.markdown('<div style="font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.4); padding: 0 16px; margin-bottom: 8px; letter-spacing: 0.5px;">ADMIN WORKSPACE</div>', unsafe_allow_html=True)
-        admin_navs = [
-            ("🚀 Generate", "Generate"),
-            ("🗄️ Master Database", "Master Database"),
-            ("👥 User Management", "User Management"),
-            ("📋 Activity Logs", "Activity Logs"),
-            ("📊 Analytics", "Analytics"),
-            ("💰 Revenue & Billing", "Revenue & Billing"),
-            ("⏰ Scheduler", "Scheduler"),
-            ("🛠️ System Settings", "System Settings")
-        ]
-        for label, val in admin_navs:
-            is_active = st.session_state.get("admin_nav", "Generate") == val
-            btn_type = "primary" if is_active else "secondary"
-            if st.button(label, key=f"admin_nav_{val}", type=btn_type, use_container_width=True):
-                st.session_state["admin_nav"] = val
-                st.rerun()
-    else:
         st.markdown('<div style="font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.4); padding: 0 16px; margin-bottom: 8px; letter-spacing: 0.5px;">USER WORKSPACE</div>', unsafe_allow_html=True)
         user_navs = [
             ("🚀 Generate", "Generate"),
@@ -1847,29 +1940,29 @@ with st.sidebar:
                 st.session_state["user_nav"] = val
                 st.rerun()
 
-    st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("<br>", unsafe_allow_html=True)
 
-    # Engine status
-    is_scraping = st.session_state.get("is_scraping", False)
-    engine_color = "#FB923C" if is_scraping else "#22C55E"
-    engine_text = "EXTRACTING..." if is_scraping else "IDLE"
-    st.markdown(f"""
-        <div class="engine-status-bar">
-            <div style="font-size:10px; color:rgba(255,255,255,0.3); margin-bottom:4px;">ENGINE STATUS</div>
-            <div style="display:flex; align-items:center; gap:6px; font-size:12px; color:{engine_color}; font-weight:500;">
-                <div style="width:7px; height:7px; border-radius:50%; background:{engine_color};"></div>
-                ● {engine_text}
+        # Engine status
+        is_scraping = st.session_state.get("is_scraping", False)
+        engine_color = "#FB923C" if is_scraping else "#22C55E"
+        engine_text = "EXTRACTING..." if is_scraping else "IDLE"
+        st.markdown(f"""
+            <div class="engine-status-bar">
+                <div style="font-size:10px; color:rgba(255,255,255,0.3); margin-bottom:4px;">ENGINE STATUS</div>
+                <div style="display:flex; align-items:center; gap:6px; font-size:12px; color:{engine_color}; font-weight:500;">
+                    <div style="width:7px; height:7px; border-radius:50%; background:{engine_color};"></div>
+                    ● {engine_text}
+                </div>
             </div>
-        </div>
-    """, unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
 
-    st.markdown("<br>", unsafe_allow_html=True)
+        st.markdown("<br>", unsafe_allow_html=True)
 
-    # Logout button
-    if st.button("Sign Out Session", use_container_width=True):
-        for key in list(st.session_state.keys()):
-            del st.session_state[key]
-        st.rerun()
+        # Logout button
+        if st.button("Sign Out Session", key="user_logout", use_container_width=True):
+            for key in list(st.session_state.keys()):
+                del st.session_state[key]
+            st.rerun()
 
 if st.session_state.role == "admin":
     show_admin_dashboard()
