@@ -19,9 +19,47 @@ st.markdown("""
     background: linear-gradient(180deg, #0f0c29 0%, #302b63 50%, #24243e 100%) !important;
 }
 
-/* Hide the collapse arrow button permanently */
-[data-testid="collapsedControl"] {
+/* Hide collapse controls and native toggle buttons permanently */
+[data-testid="collapsedControl"],
+[data-testid="collapsedSidebarIconButton"],
+button[class*="HeaderOpenCloseButton"],
+button[class*="collapsedSidebarIconButton"] {
     display: none !important;
+    visibility: hidden !important;
+}
+
+/* Remove gap between nav items */
+div[data-testid="stSidebar"] .stButton {
+    margin-bottom: 0px !important;
+    padding: 0px !important;
+}
+
+div[data-testid="stSidebar"] .stButton > button {
+    margin: 0px 0px 2px 0px !important;
+    padding: 8px 14px !important;
+    line-height: 1.4 !important;
+    height: auto !important;
+    min-height: 0px !important;
+}
+
+/* Remove default Streamlit vertical block spacing in sidebar */
+div[data-testid="stSidebar"] .block-container {
+    padding: 0 !important;
+    gap: 0 !important;
+}
+
+div[data-testid="stSidebar"] .element-container {
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+div[data-testid="stSidebar"] div[data-testid="stVerticalBlock"] {
+    gap: 0px !important;
+}
+
+div[data-testid="stSidebar"] div[data-testid="stVerticalBlockBorderWrapper"] {
+    padding: 0 !important;
+    margin: 0 !important;
 }
 
 /* Sidebar inner content transparent */
