@@ -216,7 +216,7 @@ st.markdown("""
 /* ==================== SIDEBAR ==================== */
 [data-testid="stSidebar"] {
     display: flex !important;
-    background: linear-gradient(180deg, #1E1B4B 0%, #4C1D95 100%) !important;
+    background: linear-gradient(180deg, #1a1a4e 0%, #2d1b69 100%) !important;
     border-right: none !important;
     min-width: 260px !important;
     max-width: 260px !important;
@@ -251,7 +251,7 @@ st.markdown("""
 /* ==================== SIDEBAR BUTTON NAVIGATION OVERRIDES ==================== */
 [data-testid="stSidebar"] div.stButton > button {
     background: transparent !important;
-    color: rgba(255, 255, 255, 0.7) !important;
+    color: #ffffff !important;
     border: none !important;
     border-radius: 12px !important;
     padding: 10px 16px !important;
@@ -271,13 +271,15 @@ st.markdown("""
     transform: none !important;
 }
 [data-testid="stSidebar"] div.stButton > button[data-testid*="primary"] {
-    background: linear-gradient(135deg, #7C3AED 0%, #4F46E5 100%) !important;
+    background: #6c3fc5 !important;
     color: #ffffff !important;
-    box-shadow: 0 4px 14px rgba(124, 58, 237, 0.4) !important;
+    box-shadow: 0 4px 12px rgba(108, 63, 197, 0.3) !important;
     font-weight: 600 !important;
+    border: none !important;
 }
 [data-testid="stSidebar"] div.stButton > button[data-testid*="primary"]:hover {
-    box-shadow: 0 6px 18px rgba(124, 58, 237, 0.6) !important;
+    background: #5b32ab !important;
+    box-shadow: 0 6px 16px rgba(108, 63, 197, 0.5) !important;
     transform: translateY(-1px) !important;
 }
 
@@ -1764,27 +1766,50 @@ with st.sidebar:
     }
     plan_color = plan_colors.get(plan, "#64748B")
 
-    st.markdown(f"""
-        <div class="sidebar-logo">
-            <div style="font-size:17px; font-weight:500; color:#fff; letter-spacing:-0.3px;">
-                🚀 LeadPulse Pro
-            </div>
-            <div style="font-size:10px; color:rgba(255,255,255,0.3); margin-top:2px;">
-                Lead Engine v1.0
-            </div>
-        </div>
-        <div class="sidebar-user">
-            <div class="sidebar-avatar" style="background:{avatar_color};">
-                {initials}
-            </div>
-            <div class="sidebar-user-info">
-                <div class="sidebar-user-name">{username}</div>
-                <div class="sidebar-user-plan" style="color:{plan_color} !important;">
-                    {plan} Plan
+    if role == "admin":
+        st.markdown("""
+            <div class="sidebar-logo">
+                <div style="font-size:17px; font-weight:500; color:#fff; letter-spacing:-0.3px;">
+                    🚀 LeadPulse Pro
+                </div>
+                <div style="font-size:10px; color:rgba(255,255,255,0.3); margin-top:2px;">
+                    Lead Engine v1.0
                 </div>
             </div>
-        </div>
-    """, unsafe_allow_html=True)
+            <div class="sidebar-user" style="padding: 12px 16px; border-bottom: 0.5px solid rgba(255,255,255,0.06); display: flex; align-items: center; gap: 10px;">
+                <div class="sidebar-avatar" style="background:#F59E0B; width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:#fff; font-size:12px; font-weight:500; flex-shrink:0;">
+                    AD
+                </div>
+                <div class="sidebar-user-info" style="flex:1;">
+                    <div class="sidebar-user-name" style="font-size:12px; font-weight:500; color:#fff !important;">admin</div>
+                    <div style="background: rgba(16, 185, 129, 0.15); color: #10B981 !important; border: 0.5px solid rgba(16, 185, 129, 0.3); font-size: 9px; font-weight: 600; padding: 2px 8px; border-radius: 12px; display: inline-block; margin-top: 2px; text-transform: uppercase; letter-spacing: 0.05em;">
+                        Enterprise Plan
+                    </div>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown(f"""
+            <div class="sidebar-logo">
+                <div style="font-size:17px; font-weight:500; color:#fff; letter-spacing:-0.3px;">
+                    🚀 LeadPulse Pro
+                </div>
+                <div style="font-size:10px; color:rgba(255,255,255,0.3); margin-top:2px;">
+                    Lead Engine v1.0
+                </div>
+            </div>
+            <div class="sidebar-user">
+                <div class="sidebar-avatar" style="background:{avatar_color};">
+                    {initials}
+                </div>
+                <div class="sidebar-user-info">
+                    <div class="sidebar-user-name">{username}</div>
+                    <div class="sidebar-user-plan" style="color:{plan_color} !important;">
+                        {plan} Plan
+                    </div>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
 
@@ -1795,7 +1820,7 @@ with st.sidebar:
             ("🚀 Generate", "Generate"),
             ("🗄️ Master Database", "Master Database"),
             ("👥 User Management", "User Management"),
-            ("📜 Activity Logs", "Activity Logs"),
+            ("📋 Activity Logs", "Activity Logs"),
             ("📊 Analytics", "Analytics"),
             ("💰 Revenue & Billing", "Revenue & Billing"),
             ("⏰ Scheduler", "Scheduler"),
