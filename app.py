@@ -1,4 +1,102 @@
 import streamlit as st
+st.set_page_config(
+    page_title="LeadPulse Pro",
+    page_icon="🚀",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# Force sidebar to always stay open using specific CSS styles (STEP 2)
+st.markdown("""
+<style>
+/* Always show sidebar, never collapse */
+[data-testid="stSidebar"] {
+    display: block !important;
+    visibility: visible !important;
+    min-width: 260px !important;
+    max-width: 260px !important;
+    transform: translateX(0) !important;
+    background: linear-gradient(180deg, #0f0c29 0%, #302b63 50%, #24243e 100%) !important;
+}
+
+/* Hide the collapse arrow button permanently */
+[data-testid="collapsedControl"] {
+    display: none !important;
+}
+
+/* Sidebar inner content transparent */
+[data-testid="stSidebar"] > div:first-child {
+    background: transparent !important;
+    padding: 1.5rem 1rem !important;
+}
+
+/* Hide default Streamlit sidebar nav links */
+[data-testid="stSidebarNav"] {
+    display: none !important;
+}
+
+/* Nav button styles */
+div[data-testid="stSidebar"] button {
+    width: 100% !important;
+    text-align: left !important;
+    background: transparent !important;
+    color: rgba(255,255,255,0.75) !important;
+    border: none !important;
+    padding: 10px 14px !important;
+    border-radius: 10px !important;
+    font-size: 14px !important;
+    margin-bottom: 4px !important;
+    transition: all 0.2s ease !important;
+}
+
+div[data-testid="stSidebar"] button:hover {
+    background: rgba(255,255,255,0.08) !important;
+    color: white !important;
+}
+
+/* Active nav button */
+.active-nav button {
+    background: linear-gradient(135deg, #6c3fc5 0%, #8b5cf6 100%) !important;
+    color: white !important;
+    font-weight: 600 !important;
+    box-shadow: 0 4px 12px rgba(108, 63, 197, 0.4) !important;
+}
+
+/* Admin profile card */
+.admin-profile {
+    background: rgba(255,255,255,0.07);
+    border-radius: 12px;
+    padding: 12px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.admin-avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #f97316, #fb923c);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    color: white;
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+.section-label {
+    color: rgba(255,255,255,0.3);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    margin: 20px 0 8px 4px;
+}
+</style>
+""", unsafe_allow_html=True)
+
 import pandas as pd
 import os
 import subprocess
@@ -27,16 +125,6 @@ from stripe_handler import (
 )
 from export_module import render_export_ui
 from scheduler import render_scheduler_ui, start_scheduler
-
-# ==========================================
-# PAGE CONFIGURATION (MUST BE ABSOLUTE FIRST)
-# ==========================================
-st.set_page_config(
-    page_title="LeadPulse Pro | Modern Lead Engine",
-    page_icon="🚀",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
 
 # Initialize session
 init_session()
@@ -1757,103 +1845,34 @@ def show_admin_dashboard():
 # ==========================================
 with st.sidebar:
     # Logo
-    username = st.session_state.username or ""
-    plan = st.session_state.get("plan", "Free")
+    st.markdown("""
+    <div style="color:white; font-size:20px; font-weight:700; 
+                margin-bottom:4px;">🚀 LeadPulse Pro</div>
+    <div style="color:rgba(255,255,255,0.4); font-size:11px; 
+                margin-bottom:20px;">Lead Engine v1.0</div>
+    """, unsafe_allow_html=True)
+
+    username = st.session_state.get("username", "user")
+    plan = st.session_state.get("plan", "Free Plan")
     role = st.session_state.get("role", "user")
     initials = username[:2].upper() if username else "LP"
-    avatar_color = "#F59E0B" if role == "admin" else "#2563EB"
-    plan_colors = {
-        "Free": "#64748B", "Starter": "#2563EB",
-        "Pro": "#7C3AED", "Enterprise": "#B45309"
-    }
-    plan_color = plan_colors.get(plan, "#64748B")
 
     if role == "admin":
-        # Force sidebar to always stay open using specific CSS styles
-        st.markdown("""
-        <style>
-        [data-testid="stSidebar"] {
-            min-width: 260px !important;
-            max-width: 260px !important;
-            background: linear-gradient(180deg, #1a1a4e 0%, #2d1b69 50%, #1e0a3c 100%) !important;
-        }
-        [data-testid="stSidebar"] > div:first-child {
-            background: transparent !important;
-            padding: 1rem;
-        }
-        [data-testid="stSidebarNav"] {
-            display: none !important;
-        }
-        section[data-testid="stSidebar"] button {
-            width: 100% !important;
-            text-align: left !important;
-            background: transparent !important;
-            color: white !important;
-            border: none !important;
-            padding: 10px 16px !important;
-            border-radius: 8px !important;
-            font-size: 14px !important;
-            cursor: pointer !important;
-        }
-        section[data-testid="stSidebar"] button:hover {
-            background: rgba(255,255,255,0.1) !important;
-        }
-        .active-nav-btn button {
-            background: linear-gradient(135deg, #6c3fc5, #8b5cf6) !important;
-            font-weight: 600 !important;
-        }
-        .sidebar-logo {
-            color: white;
-            font-size: 20px;
-            font-weight: 700;
-            padding: 10px 0;
-        }
-        .sidebar-subtitle {
-            color: rgba(255,255,255,0.5);
-            font-size: 11px;
-            margin-bottom: 20px;
-        }
-        .admin-badge {
-            background: rgba(255,255,255,0.1);
-            border-radius: 10px;
-            padding: 10px;
-            margin-bottom: 20px;
-            color: white;
-        }
-        .section-label {
-            color: rgba(255,255,255,0.4);
-            font-size: 10px;
-            font-weight: 600;
-            letter-spacing: 1px;
-            margin: 16px 0 8px 0;
-        }
-        </style>
-        """, unsafe_allow_html=True)
-
-        # Logo
-        st.markdown("""
-        <div class="sidebar-logo">🚀 LeadPulse Pro</div>
-        <div class="sidebar-subtitle">Lead Engine v1.0</div>
-        """, unsafe_allow_html=True)
-        
         # Admin profile
-        st.markdown("""
-        <div class="admin-badge">
-            <div style="display:flex; align-items:center; gap:10px;">
-                <div style="width:36px;height:36px;border-radius:50%;background:#f97316;
-                            display:flex;align-items:center;justify-content:center;
-                            font-weight:700;color:white;">AD</div>
-                <div>
-                    <div style="font-weight:600;font-size:14px;">admin</div>
-                    <div style="color:#4ade80;font-size:11px;">Enterprise Plan</div>
-                </div>
+        st.markdown(f"""
+        <div class="admin-profile">
+            <div class="admin-avatar">{initials}</div>
+            <div>
+                <div style="color:white; font-weight:600; 
+                            font-size:14px;">{username}</div>
+                <div style="color:#4ade80; font-size:11px;">{plan}</div>
             </div>
         </div>
         <div class="section-label">ADMIN WORKSPACE</div>
         """, unsafe_allow_html=True)
-        
-        # Navigation
-        pages = [
+
+        # Navigation items
+        nav_items = [
             ("🚀", "Generate"),
             ("🗄️", "Master Database"),
             ("👥", "User Management"),
@@ -1863,106 +1882,79 @@ with st.sidebar:
             ("📅", "Scheduler"),
             ("⚙️", "Settings"),
         ]
-        
+
         if "admin_page" not in st.session_state:
             st.session_state.admin_page = "Generate"
-        
-        for icon, page in pages:
+
+        for icon, page in nav_items:
             is_active = st.session_state.admin_page == page
-            btn_style = "active-nav-btn" if is_active else ""
-            st.markdown(f'<div class="{btn_style}">', unsafe_allow_html=True)
-            if st.button(f"{icon}  {page}", key=f"nav_{page}"):
+            st.markdown(
+                f'<div class="{"active-nav" if is_active else ""}">',
+                unsafe_allow_html=True
+            )
+            if st.button(f"{icon}  {page}", key=f"admin_nav_{page}"):
                 st.session_state.admin_page = page
                 nav_target = "System Settings" if page == "Settings" else page
                 st.session_state["admin_nav"] = nav_target
                 st.rerun()
             st.markdown('</div>', unsafe_allow_html=True)
-
-        st.markdown("<br>", unsafe_allow_html=True)
-
-        # Engine status
-        is_scraping = st.session_state.get("is_scraping", False)
-        engine_color = "#FB923C" if is_scraping else "#22C55E"
-        engine_text = "EXTRACTING..." if is_scraping else "IDLE"
-        st.markdown(f"""
-            <div class="engine-status-bar">
-                <div style="font-size:10px; color:rgba(255,255,255,0.3); margin-bottom:4px;">ENGINE STATUS</div>
-                <div style="display:flex; align-items:center; gap:6px; font-size:12px; color:{engine_color}; font-weight:500;">
-                    <div style="width:7px; height:7px; border-radius:50%; background:{engine_color};"></div>
-                    ● {engine_text}
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
-
-        st.markdown("<br>", unsafe_allow_html=True)
-
-        # Logout button
-        if st.button("Sign Out Session", key="admin_logout", use_container_width=True):
-            for key in list(st.session_state.keys()):
-                del st.session_state[key]
-            st.rerun()
     else:
+        # User profile
         st.markdown(f"""
-            <div class="sidebar-logo">
-                <div style="font-size:17px; font-weight:500; color:#fff; letter-spacing:-0.3px;">
-                    🚀 LeadPulse Pro
-                </div>
-                <div style="font-size:10px; color:rgba(255,255,255,0.3); margin-top:2px;">
-                    Lead Engine v1.0
-                </div>
+        <div class="admin-profile">
+            <div class="admin-avatar" style="background: linear-gradient(135deg, #3b82f6, #60a5fa);">{initials}</div>
+            <div>
+                <div style="color:white; font-weight:600; 
+                            font-size:14px;">{username}</div>
+                <div style="color:#60a5fa; font-size:11px;">{plan}</div>
             </div>
-            <div class="sidebar-user">
-                <div class="sidebar-avatar" style="background:{avatar_color};">
-                    {initials}
-                </div>
-                <div class="sidebar-user-info">
-                    <div class="sidebar-user-name">{username}</div>
-                    <div class="sidebar-user-plan" style="color:{plan_color} !important;">
-                        {plan} Plan
-                    </div>
-                </div>
-            </div>
+        </div>
+        <div class="section-label">USER WORKSPACE</div>
         """, unsafe_allow_html=True)
 
-        st.markdown("<br>", unsafe_allow_html=True)
-
-        st.markdown('<div style="font-size: 11px; font-weight: 600; color: rgba(255,255,255,0.4); padding: 0 16px; margin-bottom: 8px; letter-spacing: 0.5px;">USER WORKSPACE</div>', unsafe_allow_html=True)
-        user_navs = [
-            ("🚀 Generate", "Generate"),
-            ("⚡ My Leads", "My Leads"),
-            ("📊 Analytics", "Analytics"),
-            ("💳 Billing", "Billing")
+        # Navigation items
+        user_items = [
+            ("🚀", "Generate"),
+            ("⚡", "My Leads"),
+            ("📊", "Analytics"),
+            ("💳", "Billing"),
         ]
-        for label, val in user_navs:
-            is_active = st.session_state.get("user_nav", "Generate") == val
-            btn_type = "primary" if is_active else "secondary"
-            if st.button(label, key=f"user_nav_{val}", type=btn_type, use_container_width=True):
-                st.session_state["user_nav"] = val
+
+        if "user_page" not in st.session_state:
+            st.session_state.user_page = "Generate"
+
+        for icon, page in user_items:
+            is_active = st.session_state.user_page == page
+            st.markdown(
+                f'<div class="{"active-nav" if is_active else ""}">',
+                unsafe_allow_html=True
+            )
+            if st.button(f"{icon}  {page}", key=f"user_nav_{page}"):
+                st.session_state.user_page = page
+                st.session_state["user_nav"] = page
                 st.rerun()
+            st.markdown('</div>', unsafe_allow_html=True)
 
-        st.markdown("<br>", unsafe_allow_html=True)
-
-        # Engine status
-        is_scraping = st.session_state.get("is_scraping", False)
-        engine_color = "#FB923C" if is_scraping else "#22C55E"
-        engine_text = "EXTRACTING..." if is_scraping else "IDLE"
-        st.markdown(f"""
-            <div class="engine-status-bar">
-                <div style="font-size:10px; color:rgba(255,255,255,0.3); margin-bottom:4px;">ENGINE STATUS</div>
-                <div style="display:flex; align-items:center; gap:6px; font-size:12px; color:{engine_color}; font-weight:500;">
-                    <div style="width:7px; height:7px; border-radius:50%; background:{engine_color};"></div>
-                    ● {engine_text}
-                </div>
+    # Engine status
+    is_scraping = st.session_state.get("is_scraping", False)
+    engine_color = "#FB923C" if is_scraping else "#22C55E"
+    engine_text = "EXTRACTING..." if is_scraping else "IDLE"
+    st.markdown(f"""
+        <div style="margin-top:20px; padding: 12px; background: rgba(255,255,255,0.05); border-radius: 10px;">
+            <div style="font-size:10px; color:rgba(255,255,255,0.30); margin-bottom:4px; font-weight:700; letter-spacing:1px;">ENGINE STATUS</div>
+            <div style="display:flex; align-items:center; gap:6px; font-size:12px; color:{engine_color}; font-weight:500;">
+                <div style="width:7px; height:7px; border-radius:50%; background:{engine_color};"></div>
+                ● {engine_text}
             </div>
-        """, unsafe_allow_html=True)
+        </div>
+    """, unsafe_allow_html=True)
 
-        st.markdown("<br>", unsafe_allow_html=True)
-
-        # Logout button
-        if st.button("Sign Out Session", key="user_logout", use_container_width=True):
-            for key in list(st.session_state.keys()):
-                del st.session_state[key]
-            st.rerun()
+    # Logout at bottom
+    st.markdown("<div style='margin-top:40px;'>", unsafe_allow_html=True)
+    if st.button("🚪  Logout", key="admin_logout" if role == "admin" else "user_logout"):
+        st.session_state.clear()
+        st.rerun()
+    st.markdown("</div>", unsafe_allow_html=True)
 
 if st.session_state.role == "admin":
     show_admin_dashboard()
