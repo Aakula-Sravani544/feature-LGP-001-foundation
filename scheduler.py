@@ -37,11 +37,22 @@ def run_scraping_job(
     query = f"{keyword} in {location}"
     logger.info(f"Starting job {job_id}: {query}")
 
-    # Update status to running
+    # Register/update status to running immediately so it shows up in UI
+    found = False
     for job in job_history:
         if job["job_id"] == job_id:
             job["status"] = "running"
+            found = True
             break
+    if not found:
+        job_history.append({
+            "job_id": job_id,
+            "query": query,
+            "status": "running",
+            "started_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "leads_collected": 0,
+            "completed_at": ""
+        })
 
     leads = []
     try:
@@ -55,13 +66,19 @@ def run_scraping_job(
         ai_flag = "1" if use_ai else "0"
         logger.info(f"Running: {scraper_path} {query} {max_leads}")
 
+        # Setup environment with UTF-8 encoding to prevent UnicodeEncodeError in subprocess pipes
+        sub_env = os.environ.copy()
+        sub_env["PYTHONIOENCODING"] = "utf-8"
+
         process = subprocess.Popen(
             [sys.executable, scraper_path, query, str(max_leads), ai_flag],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
+            encoding="utf-8",
             bufsize=1,
-            cwd=current_dir
+            cwd=current_dir,
+            env=sub_env
         )
 
         for line in process.stdout:
