@@ -1409,33 +1409,28 @@ def show_user_analytics(username: str) -> None:
         # CHART 5 — Session History Table
         # ==========================================
         st.markdown("**📋 Session History**")
-        if date_col in df.columns:
-            try:
-                df["date_only"] = pd.to_datetime(
-                    df[date_col].str[:10],
+        try:
+            df_hist = database.load_db()
+            if not df_hist.empty and "scraped_date" in df_hist.columns:
+                df_hist["date_only"] = pd.to_datetime(
+                    df_hist["scraped_date"].astype(str).str[:10],
                     errors="coerce"
                 )
-                session_history = df.groupby("date_only").agg(
+                session_history = df_hist.groupby("date_only").agg(
                     leads_collected=("lead_id", "count"),
                     valid_leads=("validation_status", lambda x: (x == "Valid").sum()),
-                    categories=("category", lambda x: ", ".join([str(i) for i in x.dropna().unique()[:3]]))
+                    categories=(
+                        "category",
+                        lambda x: ", ".join([str(i) for i in x.dropna().unique()[:3]])
+                    )
                 ).reset_index()
-                session_history = session_history.sort_values(
-                    "date_only", ascending=False
-                ).head(10)
-                session_history.columns = [
-                    "Date", "Leads Collected",
-                    "Valid Leads", "Categories"
-                ]
-                st.dataframe(
-                    session_history,
-                    hide_index=True,
-                    use_container_width=True
-                )
-            except Exception as e:
-                st.info(f"Session history unavailable: {e}")
-        else:
-            st.info("No session history available")
+                session_history = session_history.sort_values("date_only", ascending=False).head(10)
+                session_history.columns = ["Date", "Leads Collected", "Valid Leads", "Categories"]
+                st.dataframe(session_history, hide_index=True, use_container_width=True)
+            else:
+                st.info("No session history yet")
+        except Exception as e:
+            st.info(f"Session history loading: {e}")
 
     except ImportError:
         st.error("Plotly not installed. Add 'plotly' to requirements.txt")
@@ -1574,76 +1569,64 @@ def show_admin_dashboard():
     # ==========================================
     with tabs[1]:
         st.markdown("### 🗄️ Master Lead Repository")
-        if not df_master.empty:
-            # Analytics charts
-            import plotly.express as px
-            col1, col2 = st.columns(2)
-            with col1:
-                st.markdown("**Top Categories**")
-                if "category" in df_master.columns:
-                    cat_counts = df_master["category"].value_counts().head(8).reset_index()
-                    cat_counts.columns = ["Category", "Count"]
-                    fig = px.bar(cat_counts, x="Category", y="Count", color="Count", color_continuous_scale="Blues", height=280)
-                    fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", margin=dict(t=10,b=10,l=10,r=10), coloraxis_showscale=False)
-                    fig.update_xaxes(showgrid=False, tickangle=-45)
-                    fig.update_yaxes(showgrid=False)
-                    st.plotly_chart(fig, use_container_width=True)
-            with col2:
-                st.markdown("**Validation Distribution**")
-                if "validation_status" in df_master.columns:
-                    val_counts = df_master["validation_status"].value_counts().reset_index()
-                    val_counts.columns = ["Status", "Count"]
-                    colors = {"Valid": "#22C55E", "Invalid": "#EF4444", "Pending": "#F59E0B"}
-                    color_list = [colors.get(s, "#94A3B8") for s in val_counts["Status"]]
-                    import plotly.graph_objects as go
-                    fig2 = go.Figure(data=[go.Pie(labels=val_counts["Status"], values=val_counts["Count"], hole=0.5, marker_colors=color_list)])
-                    fig2.update_layout(paper_bgcolor="rgba(0,0,0,0)", height=280, margin=dict(t=10,b=10,l=10,r=10))
-                    st.plotly_chart(fig2, use_container_width=True)
-
-            st.markdown("---")
-            # Filter options
-            col3, col4, col5 = st.columns(3)
-            with col3:
-                status_filter = st.multiselect("Filter by Status", df_master["validation_status"].unique() if "validation_status" in df_master.columns else [])
-            with col4:
-                cat_filter = st.multiselect("Filter by Category", df_master["category"].unique() if "category" in df_master.columns else [])
-            with col5:
-                search_term = st.text_input("Search by name", placeholder="Type to search...")
-
-            filtered_df = df_master.copy()
-            if status_filter:
-                filtered_df = filtered_df[filtered_df["validation_status"].isin(status_filter)]
-            if cat_filter:
-                filtered_df = filtered_df[filtered_df["category"].isin(cat_filter)]
-            if search_term:
-                filtered_df = filtered_df[filtered_df["name"].str.contains(search_term, case=False, na=False)]
-
-            st.markdown(f"**Showing {len(filtered_df)} of {len(df_master)} leads**")
-            st.dataframe(filtered_df, hide_index=True, use_container_width=True)
-
-            # Export buttons
-            col6, col7, col8 = st.columns(3)
-            with col6:
-                csv = filtered_df.to_csv(index=False).encode("utf-8")
-                st.download_button("📥 Export CSV", csv, "master_leads.csv", "text/csv", use_container_width=True)
-            with col7:
-                json_data = filtered_df.to_json(orient="records").encode("utf-8")
-                st.download_button("📥 Export JSON", json_data, "master_leads.json", "application/json", use_container_width=True)
-            with col8:
-                st.metric("Filtered Leads", len(filtered_df))
+        df_master = database.load_db()
+        if df_master.empty:
+            st.info("No leads in database yet. Generate leads first.")
         else:
-            st.info("No leads in database yet.")
+            st.markdown(f"**Total: {len(df_master)} leads**")
+            # filters
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                status_filter = st.multiselect(
+                    "Filter by Status",
+                    options=df_master["validation_status"].unique().tolist() if "validation_status" in df_master.columns else [],
+                    key="master_status_filter"
+                )
+            with col2:
+                cat_filter = st.multiselect(
+                    "Filter by Category",
+                    options=df_master["category"].dropna().unique().tolist() if "category" in df_master.columns else [],
+                    key="master_cat_filter"
+                )
+            with col3:
+                search = st.text_input("Search name", key="master_search")
+
+            filtered = df_master.copy()
+            if status_filter and "validation_status" in filtered.columns:
+                filtered = filtered[filtered["validation_status"].isin(status_filter)]
+            if cat_filter and "category" in filtered.columns:
+                filtered = filtered[filtered["category"].isin(cat_filter)]
+            if search and "name" in filtered.columns:
+                filtered = filtered[filtered["name"].str.contains(search, case=False, na=False)]
+
+            st.markdown(f"Showing **{len(filtered)}** of **{len(df_master)}** leads")
+            display_cols = ["name", "phone", "email", "category", "rating", "sub_region", "validation_status", "scraped_date"]
+            show_cols = [c for c in display_cols if c in filtered.columns]
+            st.dataframe(filtered[show_cols], hide_index=True, use_container_width=True)
+
+            col4, col5 = st.columns(2)
+            with col4:
+                csv = filtered.to_csv(index=False).encode("utf-8")
+                st.download_button("📥 Export CSV", csv, "master_leads.csv", "text/csv", use_container_width=True)
+            with col5:
+                from export_module import render_export_ui
+                render_export_ui(filtered, "Export Master Database")
 
     # ==========================================
     # TAB 3 — User Management (CRUD)
     # ==========================================
     with tabs[2]:
         st.markdown("### 👥 User Management")
+        from auth import get_all_users, register_user, delete_user, update_user_plan, update_password
 
-        # Users table
-        if all_users:
-            df_users = pd.DataFrame(all_users)
-            st.dataframe(df_users, hide_index=True, use_container_width=True)
+        # Always reload fresh
+        all_users_list = get_all_users()
+        if all_users_list:
+            df_users = pd.DataFrame(all_users_list)
+            display_user_cols = ["username", "role", "plan", "name", "email", "created_at"]
+            show_user_cols = [c for c in display_user_cols if c in df_users.columns]
+            st.dataframe(df_users[show_user_cols], hide_index=True, use_container_width=True)
+            st.markdown(f"**Total users: {len(all_users_list)}**")
         else:
             st.info("No users found")
 
@@ -1654,7 +1637,6 @@ def show_admin_dashboard():
 
         with crud_col1:
             with st.expander("➕ Create New User"):
-                from auth import register_user
                 u_name = st.text_input("Username", key="crud_u_name")
                 u_pass = st.text_input("Password", type="password", key="crud_u_pass")
                 u_role = st.selectbox("Role", ["user", "admin"], key="crud_u_role")
@@ -1667,7 +1649,6 @@ def show_admin_dashboard():
                         st.rerun()
 
             with st.expander("✏️ Edit User Plan"):
-                from auth import update_user_plan
                 edit_username = st.text_input("Username to edit", key="crud_edit_name")
                 new_plan = st.selectbox("New Plan", ["Free", "Starter", "Pro", "Enterprise"], key="crud_edit_plan")
                 if st.button("Update Plan", key="crud_update"):
@@ -1679,7 +1660,6 @@ def show_admin_dashboard():
 
         with crud_col2:
             with st.expander("🔑 Reset Password"):
-                from auth import update_password
                 reset_user = st.text_input("Username", key="crud_reset_name")
                 reset_pass = st.text_input("New Password", type="password", key="crud_reset_pass")
                 if st.button("Reset Password", key="crud_reset"):
@@ -1689,7 +1669,6 @@ def show_admin_dashboard():
                         st.error("User not found")
 
             with st.expander("🚫 Suspend / Delete User"):
-                from auth import delete_user
                 del_user = st.text_input("Username to delete", key="crud_del_name")
                 st.warning("⚠️ This action is permanent")
                 if st.button("Delete User", key="crud_delete", type="primary"):
@@ -1768,15 +1747,15 @@ def show_admin_dashboard():
             # Lead quality report
             st.markdown("---")
             st.markdown("**Lead Quality Report**")
-            if "validation_status" in df_master.columns:
-                quality_data = {
-                    "Valid": len(df_master[df_master["validation_status"] == "Valid"]),
-                    "Invalid": len(df_master[df_master["validation_status"] == "Invalid"]),
-                    "Pending": len(df_master[df_master["validation_status"] == "Pending"])
-                }
-                for status, count in quality_data.items():
-                    pct = int(count / total_leads * 100) if total_leads > 0 else 0
+            df_analytics = database.load_db()
+            total_analytics = len(df_analytics)
+            if total_analytics > 0 and "validation_status" in df_analytics.columns:
+                for status in ["Valid", "Invalid", "Pending"]:
+                    count = len(df_analytics[df_analytics["validation_status"] == status])
+                    pct = int(count / total_analytics * 100) if total_analytics > 0 else 0
                     st.progress(pct / 100, text=f"{status}: {count} leads ({pct}%)")
+            else:
+                st.info("Generate leads to see quality report")
         else:
             st.info("Generate leads to see analytics")
 
@@ -1784,7 +1763,30 @@ def show_admin_dashboard():
     # TAB 6 — Revenue
     # ==========================================
     with tabs[5]:
-        render_admin_billing()
+        st.markdown("### 💰 Revenue Dashboard")
+        from auth import get_all_users
+        all_users_rev = get_all_users()
+        plan_revenue = {"Free": 0, "Starter": 29, "Pro": 79, "Enterprise": 500}
+        mrr = sum(plan_revenue.get(u.get("plan", "Free"), 0) for u in all_users_rev)
+        plan_counts = {}
+        for u in all_users_rev:
+            p = u.get("plan", "Free")
+            plan_counts[p] = plan_counts.get(p, 0) + 1
+
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Monthly Revenue (MRR)", f"${mrr}")
+        c2.metric("Total Users", len(all_users_rev))
+        paid = sum(1 for u in all_users_rev if u.get("plan","Free") != "Free")
+        c3.metric("Paid Users", paid)
+        c4.metric("Free Users", plan_counts.get("Free", 0))
+
+        st.markdown("---")
+        st.markdown("**Users by Plan:**")
+        plan_df = pd.DataFrame([
+            {"Plan": k, "Users": v, "Monthly Revenue": f"${v * plan_revenue.get(k,0)}"}
+            for k, v in plan_counts.items()
+        ])
+        st.dataframe(plan_df, hide_index=True, use_container_width=True)
 
     # ==========================================
     # TAB 7 — System Settings
@@ -1894,6 +1896,20 @@ with st.sidebar:
     <hr style="border-color:rgba(255,255,255,0.1); 
                margin-bottom:20px;"/>
     """, unsafe_allow_html=True)
+    
+    # after user info section add live stats
+    try:
+        df_live = database.load_db()
+        total_live = len(df_live)
+        valid_live = len(df_live[df_live["validation_status"] == "Valid"]) if "validation_status" in df_live.columns else 0
+        st.markdown(f"""
+            <div style="padding:0 8px; font-size:11px; color:rgba(255,255,255,0.4);">
+                <div style="margin-bottom:4px;">📊 Total leads: <span style="color:rgba(255,255,255,0.7);">{total_live}</span></div>
+                <div>✅ Valid: <span style="color:#22C55E;">{valid_live}</span></div>
+            </div>
+        """, unsafe_allow_html=True)
+    except:
+        pass
     
     if st.button("🏠  Admin Workspace", 
                  key="nav_admin_workspace"):
