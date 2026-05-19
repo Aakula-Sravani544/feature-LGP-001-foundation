@@ -279,7 +279,9 @@ st.markdown("""
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
 @import url('https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css');
 
-* { font-family: 'Inter', sans-serif !important; }
+html, body, [data-testid="stAppViewContainer"], .main, .stMarkdown, p, h1, h2, h3, h4, h5, h6, label {
+    font-family: 'Inter', sans-serif !important;
+}
 
 /* ==================== BACKGROUND ==================== */
 .stApp { background: #F8FAFC !important; }
@@ -679,16 +681,7 @@ div.stButton > button:disabled {
     gap: 8px;
 }
 
-/* ==================== PROGRESS BAR ==================== */
-.stProgress > div > div {
-    background: #2563EB !important;
-    border-radius: 4px !important;
-}
-.stProgress > div {
-    background: #E2E8F0 !important;
-    border-radius: 4px !important;
-    height: 6px !important;
-}
+/* Native progress bars will render beautifully */
 
 /* ==================== ALERTS ==================== */
 .stAlert {
@@ -1607,8 +1600,13 @@ def show_admin_dashboard():
             col4, col5 = st.columns(2)
             with col4:
                 csv = filtered.to_csv(index=False).encode("utf-8")
-                st.download_button("📥 Export CSV", csv, "master_leads.csv", "text/csv", use_container_width=True)
+                st.download_button("📥 Export CSV (Quick Download)", csv, "master_leads.csv", "text/csv", use_container_width=True)
             with col5:
+                json_data = filtered.to_json(orient="records").encode("utf-8")
+                st.download_button("📥 Export JSON (Quick Download)", json_data, "master_leads.json", "application/json", use_container_width=True)
+
+            st.markdown("---")
+            with st.expander("📥 Advanced Export Tools (Excel, PDF, Google Sheets)", expanded=True):
                 from export_module import render_export_ui
                 render_export_ui(filtered, "Export Master Database")
 
@@ -1633,50 +1631,48 @@ def show_admin_dashboard():
         st.markdown("---")
 
         # CRUD operations
-        crud_col1, crud_col2 = st.columns(2)
+        st.markdown("#### 🛠️ Account Actions")
 
-        with crud_col1:
-            with st.expander("➕ Create New User"):
-                u_name = st.text_input("Username", key="crud_u_name")
-                u_pass = st.text_input("Password", type="password", key="crud_u_pass")
-                u_role = st.selectbox("Role", ["user", "admin"], key="crud_u_role")
-                u_plan = st.selectbox("Plan", ["Free", "Starter", "Pro", "Enterprise"], key="crud_u_plan")
-                u_email = st.text_input("Email", key="crud_u_email")
-                if st.button("Create User", key="crud_create"):
-                    success, msg = register_user(u_name, u_pass, u_role, u_plan, u_name, u_email)
-                    st.success(msg) if success else st.error(msg)
-                    if success:
-                        st.rerun()
+        with st.expander("➕ Create New User", expanded=False):
+            u_name = st.text_input("Username", key="crud_u_name")
+            u_pass = st.text_input("Password", type="password", key="crud_u_pass")
+            u_role = st.selectbox("Role", ["user", "admin"], key="crud_u_role")
+            u_plan = st.selectbox("Plan", ["Free", "Starter", "Pro", "Enterprise"], key="crud_u_plan")
+            u_email = st.text_input("Email", key="crud_u_email")
+            if st.button("Create User", key="crud_create"):
+                success, msg = register_user(u_name, u_pass, u_role, u_plan, u_name, u_email)
+                st.success(msg) if success else st.error(msg)
+                if success:
+                    st.rerun()
 
-            with st.expander("✏️ Edit User Plan"):
-                edit_username = st.text_input("Username to edit", key="crud_edit_name")
-                new_plan = st.selectbox("New Plan", ["Free", "Starter", "Pro", "Enterprise"], key="crud_edit_plan")
-                if st.button("Update Plan", key="crud_update"):
-                    if update_user_plan(edit_username, new_plan):
-                        st.success(f"Plan updated for {edit_username}")
-                        st.rerun()
-                    else:
-                        st.error("User not found")
+        with st.expander("✏️ Edit User Plan", expanded=False):
+            edit_username = st.text_input("Username to edit", key="crud_edit_name")
+            new_plan = st.selectbox("New Plan", ["Free", "Starter", "Pro", "Enterprise"], key="crud_edit_plan")
+            if st.button("Update Plan", key="crud_update"):
+                if update_user_plan(edit_username, new_plan):
+                    st.success(f"Plan updated for {edit_username}")
+                    st.rerun()
+                else:
+                    st.error("User not found")
 
-        with crud_col2:
-            with st.expander("🔑 Reset Password"):
-                reset_user = st.text_input("Username", key="crud_reset_name")
-                reset_pass = st.text_input("New Password", type="password", key="crud_reset_pass")
-                if st.button("Reset Password", key="crud_reset"):
-                    if update_password(reset_user, reset_pass):
-                        st.success(f"Password reset for {reset_user}")
-                    else:
-                        st.error("User not found")
+        with st.expander("🔑 Reset Password", expanded=False):
+            reset_user = st.text_input("Username", key="crud_reset_name")
+            reset_pass = st.text_input("New Password", type="password", key="crud_reset_pass")
+            if st.button("Reset Password", key="crud_reset"):
+                if update_password(reset_user, reset_pass):
+                    st.success(f"Password reset for {reset_user}")
+                else:
+                    st.error("User not found")
 
-            with st.expander("🚫 Suspend / Delete User"):
-                del_user = st.text_input("Username to delete", key="crud_del_name")
-                st.warning("⚠️ This action is permanent")
-                if st.button("Delete User", key="crud_delete", type="primary"):
-                    if delete_user(del_user):
-                        st.success(f"User {del_user} deleted")
-                        st.rerun()
-                    else:
-                        st.error("Cannot delete user or user not found")
+        with st.expander("🚫 Suspend / Delete User", expanded=False):
+            del_user = st.text_input("Username to delete", key="crud_del_name")
+            st.warning("⚠️ This action is permanent")
+            if st.button("Delete User", key="crud_delete", type="primary"):
+                if delete_user(del_user):
+                    st.success(f"User {del_user} deleted")
+                    st.rerun()
+                else:
+                    st.error("Cannot delete user or user not found")
 
     # ==========================================
     # TAB 4 — Activity Logs
