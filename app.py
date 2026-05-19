@@ -1,4 +1,5 @@
 import streamlit as st
+from scheduler import render_scheduler_ui, start_scheduler
 st.set_page_config(
     page_title="LeadPulse Pro",
     page_icon="🚀",
@@ -270,6 +271,10 @@ if 'startup_sync_done' not in st.session_state:
     except: pass
 
 # Startup sync complete
+
+# Initialize scheduler once
+if "scheduler" not in st.session_state:
+    st.session_state.scheduler = start_scheduler()
 
 # ==========================================
 # MODERN SAAS UI CSS
@@ -1545,6 +1550,7 @@ def show_admin_dashboard():
         "📜 Activity Logs",
         "📊 Analytics",
         "💰 Revenue",
+        "⏰ Scheduler",
         "🛠️ System Settings"
     ])
 
@@ -1785,9 +1791,15 @@ def show_admin_dashboard():
         st.dataframe(plan_df, hide_index=True, use_container_width=True)
 
     # ==========================================
-    # TAB 7 — System Settings
+    # TAB 7 — Scheduler
     # ==========================================
     with tabs[6]:
+        render_scheduler_ui(st.session_state.get("plan", "Free"))
+
+    # ==========================================
+    # TAB 8 — System Settings
+    # ==========================================
+    with tabs[7]:
         st.markdown("### ⚙️ System Settings")
 
         st.markdown("#### ☁️ Google Sheets Sync")

@@ -32,36 +32,31 @@ def run_scraping_job(
     max_leads: int = 50,
     use_ai: bool = False
 ) -> None:
-    """Execute scraping job in background thread."""
-    import os
+    """
+    Execute a scraping job in background thread.
+    Auto-saves results to database and Google Sheets.
+    """
     query = f"{keyword} in {location}"
-    logger.info(f"Starting job {job_id}: {query}")
+    logger.info(f"Starting scheduled job {job_id}: {query}")
 
-    # Update status to running
-    for job in job_history:
-        if job["job_id"] == job_id:
-            job["status"] = "running"
-            break
+    job_history.append({
+        "job_id": job_id,
+        "query": query,
+        "status": "running",
+        "started_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "leads_collected": 0,
+        "completed_at": ""
+    })
 
     leads = []
     try:
-        # Get correct scraper path
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        scraper_path = os.path.join(current_dir, "scraper.py")
-
-        if not os.path.exists(scraper_path):
-            scraper_path = "scraper.py"
-
         ai_flag = "1" if use_ai else "0"
-        logger.info(f"Running: {scraper_path} {query} {max_leads}")
-
         process = subprocess.Popen(
-            [sys.executable, scraper_path, query, str(max_leads), ai_flag],
+            [sys.executable, "scraper.py", query, str(max_leads), ai_flag],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
-            bufsize=1,
-            cwd=current_dir
+            bufsize=1
         )
 
         for line in process.stdout:
@@ -70,61 +65,45 @@ def run_scraping_job(
                 try:
                     lead = json.loads(line.replace("DATA:", ""))
                     leads.append(lead)
-                    logger.info(f"Job {job_id}: collected {lead.get('name','')[:30]}")
-                except Exception as e:
-                    logger.debug(f"Parse error: {e}")
-            elif line.startswith("LOG:"):
-                logger.info(f"Job {job_id}: {line.replace('LOG:','')}")
+                except:
+                    pass
 
-        process.wait(timeout=300)
-        logger.info(f"Job {job_id}: scraper finished with {len(leads)} leads")
+        process.wait()
 
         # Save to database
         if leads:
-            try:
-                import database
-                database.save_to_db(leads)
-                logger.info(f"Job {job_id}: saved {len(leads)} to database")
-            except Exception as e:
-                logger.error(f"Job {job_id}: database save error {e}")
+            import database
+            database.save_to_db(leads)
+            logger.info(f"Job {job_id}: saved {len(leads)} leads to database")
 
             # Save to Google Sheets
             try:
                 import google_sheets
                 success, msg = google_sheets.save_to_google_sheets(leads)
-                logger.info(f"Job {job_id}: sheets {msg}")
+                logger.info(f"Job {job_id}: sheets sync {msg}")
             except Exception as e:
                 logger.error(f"Job {job_id}: sheets error {e}")
 
             # Email notification
             send_job_notification(job_id, query, len(leads))
 
-    except subprocess.TimeoutExpired:
-        logger.error(f"Job {job_id}: timeout after 300 seconds")
-        process.kill()
-    except Exception as e:
-        logger.error(f"Job {job_id} error: {e}")
-
-    finally:
-        # Always update job history when done
-        completed = False
+        # Update job history
         for job in job_history:
             if job["job_id"] == job_id:
-                job["status"] = "completed" if leads else "failed"
+                job["status"] = "completed"
                 job["leads_collected"] = len(leads)
                 job["completed_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                completed = True
                 break
-        if not completed:
-            job_history.append({
-                "job_id": job_id,
-                "query": query,
-                "status": "completed" if leads else "failed",
-                "started_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "leads_collected": len(leads),
-                "completed_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            })
-        logger.info(f"Job {job_id} finished: {len(leads)} leads")
+
+        logger.info(f"Job {job_id} completed: {len(leads)} leads")
+
+    except Exception as e:
+        logger.error(f"Job {job_id} failed: {e}")
+        for job in job_history:
+            if job["job_id"] == job_id:
+                job["status"] = "failed"
+                job["completed_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                break
 
 
 def send_job_notification(job_id: str, query: str, leads_count: int) -> None:
@@ -378,42 +357,10 @@ def render_scheduler_ui(plan: str) -> None:
 
     # Job history
     st.markdown("#### 📜 Job History")
-    col_refresh, col_clear = st.columns(2)
-    with col_refresh:
-        if st.button("🔄 Refresh Job History", use_container_width=True, key="refresh_history"):
-            st.rerun()
-    with col_clear:
-        if st.button("🗑️ Clear History", use_container_width=True, key="clear_history"):
-            job_history.clear()
-            st.rerun()
-
     if job_history:
         import pandas as pd
         history_df = pd.DataFrame(job_history)
-        # Color status column
-        def color_status(val):
-            if val == "completed":
-                return "background-color: #DCFCE7"
-            elif val == "running":
-                return "background-color: #FEF9C3"
-            elif val == "failed":
-                return "background-color: #FEE2E2"
-            return ""
-        display_cols = ["job_id", "query", "status", "started_at", "leads_collected", "completed_at"]
-        available = [c for c in display_cols if c in history_df.columns]
-        st.dataframe(history_df[available], hide_index=True, use_container_width=True)
-
-        # Show summary
-        completed = len([j for j in job_history if j.get("status") == "completed"])
-        running = len([j for j in job_history if j.get("status") == "running"])
-        failed = len([j for j in job_history if j.get("status") == "failed"])
-        total_leads = sum(j.get("leads_collected", 0) for j in job_history)
-
-        m1, m2, m3, m4 = st.columns(4)
-        m1.metric("Completed", completed)
-        m2.metric("Running", running)
-        m3.metric("Failed", failed)
-        m4.metric("Total Leads Collected", total_leads)
+        st.dataframe(history_df, hide_index=True, use_container_width=True)
     else:
         st.info("No jobs have run yet.")
 
