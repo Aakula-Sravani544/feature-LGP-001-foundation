@@ -1512,16 +1512,14 @@ def show_user_dashboard():
 # ADMIN DASHBOARD
 # ==========================================
 def show_admin_dashboard():
+    st.markdown('<h1 class="main-title">Admin Dashboard</h1>', unsafe_allow_html=True)
+    st.markdown('<p class="sub-title">Full system access, user management, and master database control</p>', unsafe_allow_html=True)
+
     # ==========================================
     # PLATFORM OVERVIEW PANEL
     # ==========================================
     from auth import get_all_users
     from subscription import get_plan
-    import pandas as pd
-    import json
-    import subprocess
-    import sys
-    import time
 
     all_users = get_all_users()
     df_master = database.load_db()
@@ -1529,202 +1527,55 @@ def show_admin_dashboard():
     valid_leads = len(df_master[df_master["validation_status"] == "Valid"]) if "validation_status" in df_master.columns else 0
     quality_pct = int((valid_leads / total_leads * 100)) if total_leads > 0 else 0
 
-    active_users = len(all_users)
-    paid_users = sum(1 for u in all_users if u.get("plan", "Free") != "Free")
+    # Calculate MRR
+    plan_revenue = {"Free": 0, "Starter": 29, "Pro": 79, "Enterprise": 500}
+    mrr = sum(plan_revenue.get(u.get("plan", "Free"), 0) for u in all_users)
 
-    # 4 metrics cards matching the screenshot
-    c1, c2, c3, c4 = st.columns(4)
-    cards = [
-        (c1, "TOTAL LEADS", total_leads),
-        (c2, "ACTIVE USERS", active_users),
-        (c3, "GLOBAL QUALITY", f"{quality_pct}%"),
-        (c4, "ACTIVE SUBSCRIPTIONS", paid_users),
-    ]
-    for col, label, value in cards:
-        with col:
-            st.markdown(f'''
-            <div style="background:white; border:1px solid #e5e7eb; border-radius:8px; padding:20px; text-align:center; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
-                <div style="font-size:11px; font-weight:700; color:#6b7280; letter-spacing:0.5px; margin-bottom:8px;">{label}</div>
-                <div style="font-size:32px; font-weight:800; color:#111827;">{value}</div>
-            </div>
-            ''', unsafe_allow_html=True)
+    # Top row metrics
+    c1, c2, c3, c4, c5 = st.columns(5)
+    with c1:
+        st.markdown(f'<div class="metric-card"><div class="metric-label">Total Leads</div><div class="metric-value">{total_leads}</div></div>', unsafe_allow_html=True)
+    with c2:
+        st.markdown(f'<div class="metric-card"><div class="metric-label">Active Users</div><div class="metric-value">{len(all_users)}</div></div>', unsafe_allow_html=True)
+    with c3:
+        st.markdown(f'<div class="metric-card"><div class="metric-label">Global Quality</div><div class="metric-value">{quality_pct}%</div></div>', unsafe_allow_html=True)
+    with c4:
+        st.markdown(f'<div class="metric-card"><div class="metric-label">MRR</div><div class="metric-value">${mrr}</div></div>', unsafe_allow_html=True)
+    with c5:
+        paid_users = sum(1 for u in all_users if u.get("plan", "Free") != "Free")
+        st.markdown(f'<div class="metric-card"><div class="metric-label">Paid Users</div><div class="metric-value">{paid_users}</div></div>', unsafe_allow_html=True)
 
-    st.markdown("<hr style='border:0; border-top:1px solid #e5e7eb; margin:24px 0;' />", unsafe_allow_html=True)
+    st.markdown("<br><hr><br>", unsafe_allow_html=True)
 
-    # 6 horizontal tabs matching the screenshot
-    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+    # ==========================================
+    # TABS
+    # ==========================================
+    tabs = st.tabs([
         "🚀 Generate",
         "🗄️ Master Database",
         "👥 User Management",
-        "📋 Activity Logs",
+        "📜 Activity Logs",
+        "📊 Analytics",
         "💰 Revenue",
-        "⚙️ System Settings"
+        "🛠️ System Settings"
     ])
 
-    with tab1:
-        st.markdown("<h2 style='font-size:20px; font-weight:700; margin-bottom:16px;'>🔍 Start New Extraction (Admin)</h2>", unsafe_allow_html=True)
-        col1, col2, col3 = st.columns([2,2,1])
-        with col1:
-            category = st.selectbox("Business Category",
-                ["Restaurants", "Hotels", "Hospitals", "Clinics",
-                 "IT Companies", "Schools", "Colleges", "Banks",
-                 "Gyms", "Salons", "Bakeries", "Cafes",
-                 "Pharmacies", "Real Estate", "Law Firms",
-                 "Chartered Accountants", "Architects", "Dentists",
-                 "Coaching Centers", "Garments", "Electronics",
-                 "Auto Dealers", "Logistics", "Custom..."], key="adm_ext_cat")
-        with col2:
-            keyword = st.text_input("Custom Keyword (optional)",
-                placeholder="e.g. Biryani shops, Car wash", key="adm_ext_kw")
-        with col3:
-            source = st.selectbox("Source",
-                ["Google Maps", "LinkedIn"], key="adm_ext_src")
+    # ==========================================
+    # TAB 1 — Generate
+    # ==========================================
+    with tabs[0]:
+        generation_ui("(Admin)")
+        if not st.session_state.is_scraping and st.session_state.session_leads:
+            st.markdown("### ⚡ Session Preview")
+            st.dataframe(pd.DataFrame(st.session_state.session_leads), hide_index=True)
 
-        col1, col2 = st.columns(2)
-        with col1:
-            city = st.text_input("City", placeholder="e.g. Hyderabad", key="adm_ext_city")
-        with col2:
-            region = st.text_input("Region / Area", placeholder="e.g. KPHB, Banjara Hills", key="adm_ext_region")
-
-        if region.strip():
-            st.markdown('''
-            <div style="background:#faf5ff; border:1px solid #e9d5ff; border-radius:10px; padding:10px 16px; margin:12px 0; color:#7c3aed; font-size:13px;">
-                🤖 AI will analyze your city/region and automatically search nearby sub-regions to improve lead coverage.
-            </div>
-            ''', unsafe_allow_html=True)
-
-        col1, col2, col3 = st.columns([3,1,1])
-        with col1:
-            max_leads = st.slider(
-                "Max Leads / Session (Plan limit: 999999)",
-                min_value=10, max_value=999999,
-                value=50, step=10, key="adm_ext_max")
-            st.caption("You can extract up to 999999 leads per session.")
-        with col2:
-            ai_scoring = st.toggle("🤖 Enable AI Scoring", help="Uses Gemini AI to score leads 0-100", key="adm_ext_ai")
-        with col3:
-            st.markdown("<div style='margin-top:24px;'>", unsafe_allow_html=True)
-            generate_btn = st.button("🚀 Generate Leads", type="primary", use_container_width=True, key="adm_ext_gen")
-            st.markdown("</div>", unsafe_allow_html=True)
-
-        if generate_btn:
-            keyword_str = keyword.strip() if keyword.strip() else category
-            if not city:
-                st.warning("Please enter a city name.")
-            else:
-                st.session_state.is_scraping = True
-                st.session_state.session_leads = []
-                st.session_state.logs = ""
-
-                progress_bar = st.progress(0)
-                status_text = st.empty()
-                log_placeholder = st.empty()
-                metrics_placeholder = st.empty()
-                table_placeholder = st.empty()
-
-                with metrics_placeholder.container():
-                    m1_met, m2_met, m3_met = st.columns(3)
-                    m1_metric = m1_met.empty()
-                    m2_metric = m2_met.empty()
-                    m3_metric = m3_met.empty()
-
-                if source == "LinkedIn":
-                    status_text.text("🔍 Searching LinkedIn profiles...")
-                    try:
-                        from linkedin_scraper import scrape_linkedin
-                        try:
-                            df_master_dict = df_master.to_dict('records') if not df_master.empty else []
-                        except:
-                            df_master_dict = []
-                        profiles = scrape_linkedin(keyword_str, city if not region else f"{region} {city}", maps_leads=df_master_dict, limit=max_leads)
-                        for i, profile in enumerate(profiles):
-                            if ai_scoring:
-                                try:
-                                    from ai_engine import analyze_single_lead
-                                    profile = analyze_single_lead(profile)
-                                except Exception as e:
-                                    print(f"AI enrichment error: {e}", flush=True)
-                            st.session_state.session_leads.append(profile)
-                            progress_bar.progress((i+1)/max(len(profiles), 1))
-                            status_text.text(f"LinkedIn: {i+1}/{len(profiles)} profiles collected...")
-                            m1_metric.metric("Total Scraped", i+1)
-                            m2_metric.metric("Valid Leads", i+1)
-                            m3_metric.metric("Duplicates Skipped", 0)
-                            with table_placeholder.container():
-                                df_view = pd.DataFrame(st.session_state.session_leads)
-                                cols = [c for c in ["name","description","website","validation_status"] if c in df_view.columns]
-                                st.dataframe(df_view[cols] if cols else df_view, hide_index=True)
-                        database.save_to_db(st.session_state.session_leads)
-                        google_sheets.save_to_google_sheets(st.session_state.session_leads)
-                    except Exception as e:
-                        st.error(f"LinkedIn error: {e}")
-                    st.session_state.is_scraping = False
-                    st.rerun()
-                else:
-                    status_text.text("🤖 AI analyzing sub-regions...")
-                    sub_regions = get_sub_regions_ai(keyword_str, region or city, city)
-                    collected_count = 0
-                    duplicates_skipped = 0
-                    target_total = max_leads
-
-                    for sub_region in sub_regions:
-                        if collected_count >= target_total:
-                            break
-                        query = f"{keyword_str} in {sub_region} {city}"
-                        status_text.text(f"🔄 Scraping: {query} ({collected_count}/{target_total})")
-                        batch_target = min(10, target_total - collected_count)
-                        ai_flag = "1" if ai_scoring else "0"
-
-                        process = subprocess.Popen(
-                            [sys.executable, "scraper.py", query, str(batch_target), ai_flag],
-                            stdout=subprocess.PIPE,
-                            stderr=subprocess.STDOUT,
-                            text=True,
-                            bufsize=1,
-                            universal_newlines=True
-                        )
-
-                        for line in process.stdout:
-                            line = line.strip()
-                            if line.startswith("DATA:"):
-                                try:
-                                    data = json.loads(line.replace("DATA:", "").strip())
-                                    existing_names = [l.get("name","").lower() for l in st.session_state.session_leads]
-                                    if data.get("name","").lower() not in existing_names:
-                                        st.session_state.session_leads.append(data)
-                                        database.save_to_db([data])
-                                        collected_count = len(st.session_state.session_leads)
-                                    else:
-                                        duplicates_skipped += 1
-
-                                    valid_count = len([x for x in st.session_state.session_leads if x.get("validation_status") == "Valid"])
-                                    m1_metric.metric("Total Scraped", collected_count)
-                                    m2_metric.metric("Valid Leads", valid_count)
-                                    m3_metric.metric("Duplicates Skipped", duplicates_skipped)
-                                    progress_bar.progress(min(collected_count / target_total, 1.0))
-
-                                    with table_placeholder.container():
-                                        df_view = pd.DataFrame(st.session_state.session_leads).iloc[::-1]
-                                        cols = [c for c in ["name", "phone", "email", "sub_region", "validation_status"] if c in df_view.columns]
-                                        st.dataframe(df_view[cols] if cols else df_view, hide_index=True)
-                                except:
-                                    pass
-                            elif line.startswith("LOG:"):
-                                msg = line.replace("LOG:", "").strip()
-                                st.session_state.logs += f"[SYS] {msg}\n"
-                        process.wait()
-                        if collected_count >= target_total:
-                            break
-
-                    status_text.text("✅ Syncing to Google Sheets...")
-                    google_sheets.save_to_google_sheets(st.session_state.session_leads)
-                    st.session_state.is_scraping = False
-                    time.sleep(2)
-                    st.rerun()
-
-    with tab2:
+    # ==========================================
+    # TAB 2 — Master Database
+    # ==========================================
+    with tabs[1]:
         st.markdown("### 🗄️ Master Lead Repository")
         if not df_master.empty:
+            # Analytics charts
             import plotly.express as px
             col1, col2 = st.columns(2)
             with col1:
@@ -1750,13 +1601,14 @@ def show_admin_dashboard():
                     st.plotly_chart(fig2, use_container_width=True)
 
             st.markdown("---")
+            # Filter options
             col3, col4, col5 = st.columns(3)
             with col3:
-                status_filter = st.multiselect("Filter Status", df_master["validation_status"].unique() if "validation_status" in df_master.columns else [], key="adm_filt_stat")
+                status_filter = st.multiselect("Filter by Status", df_master["validation_status"].unique() if "validation_status" in df_master.columns else [])
             with col4:
-                cat_filter = st.multiselect("Filter Category", df_master["category"].unique() if "category" in df_master.columns else [], key="adm_filt_cat")
+                cat_filter = st.multiselect("Filter by Category", df_master["category"].unique() if "category" in df_master.columns else [])
             with col5:
-                search_term = st.text_input("Search name", placeholder="Type to search...", key="adm_filt_search")
+                search_term = st.text_input("Search by name", placeholder="Type to search...")
 
             filtered_df = df_master.copy()
             if status_filter:
@@ -1769,13 +1621,26 @@ def show_admin_dashboard():
             st.markdown(f"**Showing {len(filtered_df)} of {len(df_master)} leads**")
             st.dataframe(filtered_df, hide_index=True, use_container_width=True)
 
-            st.markdown("---")
-            render_export_ui(filtered_df, "Export Master Database")
+            # Export buttons
+            col6, col7, col8 = st.columns(3)
+            with col6:
+                csv = filtered_df.to_csv(index=False).encode("utf-8")
+                st.download_button("📥 Export CSV", csv, "master_leads.csv", "text/csv", use_container_width=True)
+            with col7:
+                json_data = filtered_df.to_json(orient="records").encode("utf-8")
+                st.download_button("📥 Export JSON", json_data, "master_leads.json", "application/json", use_container_width=True)
+            with col8:
+                st.metric("Filtered Leads", len(filtered_df))
         else:
             st.info("No leads in database yet.")
 
-    with tab3:
+    # ==========================================
+    # TAB 3 — User Management (CRUD)
+    # ==========================================
+    with tabs[2]:
         st.markdown("### 👥 User Management")
+
+        # Users table
         if all_users:
             df_users = pd.DataFrame(all_users)
             st.dataframe(df_users, hide_index=True, use_container_width=True)
@@ -1783,25 +1648,29 @@ def show_admin_dashboard():
             st.info("No users found")
 
         st.markdown("---")
+
+        # CRUD operations
         crud_col1, crud_col2 = st.columns(2)
+
         with crud_col1:
             with st.expander("➕ Create New User"):
                 from auth import register_user
-                u_name = st.text_input("Username", key="adm_crud_u_name")
-                u_pass = st.text_input("Password", type="password", key="adm_crud_u_pass")
-                u_role = st.selectbox("Role", ["user", "admin"], key="adm_crud_u_role")
-                u_plan = st.selectbox("Plan", ["Free", "Starter", "Pro", "Enterprise"], key="adm_crud_u_plan")
-                u_email = st.text_input("Email", key="adm_crud_u_email")
-                if st.button("Create User", key="adm_crud_create"):
+                u_name = st.text_input("Username", key="crud_u_name")
+                u_pass = st.text_input("Password", type="password", key="crud_u_pass")
+                u_role = st.selectbox("Role", ["user", "admin"], key="crud_u_role")
+                u_plan = st.selectbox("Plan", ["Free", "Starter", "Pro", "Enterprise"], key="crud_u_plan")
+                u_email = st.text_input("Email", key="crud_u_email")
+                if st.button("Create User", key="crud_create"):
                     success, msg = register_user(u_name, u_pass, u_role, u_plan, u_name, u_email)
                     st.success(msg) if success else st.error(msg)
-                    if success: st.rerun()
+                    if success:
+                        st.rerun()
 
             with st.expander("✏️ Edit User Plan"):
                 from auth import update_user_plan
-                edit_username = st.text_input("Username to edit", key="adm_crud_edit_name")
-                new_plan = st.selectbox("New Plan", ["Free", "Starter", "Pro", "Enterprise"], key="adm_crud_edit_plan")
-                if st.button("Update Plan", key="adm_crud_update"):
+                edit_username = st.text_input("Username to edit", key="crud_edit_name")
+                new_plan = st.selectbox("New Plan", ["Free", "Starter", "Pro", "Enterprise"], key="crud_edit_plan")
+                if st.button("Update Plan", key="crud_update"):
                     if update_user_plan(edit_username, new_plan):
                         st.success(f"Plan updated for {edit_username}")
                         st.rerun()
@@ -1811,9 +1680,9 @@ def show_admin_dashboard():
         with crud_col2:
             with st.expander("🔑 Reset Password"):
                 from auth import update_password
-                reset_user = st.text_input("Username", key="adm_crud_reset_name")
-                reset_pass = st.text_input("New Password", type="password", key="adm_crud_reset_pass")
-                if st.button("Reset Password", key="adm_crud_reset"):
+                reset_user = st.text_input("Username", key="crud_reset_name")
+                reset_pass = st.text_input("New Password", type="password", key="crud_reset_pass")
+                if st.button("Reset Password", key="crud_reset"):
                     if update_password(reset_user, reset_pass):
                         st.success(f"Password reset for {reset_user}")
                     else:
@@ -1821,17 +1690,20 @@ def show_admin_dashboard():
 
             with st.expander("🚫 Suspend / Delete User"):
                 from auth import delete_user
-                del_user = st.text_input("Username to delete", key="adm_crud_del_name")
+                del_user = st.text_input("Username to delete", key="crud_del_name")
                 st.warning("⚠️ This action is permanent")
-                if st.button("Delete User", key="adm_crud_delete", type="primary"):
+                if st.button("Delete User", key="crud_delete", type="primary"):
                     if delete_user(del_user):
                         st.success(f"User {del_user} deleted")
                         st.rerun()
                     else:
                         st.error("Cannot delete user or user not found")
 
-    with tab4:
-        st.markdown("### 📋 System Activity Logs")
+    # ==========================================
+    # TAB 4 — Activity Logs
+    # ==========================================
+    with tabs[3]:
+        st.markdown("### 📜 System Activity Logs")
         try:
             logs_df = database.get_logs()
             if not logs_df.empty:
@@ -1841,16 +1713,89 @@ def show_admin_dashboard():
         except Exception as e:
             st.info(f"Logs unavailable: {e}")
 
-    with tab5:
+    # ==========================================
+    # TAB 5 — Analytics
+    # ==========================================
+    with tabs[4]:
+        st.markdown("### 📊 Platform Analytics")
+        if not df_master.empty:
+            import plotly.express as px
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+                st.markdown("**Leads Per Day**")
+                date_col = "scraped_date" if "scraped_date" in df_master.columns else "timestamp"
+                if date_col in df_master.columns:
+                    try:
+                        df_master["date_only"] = pd.to_datetime(df_master[date_col].str[:10], errors="coerce")
+                        daily = df_master.groupby("date_only").size().reset_index(name="Count")
+                        fig = px.line(daily, x="date_only", y="Count", markers=True, color_discrete_sequence=["#2563EB"], height=280)
+                        fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)", margin=dict(t=10,b=10,l=10,r=10))
+                        fig.update_xaxes(showgrid=False)
+                        fig.update_yaxes(showgrid=False)
+                        st.plotly_chart(fig, use_container_width=True)
+                    except Exception as e:
+                        st.info(f"Chart unavailable: {e}")
+
+            with col2:
+                st.markdown("**Users by Plan**")
+                plan_counts = {}
+                for u in all_users:
+                    plan = u.get("plan", "Free")
+                    plan_counts[plan] = plan_counts.get(plan, 0) + 1
+                plan_df = pd.DataFrame(list(plan_counts.items()), columns=["Plan", "Users"])
+                fig3 = px.pie(plan_df, names="Plan", values="Users", hole=0.4, color_discrete_sequence=px.colors.qualitative.Set2, height=280)
+                fig3.update_layout(paper_bgcolor="rgba(0,0,0,0)", margin=dict(t=10,b=10,l=10,r=10))
+                st.plotly_chart(fig3, use_container_width=True)
+
+            # Scraper performance stats
+            st.markdown("---")
+            st.markdown("**Scraper Performance**")
+            perf_col1, perf_col2, perf_col3, perf_col4 = st.columns(4)
+            with perf_col1:
+                avg_per_session = total_leads // max(len(all_users), 1)
+                st.metric("Avg Leads/User", avg_per_session)
+            with perf_col2:
+                st.metric("Total Valid", valid_leads)
+            with perf_col3:
+                categories_count = df_master["category"].nunique() if "category" in df_master.columns else 0
+                st.metric("Categories Scraped", categories_count)
+            with perf_col4:
+                sources = df_master["source"].nunique() if "source" in df_master.columns else 1
+                st.metric("Data Sources", sources)
+
+            # Lead quality report
+            st.markdown("---")
+            st.markdown("**Lead Quality Report**")
+            if "validation_status" in df_master.columns:
+                quality_data = {
+                    "Valid": len(df_master[df_master["validation_status"] == "Valid"]),
+                    "Invalid": len(df_master[df_master["validation_status"] == "Invalid"]),
+                    "Pending": len(df_master[df_master["validation_status"] == "Pending"])
+                }
+                for status, count in quality_data.items():
+                    pct = int(count / total_leads * 100) if total_leads > 0 else 0
+                    st.progress(pct / 100, text=f"{status}: {count} leads ({pct}%)")
+        else:
+            st.info("Generate leads to see analytics")
+
+    # ==========================================
+    # TAB 6 — Revenue
+    # ==========================================
+    with tabs[5]:
         render_admin_billing()
 
-    with tab6:
+    # ==========================================
+    # TAB 7 — System Settings
+    # ==========================================
+    with tabs[6]:
         st.markdown("### ⚙️ System Settings")
-        
+
         st.markdown("#### ☁️ Google Sheets Sync")
         col1, col2 = st.columns(2)
         with col1:
-            if st.button("🔄 Force Cloud Sync", use_container_width=True, key="adm_force_sync"):
+            if st.button("🔄 Force Cloud Sync", use_container_width=True):
                 with st.spinner("Syncing..."):
                     df_local = database.load_db()
                     if not df_local.empty:
@@ -1861,12 +1806,6 @@ def show_admin_dashboard():
         with col2:
             gs_status = "✅ Connected" if google_sheets.check_connection() else "❌ Offline"
             st.info(f"Google Sheets: {gs_status}")
-
-        st.markdown("---")
-        
-        # Scheduler expander inside System Settings
-        with st.expander("📅 Automated Extraction Scheduler"):
-            render_scheduler_ui(st.session_state.get("plan", "Free"))
 
         st.markdown("---")
         st.markdown("#### 🔑 API Keys Status")
@@ -1902,12 +1841,12 @@ def show_admin_dashboard():
         dm_col1, dm_col2, dm_col3 = st.columns(3)
         with dm_col1:
             csv_master = df_master.to_csv(index=False).encode("utf-8")
-            st.download_button("📥 Master CSV", csv_master, "master.csv", "text/csv", use_container_width=True, key="adm_down_csv")
+            st.download_button("📥 Master CSV", csv_master, "master.csv", "text/csv", use_container_width=True)
         with dm_col2:
             json_master = df_master.to_json(orient="records").encode("utf-8")
-            st.download_button("📥 Master JSON", json_master, "master.json", "application/json", use_container_width=True, key="adm_down_json")
+            st.download_button("📥 Master JSON", json_master, "master.json", "application/json", use_container_width=True)
         with dm_col3:
-            if st.button("🚨 Wipe System", use_container_width=True, key="adm_wipe_sys"):
+            if st.button("🚨 Wipe System", use_container_width=True):
                 database.clear_all_leads()
                 google_sheets.clear_sheet_data()
                 st.success("✅ System wiped")
@@ -1916,7 +1855,7 @@ def show_admin_dashboard():
 
         st.markdown("---")
         st.markdown("#### ℹ️ About LeadPulse Pro")
-        st.markdown('''
+        st.markdown("""
         | Item | Detail |
         |---|---|
         | **Version** | v1.0 — Phase 2 Complete |
@@ -1924,7 +1863,8 @@ def show_admin_dashboard():
         | **Build Days** | 16 of 21 complete |
         | **Stack** | Streamlit + Serper + Gemini + Stripe |
         | **Deployment** | Render Free Tier |
-        ''')
+        | **AI Provider** | Google Gemini 1.5 Flash |
+        """)
 
 
 with st.sidebar:
