@@ -9,30 +9,27 @@ st.set_page_config(
 # Force sidebar to always stay open using specific CSS styles (STEP 2)
 st.markdown("""
 <style>
-#MainMenu, footer, header {visibility: hidden !important;}
-
-.main .block-container {
-    padding: 1.5rem 2rem !important;
-    background: #f9fafb !important;
-}
+#MainMenu {visibility: hidden !important;}
+footer {visibility: hidden !important;}
+header {visibility: hidden !important;}
 
 [data-testid="stSidebar"] {
-    background: linear-gradient(180deg, #1e1b4b 0%, 
-                #2d1b69 60%, #1e0a3c 100%) !important;
-    min-width: 220px !important;
-    max-width: 220px !important;
+    display: block !important;
+    visibility: visible !important;
+    transform: translateX(0) !important;
+    min-width: 280px !important;
+    max-width: 280px !important;
+    background: #0d1117 !important;
 }
 [data-testid="stSidebar"] > div:first-child {
-    background: transparent !important;
-    padding: 1.2rem 0.8rem !important;
+    background: #0d1117 !important;
+    padding: 1.5rem 1rem !important;
 }
-[data-testid="stSidebarNav"] {display: none !important;}
-[data-testid="collapsedControl"],
-[data-testid="collapsedSidebarIconButton"],
-button[class*="HeaderOpenCloseButton"],
-button[class*="collapsedSidebarIconButton"] {
+[data-testid="collapsedControl"] {
     display: none !important;
-    visibility: hidden !important;
+}
+[data-testid="stSidebarNav"] {
+    display: none !important;
 }
 
 div[data-testid="stSidebar"] 
@@ -46,42 +43,39 @@ div[data-testid="stSidebar"] .stButton {
 div[data-testid="stSidebar"] .stButton > button {
     width: 100% !important;
     text-align: left !important;
-    padding: 8px 12px !important;
-    margin: 1px 0 !important;
-    min-height: 36px !important;
+    padding: 10px 14px !important;
+    margin: 2px 0 !important;
+    min-height: 40px !important;
     height: auto !important;
-    font-size: 13px !important;
+    font-size: 14px !important;
     border-radius: 8px !important;
     border: none !important;
-    background: transparent !important;
-    color: rgba(255,255,255,0.75) !important;
-}
-div[data-testid="stSidebar"] .stButton > button:hover {
-    background: rgba(255,255,255,0.08) !important;
-    color: white !important;
-}
-.active-nav-item .stButton > button {
-    background: linear-gradient(135deg, 
-                #6d28d9, #7c3aed) !important;
+    background: #1e3a5f !important;
     color: white !important;
     font-weight: 600 !important;
 }
 
+.main .block-container {
+    padding: 1.5rem 2rem !important;
+    background: #f8fafc !important;
+}
+
 .stTabs [data-baseweb="tab-list"] {
-    gap: 4px !important;
     border-bottom: 2px solid #e5e7eb !important;
+    gap: 0 !important;
 }
 .stTabs [data-baseweb="tab"] {
-    padding: 8px 18px !important;
+    padding: 10px 18px !important;
     font-size: 14px !important;
     color: #6b7280 !important;
-    border-radius: 6px 6px 0 0 !important;
+    border-radius: 0 !important;
+    border-bottom: 3px solid transparent !important;
+    margin-bottom: -2px !important;
 }
 .stTabs [aria-selected="true"] {
-    color: #7c3aed !important;
+    color: #ef4444 !important;
     font-weight: 700 !important;
-    border-bottom: 3px solid #7c3aed !important;
-    background: transparent !important;
+    border-bottom: 3px solid #ef4444 !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -1934,62 +1928,57 @@ def show_admin_dashboard():
 
 
 with st.sidebar:
-    role = st.session_state.get("role", "user")
-    username = st.session_state.get("username", "user")
-    plan = st.session_state.get("plan", "Free Plan")
-    
-    # Logo & Profile Info
-    st.markdown(f"""
-    <div style="color:white; font-size:24px; font-weight:700; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
-        🚀 LeadPulse Pro
-    </div>
-    <div style="color:rgba(255,255,255,0.8); font-size:14px; margin-bottom:4px; font-weight:500;">
-        Logged in as: <span style="font-weight:600; color:white;">{username}</span>
-    </div>
-    <div style="color:rgba(255,255,255,0.8); font-size:14px; margin-bottom:16px; font-weight:500;">
-        Plan: <span style="font-weight:600; color:white;">{plan}</span>
-    </div>
-    <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.1); margin: 16px 0;" />
-    """, unsafe_allow_html=True)
-
-    # Active Workspace badge container matching the screenshot
-    if role == "admin":
-        st.markdown("""
-        <div style="background:#0b57d0; border-radius: 8px; padding: 12px 16px; color: white; font-weight: bold; font-size: 15px; display: flex; align-items: center; gap: 8px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(11,87,208,0.35);">
-            <span>🚨</span> Admin Workspace
-        </div>
-        """, unsafe_allow_html=True)
-    else:
-        st.markdown("""
-        <div style="background:#0b57d0; border-radius: 8px; padding: 12px 16px; color: white; font-weight: bold; font-size: 15px; display: flex; align-items: center; gap: 8px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(11,87,208,0.35);">
-            <span>🏠</span> User Workspace
-        </div>
-        """, unsafe_allow_html=True)
-
-    # Spacer
-    for _ in range(12):
-        st.write("")
-
-    # Engine status at bottom matching the screenshot
-    is_scraping = st.session_state.get("is_scraping", False)
-    engine_status = "RUNNING" if is_scraping else "IDLE"
-    status_color = "#22c55e" if engine_status == "IDLE" else "#FB923C"
-    
-    st.markdown(f"""
-    <div style="background: rgba(255, 255, 255, 0.05); border-radius: 8px; padding: 12px 16px; margin-bottom: 16px;">
-        <div style="font-size: 10px; color: rgba(255,255,255,0.4); font-weight: 700; letter-spacing: 1px; margin-bottom: 4px;">ENGINE STATUS</div>
-        <div style="display: flex; align-items: center; gap: 6px; font-size: 14px; color: white; font-weight: bold;">
-            <span style="color: {status_color}; font-size: 18px; line-height: 1;">●</span> {engine_status}
-        </div>
+    st.markdown("""
+    <div style="color:white; font-size:20px; 
+                font-weight:700; margin-bottom:20px;">
+        🚀 LeadPulse  Pro
     </div>
     """, unsafe_allow_html=True)
-
-    # Big solid blue Sign Out Session button
-    st.markdown("<div style='margin-top:4px;'>", unsafe_allow_html=True)
-    if st.button("Sign Out Session", key="sidebar_logout_btn"):
+    
+    username = st.session_state.get("username", "admin")
+    plan = st.session_state.get("plan", "Enterprise")
+    
+    st.markdown(f"""
+    <div style="color:#94a3b8; font-size:13px; 
+                margin-bottom:4px;">
+        Logged in as: 
+        <span style="color:white; font-weight:600;">
+        {username}</span>
+    </div>
+    <div style="color:#94a3b8; font-size:13px; 
+                margin-bottom:24px;">
+        Plan: 
+        <span style="color:white; font-weight:600;">
+        {plan}</span>
+    </div>
+    <hr style="border-color:rgba(255,255,255,0.1); 
+               margin-bottom:20px;"/>
+    """, unsafe_allow_html=True)
+    
+    if st.button("🏠  Admin Workspace", 
+                 key="nav_admin_workspace"):
+        st.session_state.admin_page = "Generate"
+        st.rerun()
+    
+    st.markdown("""
+    <hr style="border-color:rgba(255,255,255,0.1); 
+               margin-top:20px; margin-bottom:12px;"/>
+    <div style="color:#64748b; font-size:11px; 
+                font-weight:600; margin-bottom:8px;">
+        ENGINE STATUS
+    </div>
+    <div style="color:#4ade80; font-size:13px; 
+                font-weight:600; margin-bottom:24px;">
+        ● IDLE
+    </div>
+    """, unsafe_allow_html=True)
+    
+    if st.button("Sign Out Session", 
+                 key="admin_signout",
+                 type="primary",
+                 use_container_width=True):
         st.session_state.clear()
         st.rerun()
-    st.markdown("</div>", unsafe_allow_html=True)
 
 if st.session_state.role == "admin":
     show_admin_dashboard()
