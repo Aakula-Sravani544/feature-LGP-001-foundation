@@ -1000,10 +1000,12 @@ def get_sub_regions_ai(keyword: str, region: str, city: str) -> list:
     """
     Use Gemini AI to generate detailed sub-regions for a given area.
     Falls back to hardcoded sub-regions if AI fails.
+    Also appends other city areas to allow fallback when a region runs out of unique leads.
     """
     # Try Gemini AI first
     gemini_key = os.environ.get("GEMINI_API_KEY", "")
-    if gemini_key:
+    sub_regions = []
+    if gemini_key and region.strip():
         try:
             import google.generativeai as genai
             genai.configure(api_key=gemini_key)
@@ -1017,35 +1019,36 @@ Return ONLY a JSON array of strings. No other text. No markdown."""
             response = model.generate_content(prompt)
             raw = response.text.strip().replace("```json","").replace("```","").strip()
             import json
-            sub_regions = json.loads(raw)
-            if isinstance(sub_regions, list) and len(sub_regions) > 0:
-                return sub_regions[:15]
+            res = json.loads(raw)
+            if isinstance(res, list) and len(res) > 0:
+                sub_regions = res[:15]
         except Exception as e:
             st.session_state.logs += f"[SYS] AI sub-region failed: {e}\n"
 
-    # Fallback hardcoded sub-regions
-    fallback = {
-        "kphb": ["KPHB Phase 1", "KPHB Phase 2", "KPHB Phase 3", "KPHB Phase 4", "KPHB Phase 5", "KPHB Phase 6", "KPHB Main Road", "Kukatpally Main Road", "JNTU Road KPHB", "KPHB Colony"],
-        "banjara hills": ["Banjara Hills Road 1", "Banjara Hills Road 2", "Banjara Hills Road 3", "Banjara Hills Road 10", "Banjara Hills Road 12", "Banjara Hills Road 13", "Banjara Hills Road 14"],
-        "jubilee hills": ["Jubilee Hills Road 36", "Jubilee Hills Road 45", "Jubilee Hills Check Post", "Jubilee Hills Main Road"],
-        "hitech city": ["Hitech City Main Road", "Madhapur Hitech City", "Cyber Towers Hitech City", "Hitech City Phase 1", "Hitech City Phase 2"],
-        "gachibowli": ["Gachibowli Main Road", "Gachibowli Stadium Road", "Financial District Gachibowli", "ISB Road Gachibowli"],
-        "kukatpally": ["Kukatpally Main Road", "KPHB Kukatpally", "Moosapet Kukatpally", "Bhavani Nagar Kukatpally"],
-        "ameerpet": ["Ameerpet Main Road", "SR Nagar Ameerpet", "Punjagutta Ameerpet", "Erramanzil Ameerpet"],
-        "secunderabad": ["Secunderabad Main Road", "SD Road Secunderabad", "MG Road Secunderabad", "Paradise Secunderabad"],
-        "begumpet": ["Begumpet Main Road", "Begumpet Colony", "Somajiguda Begumpet", "Raj Bhavan Road Begumpet"],
-        "t nagar": ["T Nagar Main Road", "Usman Road T Nagar", "Venkatnarayana Road T Nagar", "GN Chetty Road T Nagar"],
-        "anna nagar": ["Anna Nagar Main Road", "Anna Nagar 2nd Avenue", "Anna Nagar Tower", "Anna Nagar West"],
-        "koramangala": ["Koramangala 1st Block", "Koramangala 4th Block", "Koramangala 5th Block", "Koramangala 6th Block", "Koramangala 7th Block"],
-        "indiranagar": ["Indiranagar 100 Feet Road", "Indiranagar 12th Main", "Indiranagar CMH Road", "Indiranagar Double Road"],
-    }
+    # If AI failed or returned empty, try hardcoded fallback for region
+    if not sub_regions and region.strip():
+        fallback = {
+            "kphb": ["KPHB Phase 1", "KPHB Phase 2", "KPHB Phase 3", "KPHB Phase 4", "KPHB Phase 5", "KPHB Phase 6", "KPHB Main Road", "Kukatpally Main Road", "JNTU Road KPHB", "KPHB Colony"],
+            "banjara hills": ["Banjara Hills Road 1", "Banjara Hills Road 2", "Banjara Hills Road 3", "Banjara Hills Road 10", "Banjara Hills Road 12", "Banjara Hills Road 13", "Banjara Hills Road 14"],
+            "jubilee hills": ["Jubilee Hills Road 36", "Jubilee Hills Road 45", "Jubilee Hills Check Post", "Jubilee Hills Main Road"],
+            "hitech city": ["Hitech City Main Road", "Madhapur Hitech City", "Cyber Towers Hitech City", "Hitech City Phase 1", "Hitech City Phase 2"],
+            "gachibowli": ["Gachibowli Main Road", "Gachibowli Stadium Road", "Financial District Gachibowli", "ISB Road Gachibowli"],
+            "kukatpally": ["Kukatpally Main Road", "KPHB Kukatpally", "Moosapet Kukatpally", "Bhavani Nagar Kukatpally"],
+            "ameerpet": ["Ameerpet Main Road", "SR Nagar Ameerpet", "Punjagutta Ameerpet", "Erramanzil Ameerpet"],
+            "secunderabad": ["Secunderabad Main Road", "SD Road Secunderabad", "MG Road Secunderabad", "Paradise Secunderabad"],
+            "begumpet": ["Begumpet Main Road", "Begumpet Colony", "Somajiguda Begumpet", "Raj Bhavan Road Begumpet"],
+            "t nagar": ["T Nagar Main Road", "Usman Road T Nagar", "Venkatnarayana Road T Nagar", "GN Chetty Road T Nagar"],
+            "anna nagar": ["Anna Nagar Main Road", "Anna Nagar 2nd Avenue", "Anna Nagar Tower", "Anna Nagar West"],
+            "koramangala": ["Koramangala 1st Block", "Koramangala 4th Block", "Koramangala 5th Block", "Koramangala 6th Block", "Koramangala 7th Block"],
+            "indiranagar": ["Indiranagar 100 Feet Road", "Indiranagar 12th Main", "Indiranagar CMH Road", "Indiranagar Double Road"],
+        }
+        region_lower = region.lower()
+        for key, regions in fallback.items():
+            if key in region_lower:
+                sub_regions = list(regions)
+                break
 
-    region_lower = region.lower()
-    for key, regions in fallback.items():
-        if key in region_lower:
-            return regions
-
-    # Generic fallback — use city sub-regions
+    # Get city-wide fallbacks
     city_fallback = {
         "hyderabad": ["Banjara Hills", "Jubilee Hills", "Hitech City", "Gachibowli", "Secunderabad", "Kukatpally", "Ameerpet", "Madhapur", "Begumpet", "Kondapur", "Manikonda", "Miyapur", "LB Nagar", "Dilsukhnagar", "Mehdipatnam"],
         "chennai": ["T Nagar", "Anna Nagar", "Adyar", "Velachery", "Nungambakkam", "Mylapore", "Tambaram", "OMR", "Porur", "Chromepet"],
@@ -1053,13 +1056,24 @@ Return ONLY a JSON array of strings. No other text. No markdown."""
         "vijayawada": ["Benz Circle", "MG Road", "Governorpet", "Labbipet", "Patamata", "Gunadala", "Suryaraopet", "Eluru Road", "Auto Nagar", "Kandrika"],
         "guntur": ["Brodipet", "Arundelpet", "Kothapet", "AT Agraharam", "Old Town", "Amaravathi Road", "Vidyanagar", "Nallapadu", "Naaz Centre", "Brindavan Gardens"],
     }
-
+    
     city_lower = city.lower()
+    city_regions = []
     for key, regions in city_fallback.items():
         if key in city_lower:
-            return regions
+            city_regions = regions
+            break
 
-    return [region or city]
+    # If we didn't find any specific region subregions, use city ones
+    if not sub_regions:
+        sub_regions = list(city_regions) if city_regions else [region or city]
+    else:
+        # Append city_regions as fallbacks
+        for r in city_regions:
+            if r.lower() not in [sr.lower() for sr in sub_regions] and r.lower() not in region.lower():
+                sub_regions.append(r)
+
+    return sub_regions
 
 
 def generation_ui(label_suffix=""):
