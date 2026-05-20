@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: leadpulse-pro
+    env: python
+    region: oregon
+    plan: free
+    buildCommand: pip install -r requirements.txt --root-user-action=ignore
+    startCommand: streamlit run app.py --server.port=$PORT --server.address=0.0.0.0 --server.headless=true --browser.gatherUsageStats=false
+    healthCheckPath: /_stcore/health
+    envVars:
+      - key: SERPER_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: APOLLO_API_KEY
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: GOOGLE_SHEETS_CREDENTIALS
+        sync: false
+      - key: SHEET_NAME
+        sync: false
+      - key: APP_ENV
+        value: production
+      - key: APP_URL
+        value: https://leadpulse-pro.onrender.com
+      - key: SCRAPE_DELAY_SECONDS
+        value: "3"
+      - key: APIFY_API_TOKEN
+        sync: false

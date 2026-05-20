@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  leadpulse:
+    build: .
+    ports:
+      - "8501:8501"
+    environment:
+      - SERPER_API_KEY=${SERPER_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - APOLLO_API_KEY=${APOLLO_API_KEY}
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET}
+      - GOOGLE_SHEETS_CREDENTIALS=${GOOGLE_SHEETS_CREDENTIALS}
+      - SHEET_NAME=${SHEET_NAME}
+      - DATABASE_URL=${DATABASE_URL}
+      - APP_ENV=production
+      - APP_URL=${APP_URL}
+      - SCRAPE_DELAY_SECONDS=3
+      - APIFY_API_TOKEN=${APIFY_API_TOKEN}
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
