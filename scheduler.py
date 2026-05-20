@@ -32,51 +32,39 @@ def run_scraping_job(
     max_leads: int = 50,
     use_ai: bool = False
 ) -> None:
-    """Execute scraping job in background thread with correct path resolution."""
-    import time
+    """Execute scraping job in background thread."""
+    import time as time_module
     query = f"{keyword} in {location}"
+
+    # IST time helper
+    def ist_now():
+        from datetime import timezone, timedelta
+        ist = timezone(timedelta(hours=5, minutes=30))
+        return datetime.now(ist).strftime("%Y-%m-%d %H:%M:%S IST")
+
     logger.info(f"Job {job_id} starting: {query}")
 
-    # Register/update status to running immediately so it shows up in UI
-    found = False
+    # Mark as running
     for job in job_history:
         if job["job_id"] == job_id:
             job["status"] = "running"
-            job["started_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S UTC")
-            found = True
+            job["started_at"] = ist_now()
             break
-    if not found:
-        job_history.append({
-            "job_id": job_id,
-            "query": query,
-            "status": "running",
-            "started_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S UTC"),
-            "leads_collected": 0,
-            "completed_at": ""
-        })
 
     leads = []
 
     try:
-        # Resolve correct path to scraper.py
+        # Find scraper.py path
         current_dir = os.path.dirname(os.path.abspath(__file__))
         scraper_path = os.path.join(current_dir, "scraper.py")
-
-        # Fallback paths if not found
         if not os.path.exists(scraper_path):
-            fallback_paths = [
-                "/app/scraper.py",
-                os.path.join(os.getcwd(), "scraper.py"),
-                "scraper.py"
-            ]
-            for path in fallback_paths:
-                if os.path.exists(path):
-                    scraper_path = path
+            for p in ["/app/scraper.py", os.path.join(os.getcwd(), "scraper.py")]:
+                if os.path.exists(p):
+                    scraper_path = p
+                    current_dir = os.path.dirname(p)
                     break
 
-        logger.info(f"Job {job_id}: using scraper at {scraper_path}")
-        print(f"LOG:Scheduler job {job_id} starting: {query}", flush=True)
-
+        logger.info(f"Job {job_id}: scraper at {scraper_path}")
         ai_flag = "1" if use_ai else "0"
 
         # Setup environment with UTF-8 encoding to prevent UnicodeEncodeError in subprocess pipes
@@ -94,97 +82,65 @@ def run_scraping_job(
             env=sub_env
         )
 
-        try:
-            # Use communicate with 300s timeout to prevent thread blocking forever
-            stdout_data, _ = process.communicate(timeout=300)
-            
-            # Parse lines from output
-            for line in stdout_data.splitlines():
-                line = line.strip()
-                if line.startswith("DATA:"):
-                    try:
-                        lead = json.loads(line.replace("DATA:", "").strip())
-                        if lead.get("name"):
-                            leads.append(lead)
-                            logger.info(f"Job {job_id}: collected {lead.get('name','')[:30]}")
-                    except Exception as e:
-                        logger.debug(f"Parse error: {e}")
-                elif line.startswith("LOG:"):
-                    logger.info(f"Job {job_id}: {line.replace('LOG:','').strip()}")
-                    
-        except subprocess.TimeoutExpired:
-            logger.warning(f"Job {job_id}: timeout reached after 300 seconds")
-            process.kill()
-            stdout_data, _ = process.communicate()
-            # Still try to parse whatever was collected before timing out
-            for line in stdout_data.splitlines():
-                line = line.strip()
-                if line.startswith("DATA:"):
-                    try:
-                        lead = json.loads(line.replace("DATA:", "").strip())
-                        if lead.get("name"):
-                            leads.append(lead)
-                    except:
-                        pass
+        start = time_module.time()
+        for line in process.stdout:
+            line = line.strip()
+            if time_module.time() - start > 300:
+                process.kill()
+                break
+            if line.startswith("DATA:"):
+                try:
+                    lead = json.loads(line.replace("DATA:", "").strip())
+                    if lead.get("name"):
+                        leads.append(lead)
+                except: pass
+            elif line.startswith("LOG:"):
+                logger.info(f"Job {job_id}: {line[4:]}")
 
         process.wait()
-        logger.info(f"Job {job_id}: scraper finished. Leads: {len(leads)}")
+        logger.info(f"Job {job_id}: {len(leads)} leads collected")
 
-        # Save to database
         if leads:
             try:
                 import database
                 database.save_to_db(leads)
-                logger.info(f"Job {job_id}: saved {len(leads)} to database")
             except Exception as e:
-                logger.error(f"Job {job_id}: database error: {e}")
-
-            # Save to Google Sheets
+                logger.error(f"DB save error: {e}")
             try:
                 import google_sheets
-                success, msg = google_sheets.save_to_google_sheets(leads)
-                logger.info(f"Job {job_id}: sheets sync: {msg}")
+                google_sheets.save_to_google_sheets(leads)
             except Exception as e:
-                logger.error(f"Job {job_id}: sheets error: {e}")
-
-            # Email notification
-            try:
-                send_job_notification(job_id, query, len(leads))
-            except Exception as e:
-                logger.debug(f"Job {job_id}: email error: {e}")
+                logger.error(f"Sheets error: {e}")
+            send_job_notification(job_id, query, len(leads))
 
     except Exception as e:
         logger.error(f"Job {job_id} error: {e}")
 
     finally:
-        # ALWAYS update job history when done — success or failure
-        final_status = "completed" if len(leads) > 0 else "failed"
-        final_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S UTC")
-
+        status = "completed" if len(leads) > 0 else "failed"
+        completed_time = ist_now()
         updated = False
         for job in job_history:
             if job["job_id"] == job_id:
-                job["status"] = final_status
+                job["status"] = status
                 job["leads_collected"] = len(leads)
-                job["completed_at"] = final_time
+                job["completed_at"] = completed_time
                 updated = True
                 break
-
         if not updated:
             job_history.append({
                 "job_id": job_id,
                 "query": query,
-                "status": final_status,
-                "started_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S UTC"),
+                "status": status,
+                "started_at": ist_now(),
                 "leads_collected": len(leads),
-                "completed_at": final_time
+                "completed_at": completed_time
             })
-
-        logger.info(f"Job {job_id} {final_status}: {len(leads)} leads")
+        logger.info(f"Job {job_id} {status}: {len(leads)} leads")
 
 
 def send_job_notification(job_id: str, query: str, leads_count: int) -> None:
-    """Send email notification when job completes."""
+    """Send Gmail notification when job completes."""
     try:
         import smtplib
         from email.mime.text import MIMEText
@@ -195,34 +151,69 @@ def send_job_notification(job_id: str, query: str, leads_count: int) -> None:
         notify_email = os.environ.get("NOTIFY_EMAIL", smtp_user)
 
         if not smtp_user or not smtp_pass:
-            logger.debug("SMTP not configured — skipping notification")
+            logger.debug("SMTP not configured")
             return
 
-        msg = MIMEMultipart()
-        msg["Subject"] = f"✅ LeadPulse Job Done — {leads_count} leads"
-        msg["From"] = smtp_user
+        from datetime import timezone, timedelta
+        ist = timezone(timedelta(hours=5, minutes=30))
+        now_ist = datetime.now(ist).strftime("%Y-%m-%d %H:%M:%S IST")
+
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = f"✅ LeadPulse Job Complete — {leads_count} leads collected"
+        msg["From"] = f"LeadPulse Pro <{smtp_user}>"
         msg["To"] = notify_email
 
-        body = MIMEText(f"""
+        text_body = f"""
 LeadPulse Pro — Scheduled Job Complete
 
-Job ID     : {job_id}
-Query      : {query}
-Leads      : {leads_count}
-Completed  : {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+Job ID    : {job_id}
+Query     : {query}
+Leads     : {leads_count}
+Completed : {now_ist}
 
-Login to view your new leads:
+Login to view your leads:
 {os.environ.get('APP_URL', 'https://leadpulse-pro.onrender.com')}
-        """)
-        msg.attach(body)
+        """
 
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+        html_body = f"""
+<html><body style="font-family:sans-serif;background:#f8fafc;padding:20px;">
+<div style="max-width:480px;margin:0 auto;background:#fff;border-radius:12px;
+    border:1px solid #e2e8f0;padding:28px;">
+    <h2 style="color:#0f172a;font-size:18px;margin-bottom:4px;">
+        ✅ Scheduled Job Complete
+    </h2>
+    <p style="color:#64748b;font-size:13px;margin-bottom:20px;">
+        LeadPulse Pro automated scraping
+    </p>
+    <table style="width:100%;border-collapse:collapse;font-size:13px;">
+        <tr><td style="padding:8px 0;color:#64748b;width:120px;">Job ID</td>
+            <td style="color:#0f172a;font-weight:500;">{job_id}</td></tr>
+        <tr><td style="padding:8px 0;color:#64748b;">Query</td>
+            <td style="color:#0f172a;font-weight:500;">{query}</td></tr>
+        <tr><td style="padding:8px 0;color:#64748b;">Leads collected</td>
+            <td style="color:#22c55e;font-weight:600;font-size:15px;">{leads_count}</td></tr>
+        <tr><td style="padding:8px 0;color:#64748b;">Completed at</td>
+            <td style="color:#0f172a;">{now_ist}</td></tr>
+    </table>
+    <a href="{os.environ.get('APP_URL', 'https://leadpulse-pro.onrender.com')}"
+        style="display:inline-block;margin-top:20px;padding:10px 20px;
+        background:#2563eb;color:#fff;border-radius:8px;text-decoration:none;
+        font-size:13px;font-weight:500;">
+        View leads in dashboard →
+    </a>
+</div></body></html>
+        """
+
+        msg.attach(MIMEText(text_body, "plain"))
+        msg.attach(MIMEText(html_body, "html"))
+
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=15) as server:
             server.login(smtp_user, smtp_pass)
             server.send_message(msg)
-            logger.info(f"Email sent to {notify_email}")
+        logger.info(f"Email sent to {notify_email}")
 
     except Exception as e:
-        logger.debug(f"Email failed: {e}")
+        logger.error(f"Email failed: {e}")
 
 
 # ==========================================
@@ -325,14 +316,28 @@ def remove_scheduled_job(scheduler, job_id: str) -> tuple:
 
 
 def run_job_now(job_id: str, keyword: str, location: str, max_leads: int = 50) -> None:
-    """Run a job immediately in background thread."""
+    """Run job immediately in background thread."""
+    from datetime import timezone, timedelta
+    ist = timezone(timedelta(hours=5, minutes=30))
+    now_ist = datetime.now(ist).strftime("%Y-%m-%d %H:%M:%S IST")
+
+    # Add to history before starting
+    job_history.append({
+        "job_id": job_id,
+        "query": f"{keyword} in {location}",
+        "status": "running",
+        "started_at": now_ist,
+        "leads_collected": 0,
+        "completed_at": ""
+    })
+
     thread = threading.Thread(
         target=run_scraping_job,
         args=[job_id, keyword, location, max_leads, False],
         daemon=True
     )
     thread.start()
-    logger.info(f"Job {job_id} started in background thread")
+    logger.info(f"Job {job_id} started in background")
 
 
 # ==========================================
