@@ -90,6 +90,9 @@ import time
 from datetime import datetime
 from dotenv import load_dotenv
 import re
+import logging
+
+logger = logging.getLogger("app")
 
 # Load environment variables
 load_dotenv()
@@ -966,19 +969,24 @@ header { visibility: hidden; }
 # Shared logout replaced by auth.render_logout_button()
 
 def get_stats():
+    """Always reload fresh stats from database."""
     try:
         df = database.load_db()
+        if df.empty:
+            return 0, 0, 0
         total = len(df)
-        today = 0
-        quality = 0
-        if total > 0:
-            date_col = 'timestamp' if 'timestamp' in df.columns else 'scraped_at'
-            today_str = datetime.now().strftime("%Y-%m-%d")
-            today = len(df[df[date_col].str.contains(today_str, na=False)])
-            valid = len(df[(df['phone'] != '') & (df['phone'].notna())])
-            quality = int((valid / total) * 100)
-        return total, today, quality
-    except: return 0, 0, 0
+        today = datetime.now().strftime("%Y-%m-%d")
+        date_col = "scraped_date" if "scraped_date" in df.columns else None
+        if date_col:
+            today_count = len(df[df[date_col].astype(str).str.startswith(today)])
+        else:
+            today_count = 0
+        valid = len(df[df["validation_status"] == "Valid"]) if "validation_status" in df.columns else 0
+        quality_pct = int((valid / total * 100)) if total > 0 else 0
+        return total, today_count, quality_pct
+    except Exception as e:
+        logger.debug(f"get_stats error: {e}")
+        return 0, 0, 0
 
 # ==========================================
 # LOGIN PAGE PLACEHOLDER
@@ -1069,7 +1077,7 @@ def generation_ui(label_suffix=""):
 
     with st.container():
         # Row 1 — Category and Business Type
-        c1, c2 = st.columns(2)
+        c1, c2, c3 = st.columns([2, 2, 1])
         with c1:
             category = st.selectbox(
                 "Business Category",
@@ -1090,16 +1098,37 @@ def generation_ui(label_suffix=""):
                 placeholder="e.g. Biryani shops, Car wash",
                 key=f"custom_{label_suffix}"
             )
+        with c3:
+            from subscription import can_use_linkedin
+            current_plan = st.session_state.get("plan", "Free")
+            linkedin_allowed = can_use_linkedin(current_plan)
+
+            source_options = ["Google Maps"]
+            if linkedin_allowed:
+                source_options.append("LinkedIn")
+            else:
+                source_options.append("LinkedIn 🔒 (Starter+)")
+
+            source = st.selectbox(
+                "Source",
+                source_options,
+                key=f"src_{label_suffix}"
+            )
+
+            # Block LinkedIn if not allowed
+            if "LinkedIn 🔒" in source:
+                st.warning(f"🔒 LinkedIn requires Starter plan. You are on {current_plan}.")
+                source = "Google Maps"
 
         # Row 2 — City and Region
-        c3, c4 = st.columns(2)
-        with c3:
+        c3_col, c4_col = st.columns(2)
+        with c3_col:
             city = st.text_input(
                 "City",
                 placeholder="e.g. Hyderabad",
                 key=f"city_{label_suffix}"
             )
-        with c4:
+        with c4_col:
             region = st.text_input(
                 "Region / Area",
                 placeholder="e.g. KPHB, Banjara Hills",
@@ -1109,11 +1138,15 @@ def generation_ui(label_suffix=""):
         # Row 3 — Max leads, AI toggle, Source
         c5, c6, c7 = st.columns([2, 1, 1])
         with c5:
+            # Cap display at 200 for UI usability but respect plan limit
+            slider_max = min(max_allowed, 200) if max_allowed < 999999 else 200
+            slider_default = min(50, slider_max)
+
             max_leads = st.slider(
-                f"Max Leads / Session (Plan limit: {max_allowed})",
+                f"Max Leads / Session (Plan limit: {'Unlimited' if max_allowed >= 999999 else max_allowed})",
                 min_value=10,
-                max_value=min(max_allowed, 100),
-                value=min(50, max_allowed),
+                max_value=slider_max,
+                value=slider_default,
                 step=10,
                 key=f"max_{label_suffix}"
             )
@@ -1146,7 +1179,6 @@ def generation_ui(label_suffix=""):
             return
 
         # When LinkedIn is selected but not allowed
-        source = "Google Maps"
         if source == "LinkedIn" and not can_use_linkedin(current_plan):
             st.error(get_upgrade_message(current_plan, "linkedin"))
             render_upgrade_banner(current_plan)
@@ -1252,7 +1284,8 @@ def generation_ui(label_suffix=""):
                             df_view = pd.DataFrame(st.session_state.session_leads).iloc[::-1]
                             cols = [c for c in ["name", "phone", "email", "sub_region", "validation_status"] if c in df_view.columns]
                             st.dataframe(df_view[cols] if cols else df_view, hide_index=True)
-                    except: pass
+                    except Exception as e:
+                        logger.debug(f"Data parse error: {e}")
 
                 elif line.startswith("LOG:"):
                     msg = line.replace("LOG:", "").strip()
@@ -1985,12 +2018,13 @@ with st.sidebar:
     
     # after user info section add live stats
     try:
+        # Force fresh stats on every render
+        total_db, today_db, quality_pct = get_stats()
         df_live = database.load_db()
-        total_live = len(df_live)
         valid_live = len(df_live[df_live["validation_status"] == "Valid"]) if "validation_status" in df_live.columns else 0
         st.markdown(f"""
             <div style="padding:0 8px; font-size:11px; color:rgba(255,255,255,0.4);">
-                <div style="margin-bottom:4px;">📊 Total leads: <span style="color:rgba(255,255,255,0.7);">{total_live}</span></div>
+                <div style="margin-bottom:4px;">📊 Total leads: <span style="color:rgba(255,255,255,0.7);">{total_db}</span></div>
                 <div>✅ Valid: <span style="color:#22C55E;">{valid_live}</span></div>
             </div>
         """, unsafe_allow_html=True)
