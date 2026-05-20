@@ -357,6 +357,58 @@ def enrich_leads(leads: list) -> list:
 
     return leads
 
+def process_single_lead(lead, use_ai):
+    if lead.get("website"):
+        try:
+            resp = requests.get(lead["website"], timeout=2, headers=HEADERS)
+            html = resp.text
+            soup = BeautifulSoup(html, "html.parser")
+
+            if not lead.get("email"):
+                for a in soup.find_all("a", href=re.compile(r"^mailto:")):
+                    email = a["href"].replace("mailto:", "").split("?")[0].strip()
+                    try:
+                        validate_email(email)
+                        lead["email"] = email
+                        break
+                    except: continue
+
+            social = {}
+            for platform, pattern in {
+                "facebook": r'facebook\.com/[^\s\'"<>\)]{3,50}',
+                "instagram": r'instagram\.com/[^\s\'"<>\)]{3,50}'
+            }.items():
+                matches = re.findall(pattern, html)
+                for match in matches:
+                    clean = match.rstrip('/"\'').strip()
+                    if len(clean) > 10:
+                        social[platform] = "https://" + clean
+                        break
+            lead["social_media"] = json.dumps(social) if social else ""
+
+        except Exception as e:
+            logger.debug(f"Enrichment failed: {e}")
+            lead["social_media"] = ""
+    else:
+        lead["social_media"] = ""
+
+    if use_ai:
+        try:
+            from ai_engine import analyze_single_lead
+            lead = analyze_single_lead(lead)
+        except: pass
+    else:
+        try:
+            from ai_engine import rule_based_score
+            score = rule_based_score(lead)
+            lead["ai_analysis"] = json.dumps(score)
+            lead["ai_score"] = score.get("score", 0)
+        except: pass
+
+    lead = validate_lead(lead)
+    return lead
+
+
 def main():
     if len(sys.argv) < 2:
         return
@@ -374,61 +426,41 @@ def main():
         print(f"LOG:No results for: {query}", flush=True)
         return
 
-    # Enrich each lead
-    for i, lead in enumerate(leads):
-        print(f"LOG:Processing {i+1}/{len(leads)}: {lead.get('name','')[:30]}", flush=True)
+    # Check duplicate names from DB to skip them before slow enrichment
+    try:
+        import database
+        df_db = database.load_db()
+        existing_names = set(df_db["business_name"].str.lower().tolist())
+    except Exception as e:
+        existing_names = set()
 
-        if lead.get("website"):
+    # Filter out duplicates
+    unique_leads = []
+    for lead in leads:
+        name_lower = lead.get("name", "").strip().lower()
+        if name_lower in existing_names:
+            print(f"LOG:Duplicate skipped before enrichment: {lead.get('name')}", flush=True)
+            continue
+        unique_leads.append(lead)
+
+    if not unique_leads:
+        print(f"LOG:All leads from query were duplicates.", flush=True)
+        return
+
+    # Enrich unique leads in parallel using ThreadPoolExecutor
+    import concurrent.futures
+    print(f"LOG:Enriching {len(unique_leads)} unique leads in parallel...", flush=True)
+    
+    with concurrent.futures.ThreadPoolExecutor(max_workers=min(10, len(unique_leads))) as executor:
+        futures = {executor.submit(process_single_lead, lead, use_ai): lead for lead in unique_leads}
+        for future in concurrent.futures.as_completed(futures):
             try:
-                resp = requests.get(lead["website"], timeout=2, headers=HEADERS)
-                html = resp.text
-                soup = BeautifulSoup(html, "html.parser")
-
-                if not lead.get("email"):
-                    for a in soup.find_all("a", href=re.compile(r"^mailto:")):
-                        email = a["href"].replace("mailto:", "").split("?")[0].strip()
-                        try:
-                            validate_email(email)
-                            lead["email"] = email
-                            break
-                        except: continue
-
-                social = {}
-                for platform, pattern in {
-                    "facebook": r'facebook\.com/[^\s\'"<>\)]{3,50}',
-                    "instagram": r'instagram\.com/[^\s\'"<>\)]{3,50}'
-                }.items():
-                    matches = re.findall(pattern, html)
-                    for match in matches:
-                        clean = match.rstrip('/"\'').strip()
-                        if len(clean) > 10:
-                            social[platform] = "https://" + clean
-                            break
-                lead["social_media"] = json.dumps(social) if social else ""
-
+                enriched_lead = future.result()
+                print(f"DATA:{json.dumps(enriched_lead)}", flush=True)
             except Exception as e:
-                logger.debug(f"Enrichment failed: {e}")
-                lead["social_media"] = ""
-        else:
-            lead["social_media"] = ""
+                logger.debug(f"Lead thread processing failed: {e}")
 
-        if use_ai:
-            try:
-                from ai_engine import analyze_single_lead
-                lead = analyze_single_lead(lead)
-            except: pass
-        else:
-            try:
-                from ai_engine import rule_based_score
-                score = rule_based_score(lead)
-                lead["ai_analysis"] = json.dumps(score)
-                lead["ai_score"] = score.get("score", 0)
-            except: pass
-
-        lead = validate_lead(lead)
-        print(f"DATA:{json.dumps(lead)}", flush=True)
-
-    print(f"LOG:✅ Done: {len(leads)} leads from {query}", flush=True)
+    print(f"LOG:✅ Done: {len(unique_leads)} leads from {query}", flush=True)
 
 
 if __name__ == "__main__":
