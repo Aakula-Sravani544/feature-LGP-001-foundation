@@ -232,7 +232,7 @@ def search_with_serper(query: str, limit: int = 10) -> list:
         places = data.get("places", [])
         print(f"LOG:Serper returned {len(places)} places for: {query}", flush=True)
 
-        for place in places[:limit*2]:
+        for place in places:
             name = place.get("title", "").strip()
             if not name or name.lower() in seen_names:
                 continue
@@ -360,7 +360,7 @@ def enrich_leads(leads: list) -> list:
 def process_single_lead(lead, use_ai):
     if lead.get("website"):
         try:
-            resp = requests.get(lead["website"], timeout=10, headers=HEADERS)
+            resp = requests.get(lead["website"], timeout=2, headers=HEADERS)
             html = resp.text
             soup = BeautifulSoup(html, "html.parser")
 
@@ -413,7 +413,7 @@ def main():
     if len(sys.argv) < 2:
         return
     query = sys.argv[1]
-    limit = min(int(sys.argv[2]) if len(sys.argv) > 2 else 10, 20)
+    limit = min(int(sys.argv[2]) if len(sys.argv) > 2 else 10, 100)
     use_ai = sys.argv[3] == "1" if len(sys.argv) > 3 else False
 
     print(f"LOG:🚀 LeadPulse Pro Engine | Target: {limit}", flush=True)
@@ -430,7 +430,8 @@ def main():
     try:
         import database
         df_db = database.load_db()
-        existing_names = set(df_db["business_name"].str.lower().tolist())
+        name_col = "name" if "name" in df_db.columns else "business_name" if "business_name" in df_db.columns else None
+        existing_names = set(df_db[name_col].str.lower().tolist()) if name_col else set()
     except Exception as e:
         existing_names = set()
 
@@ -447,18 +448,16 @@ def main():
         print(f"LOG:All leads from query were duplicates.", flush=True)
         return
 
-    # Enrich unique leads in parallel using ThreadPoolExecutor
-    import concurrent.futures
-    print(f"LOG:Enriching {len(unique_leads)} unique leads in parallel...", flush=True)
-    
-    with concurrent.futures.ThreadPoolExecutor(max_workers=min(10, len(unique_leads))) as executor:
-        futures = {executor.submit(process_single_lead, lead, use_ai): lead for lead in unique_leads}
-        for future in concurrent.futures.as_completed(futures):
-            try:
-                enriched_lead = future.result()
-                print(f"DATA:{json.dumps(enriched_lead)}", flush=True)
-            except Exception as e:
-                logger.debug(f"Lead thread processing failed: {e}")
+    print(f"LOG:Processing {len(unique_leads)} leads...", flush=True)
+    for i, lead in enumerate(unique_leads):
+        print(f"LOG:Processing {i+1}/{len(unique_leads)}: {lead.get('name','')[:30]}", flush=True)
+        try:
+            enriched = process_single_lead(lead, use_ai)
+            print(f"DATA:{json.dumps(enriched)}", flush=True)
+        except Exception as e:
+            logger.debug(f"Lead failed: {e}")
+            lead["validation_status"] = "Pending"
+            print(f"DATA:{json.dumps(lead)}", flush=True)
 
     print(f"LOG:✅ Done: {len(unique_leads)} leads from {query}", flush=True)
 

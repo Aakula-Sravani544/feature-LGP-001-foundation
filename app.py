@@ -1075,30 +1075,28 @@ Return ONLY a JSON array of strings. No other text. No markdown."""
             combined.append(r)
             seen.add(r.lower())
 
-    # Add city hubs (expanding them if they have specific area fallbacks)
-    for r in city_hubs:
-        r_lower = r.lower()
-        
-        # Don't expand the user's primary region here (since specific_regions already covers it)
-        if region.strip() and (region.lower() in r_lower or r_lower in region.lower()):
-            continue
+    # Only add city hubs if no region was specified
+    if not region.strip():
+        # Add city hubs (expanding them if they have specific area fallbacks)
+        for r in city_hubs:
+            r_lower = r.lower()
             
-        matched_fallback_key = None
-        for key in specific_area_fallback.keys():
-            if key in r_lower or r_lower in key:
-                matched_fallback_key = key
-                break
-                
-        if matched_fallback_key:
-            # Expand this hub into its sub-regions
-            for sub_area in specific_area_fallback[matched_fallback_key]:
-                if sub_area.lower() not in seen:
-                    combined.append(sub_area)
-                    seen.add(sub_area.lower())
-        else:
-            if r_lower not in seen:
-                combined.append(r)
-                seen.add(r_lower)
+            matched_fallback_key = None
+            for key in specific_area_fallback.keys():
+                if key in r_lower or r_lower in key:
+                    matched_fallback_key = key
+                    break
+                    
+            if matched_fallback_key:
+                # Expand this hub into its sub-regions
+                for sub_area in specific_area_fallback[matched_fallback_key]:
+                    if sub_area.lower() not in seen:
+                        combined.append(sub_area)
+                        seen.add(sub_area.lower())
+            else:
+                if r_lower not in seen:
+                    combined.append(r)
+                    seen.add(r_lower)
 
     if not combined:
         return [region or city]
@@ -1193,50 +1191,23 @@ def generation_ui(label_suffix=""):
             current_plan = st.session_state.get("plan", "Free")
             plan_max = plan_slider_limits.get(current_plan, 50)
 
-            # Generate slider options
-            options = []
-            
-            # 10 to 100 in steps of 10
-            for v in range(10, 101, 10):
-                if v <= plan_max:
-                    options.append(v)
-            
-            # 110 to 200 in steps of 10
-            for v in range(110, 201, 10):
-                if v <= plan_max:
-                    options.append(v)
-                    
-            # 250 to 1000 in steps of 50
-            for v in range(250, 1001, 50):
-                if v <= plan_max:
-                    options.append(v)
-                    
-            # 1500 to 5000 in steps of 500
-            for v in range(1500, 5001, 500):
-                if v <= plan_max:
-                    options.append(v)
-                    
-            # 10000 to 50000 in steps of 5000
-            for v in range(10000, 50001, 5000):
-                if v <= plan_max:
-                    options.append(v)
-                    
-            # 100000 to 500000 in steps of 50000
-            for v in range(100000, 500001, 50000):
-                if v <= plan_max:
-                    options.append(v)
-                    
-            # Include exact plan max
-            if plan_max not in options:
-                options.append(plan_max)
-                
-            # Sort unique values
-            options = sorted(list(set(options)))
+            if plan_max >= 999999:
+                plan_label = "Unlimited"
+                options = list(range(10, 110, 10)) + list(range(150, 550, 50)) + [1000, 2000, 5000, 10000, 50000, 100000, 999999]
+            elif plan_max >= 1000:
+                plan_label = str(plan_max)
+                options = list(range(10, 110, 10)) + list(range(150, plan_max + 1, 50))
+            elif plan_max >= 200:
+                plan_label = str(plan_max)
+                options = list(range(10, plan_max + 1, 10))
+            else:
+                plan_label = str(plan_max)
+                options = list(range(10, plan_max + 1, 10))
 
-            plan_label = "Unlimited" if plan_max >= 999999 else str(plan_max)
-            slider_default = min(50, plan_max)
+            options = sorted(list(set(options)))
+            slider_default = min(50, options[-1])
             if slider_default not in options:
-                slider_default = min(options, key=lambda x: abs(x - slider_default))
+                slider_default = options[0]
 
             max_leads = st.select_slider(
                 f"Max Leads / Session (Plan limit: {plan_label})",
@@ -1297,9 +1268,17 @@ def generation_ui(label_suffix=""):
 
         progress_bar = st.progress(0)
         status_text = st.empty()
+        stop_placeholder = st.empty()
         log_placeholder = st.empty()
         metrics_placeholder = st.empty()
         table_placeholder = st.empty()
+
+        # Stop button
+        with stop_placeholder.container():
+            if st.button("⏹️ Stop Extraction", key=f"stop_{label_suffix}_{int(time.time())}"):
+                st.session_state.is_scraping = False
+                st.warning("Extraction stopped by user.")
+                st.rerun()
 
         with metrics_placeholder.container():
             m1, m2, m3 = st.columns(3)
