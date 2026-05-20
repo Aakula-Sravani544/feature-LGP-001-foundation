@@ -1055,6 +1055,16 @@ Return ONLY a JSON array of strings. No other text. No markdown."""
 
 
 def generation_ui(label_suffix=""):
+    # Import subscription module
+    from subscription import (
+        get_max_leads, can_use_linkedin, can_use_ai,
+        get_upgrade_message, render_upgrade_banner, get_plan
+    )
+
+    # Get current user plan
+    current_plan = st.session_state.get("plan", "Free")
+    max_allowed = get_max_leads(current_plan)
+
     st.markdown(f"### 🔍 Start New Extraction {label_suffix}")
 
     with st.container():
@@ -1100,20 +1110,25 @@ def generation_ui(label_suffix=""):
         c5, c6, c7 = st.columns([2, 1, 1])
         with c5:
             max_leads = st.slider(
-                "Max Leads / Session",
+                f"Max Leads / Session (Plan limit: {max_allowed})",
                 min_value=10,
-                max_value=100,
-                value=50,
+                max_value=min(max_allowed, 100),
+                value=min(50, max_allowed),
                 step=10,
                 key=f"max_{label_suffix}"
             )
         with c6:
             st.markdown("<br>", unsafe_allow_html=True)
+            ai_allowed = can_use_ai(current_plan)
             use_ai = st.toggle(
                 "🤖 Enable AI Scoring",
                 value=False,
+                disabled=not ai_allowed,
+                help=get_upgrade_message(current_plan, "ai_scoring") if not ai_allowed else "Enable AI lead scoring",
                 key=f"ai_{label_suffix}"
             )
+            if not ai_allowed:
+                st.caption(f"🔒 AI Scoring requires Starter plan. You are on {current_plan}.")
         with c7:
             st.markdown("<br>", unsafe_allow_html=True)
             btn_generate = st.button(
@@ -1124,6 +1139,19 @@ def generation_ui(label_suffix=""):
             )
 
     if btn_generate:
+        # Enforce lead cap
+        if max_leads > max_allowed:
+            st.error(f"Your {current_plan} plan allows max {max_allowed} leads per session.")
+            render_upgrade_banner(current_plan)
+            return
+
+        # When LinkedIn is selected but not allowed
+        source = "Google Maps"
+        if source == "LinkedIn" and not can_use_linkedin(current_plan):
+            st.error(get_upgrade_message(current_plan, "linkedin"))
+            render_upgrade_banner(current_plan)
+            st.stop()
+
         # Build keyword
         keyword = custom_keyword.strip() if custom_keyword.strip() else category
 
@@ -1939,24 +1967,20 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
     
-    username = st.session_state.get("username", "admin")
-    plan = st.session_state.get("plan", "Enterprise")
-    
+    # Show plan badge in sidebar
+    plan_colors = {
+        "Free": "#94A3B8",
+        "Starter": "#22C55E",
+        "Pro": "#3B82F6",
+        "Enterprise": "#F59E0B"
+    }
+    current_plan = st.session_state.get("plan", "Free")
+    plan_color = plan_colors.get(current_plan, "#94A3B8")
     st.markdown(f"""
-    <div style="color:#94a3b8; font-size:13px; 
-                margin-bottom:4px;">
-        Logged in as: 
-        <span style="color:white; font-weight:600;">
-        {username}</span>
-    </div>
-    <div style="color:#94a3b8; font-size:13px; 
-                margin-bottom:24px;">
-        Plan: 
-        <span style="color:white; font-weight:600;">
-        {plan}</span>
-    </div>
-    <hr style="border-color:rgba(255,255,255,0.1); 
-               margin-bottom:20px;"/>
+        <div style="padding:0 1rem 1rem 1rem;">
+            Logged in as: <strong>{st.session_state.username}</strong><br>
+            Plan: <span style="color:{plan_color}; font-weight:700;">{current_plan}</span>
+        </div>
     """, unsafe_allow_html=True)
     
     # after user info section add live stats
