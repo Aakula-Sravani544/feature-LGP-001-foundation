@@ -158,14 +158,14 @@ def render_login_page():
         width: 100% !important;
     }
     .stTextInput > div > div > input {
-        background: rgba(255,255,255,0.05) !important;
-        border: 0.5px solid rgba(255,255,255,0.12) !important;
-        color: #fff !important;
+        background: #ffffff !important;
+        border: 1px solid #cbd5e1 !important;
+        color: #000000 !important;
         border-radius: 8px !important;
         font-size: 13px !important;
     }
     .stTextInput > div > div > input::placeholder {
-        color: rgba(255,255,255,0.2) !important;
+        color: #94a3b8 !important;
     }
     .stTextInput label {
         color: rgba(255,255,255,0.4) !important;
