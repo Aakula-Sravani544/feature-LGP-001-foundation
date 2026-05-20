@@ -990,79 +990,134 @@ def get_stats():
 # ==========================================
 def get_sub_regions_ai(keyword: str, region: str, city: str) -> list:
     """
-    Use Gemini AI to generate detailed sub-regions for a given area.
-    Falls back to hardcoded sub-regions and city-wide hubs if needed.
+    Generate diverse search queries from the Region/Area field only.
+    Uses multiple strategies to get unique leads — not just sub-phases.
     """
-    # Hardcoded Fallbacks
-    specific_area_fallback = {
-        "kphb": ["KPHB Phase 1", "KPHB Phase 2", "KPHB Phase 3", "KPHB Phase 4", "KPHB Phase 5", "KPHB Phase 6", "KPHB Main Road", "Kukatpally Main Road", "JNTU Road KPHB", "KPHB Colony"],
-        "banjara hills": ["Banjara Hills Road 1", "Banjara Hills Road 2", "Banjara Hills Road 3", "Banjara Hills Road 10", "Banjara Hills Road 12", "Banjara Hills Road 13", "Banjara Hills Road 14"],
-        "jubilee hills": ["Jubilee Hills Road 36", "Jubilee Hills Road 45", "Jubilee Hills Check Post", "Jubilee Hills Main Road"],
-        "hitech city": ["Hitech City Main Road", "Madhapur Hitech City", "Cyber Towers Hitech City", "Hitech City Phase 1", "Hitech City Phase 2"],
-        "gachibowli": ["Gachibowli Main Road", "Gachibowli Stadium Road", "Financial District Gachibowli", "ISB Road Gachibowli"],
-        "kukatpally": ["Kukatpally Main Road", "KPHB Kukatpally", "Moosapet Kukatpally", "Bhavani Nagar Kukatpally"],
-        "ameerpet": ["Ameerpet Main Road", "SR Nagar Ameerpet", "Punjagutta Ameerpet", "Erramanzil Ameerpet"],
-        "secunderabad": ["Secunderabad Main Road", "SD Road Secunderabad", "MG Road Secunderabad", "Paradise Secunderabad"],
-        "begumpet": ["Begumpet Main Road", "Begumpet Colony", "Somajiguda Begumpet", "Raj Bhavan Road Begumpet"],
-        "t nagar": ["T Nagar Main Road", "Usman Road T Nagar", "Venkatnarayana Road T Nagar", "GN Chetty Road T Nagar"],
-        "anna nagar": ["Anna Nagar Main Road", "Anna Nagar 2nd Avenue", "Anna Nagar Tower", "Anna Nagar West"],
-        "koramangala": ["Koramangala 1st Block", "Koramangala 4th Block", "Koramangala 5th Block", "Koramangala 6th Block", "Koramangala 7th Block"],
-        "indiranagar": ["Indiranagar 100 Feet Road", "Indiranagar 12th Main", "Indiranagar CMH Road", "Indiranagar Double Road"],
-    }
-
-    city_hubs_fallback = {
-        "hyderabad": ["Madhapur", "Banjara Hills", "Jubilee Hills", "Hitech City", "Gachibowli", "Secunderabad", "Kukatpally", "Ameerpet", "Begumpet", "Kondapur", "Manikonda", "Miyapur", "LB Nagar", "Dilsukhnagar", "Mehdipatnam"],
-        "chennai": ["T Nagar", "Anna Nagar", "Adyar", "Velachery", "Nungambakkam", "Mylapore", "Tambaram", "OMR", "Porur", "Chromepet"],
-        "bangalore": ["Koramangala", "Indiranagar", "Whitefield", "Electronic City", "Jayanagar", "HSR Layout", "Marathahalli", "JP Nagar", "Bannerghatta", "BTM Layout"],
-        "vijayawada": ["Benz Circle", "MG Road", "Governorpet", "Labbipet", "Patamata", "Gunadala", "Suryaraopet", "Eluru Road", "Auto Nagar", "Kandrika"],
-        "guntur": ["Brodipet", "Arundelpet", "Kothapet", "AT Agraharam", "Old Town", "Amaravathi Road", "Vidyanagar", "Nallapadu", "Naaz Centre", "Brindavan Gardens"],
-    }
-
-    specific_regions = []
-    
-    # 1. Try Gemini AI for specific sub-regions
+    # Strategy 1 — Try Gemini AI for specific sub-locations within region
     gemini_key = os.environ.get("GEMINI_API_KEY", "")
-    if gemini_key:
+    ai_regions = []
+
+    if gemini_key and region.strip():
         try:
             import google.generativeai as genai
             genai.configure(api_key=gemini_key)
             model = genai.GenerativeModel("gemini-1.5-flash")
             prompt = f"""You are a hyper-local area expert for India.
-I need very specific sub-locations WITHIN the area "{region}" only.
-Do NOT list areas from the broader city "{city}".
-Focus only on what exists inside "{region}" itself.
+List specific sub-locations, road numbers, phases, sectors and landmarks
+that exist INSIDE the area "{region}" in {city}.
+Focus only on what is physically inside "{region}" — NOT the broader city.
 
-For example if region is "KPHB":
-Return things like: KPHB Phase 1, KPHB Phase 2, KPHB Phase 3, KPHB Phase 4, KPHB Phase 5, KPHB Phase 6, KPHB Road No 1, KPHB Road No 2, KPHB Main Road, Kukatpally Housing Board Colony
+Example for KPHB: KPHB Phase 1, KPHB Phase 2, KPHB Road No 1, KPHB Road No 2, KPHB Main Road, Kukatpally Housing Board Colony, JNTU Road KPHB
 
-For example if region is "Banjara Hills":
-Return things like: Banjara Hills Road No 1, Banjara Hills Road No 2, Banjara Hills Road No 3, Banjara Hills Road No 10, Banjara Hills Road No 12, Banjara Hills Road No 13
+Return ONLY a JSON array of strings. Max 8 items. No markdown."""
 
-Now list specific sub-locations inside "{region}" where {keyword} businesses would be found.
-Return ONLY a JSON array of strings. No other text. No markdown. No explanation."""
             response = model.generate_content(prompt)
             raw = response.text.strip().replace("```json","").replace("```","").strip()
-            import json
-            sub_regions = json.loads(raw)
-            if isinstance(sub_regions, list) and len(sub_regions) > 0:
-                specific_regions = sub_regions[:15]
+            import json as _json
+            parsed = _json.loads(raw)
+            if isinstance(parsed, list) and len(parsed) > 0:
+                ai_regions = [str(r) for r in parsed[:8]]
         except Exception as e:
-            st.session_state.logs += f"[SYS] AI sub-region failed: {e}\n"
+            st.session_state.logs += f"[SYS] AI sub-region: {e}\n"
 
-    if specific_regions:
-        return specific_regions[:25]
-        
-    region_lower = region.lower().strip()
-    for key, regions in specific_area_fallback.items():
-        if key in region_lower or region_lower in key:
-            return regions
-            
-    city_lower = city.lower()
-    for key, regions in city_hubs_fallback.items():
-        if key in city_lower:
-            return regions
-            
-    return [f"{region}", f"{region} Main Road", f"{region} Colony", f"{region} Extension"]
+    # Strategy 2 — Build diverse query variants for the region
+    # These hit DIFFERENT Google Maps results than phase queries
+    diverse_queries = []
+
+    if region.strip():
+        r = region.strip()
+        diverse_queries = [
+            f"{keyword} near {r} {city}",
+            f"best {keyword} in {r} {city}",
+            f"top {keyword} {r} {city}",
+            f"{keyword} {r} main road {city}",
+            f"{keyword} around {r} {city}",
+            f"{keyword} {r} colony {city}",
+            f"{keyword} {r} road {city}",
+        ]
+    else:
+        # No region — use city sub-areas
+        city_lower = city.lower()
+        city_fallback = {
+            "hyderabad": [
+                "Banjara Hills", "Jubilee Hills", "Hitech City",
+                "Gachibowli", "Secunderabad", "Kukatpally",
+                "Ameerpet", "Madhapur", "Begumpet", "Kondapur",
+                "Manikonda", "Miyapur", "LB Nagar", "Dilsukhnagar",
+                "Mehdipatnam"
+            ],
+            "chennai": [
+                "T Nagar", "Anna Nagar", "Adyar", "Velachery",
+                "Nungambakkam", "Mylapore", "Tambaram", "OMR",
+                "Porur", "Chromepet", "Perambur", "Egmore",
+                "Kodambakkam", "Guindy", "Royapettah"
+            ],
+            "bangalore": [
+                "Koramangala", "Indiranagar", "Whitefield",
+                "Electronic City", "Jayanagar", "HSR Layout",
+                "Marathahalli", "JP Nagar", "BTM Layout",
+                "Rajajinagar", "Malleshwaram", "Hebbal",
+                "Yelahanka", "Sarjapur", "Bannerghatta"
+            ],
+            "vijayawada": [
+                "Benz Circle", "MG Road", "Governorpet",
+                "Labbipet", "Patamata", "Gunadala",
+                "Suryaraopet", "Eluru Road", "Auto Nagar",
+                "Kandrika", "Moghalrajpuram", "Gandhi Nagar"
+            ],
+            "guntur": [
+                "Brodipet", "Arundelpet", "Kothapet",
+                "AT Agraharam", "Old Town", "Amaravathi Road",
+                "Vidyanagar", "Nallapadu", "Naaz Centre",
+                "Brindavan Gardens", "Lakshmipuram", "Pattabhipuram"
+            ],
+            "mumbai": [
+                "Andheri", "Bandra", "Powai", "Worli",
+                "Malad", "Goregaon", "Juhu", "Kurla",
+                "Borivali", "Thane", "Dadar", "Chembur",
+                "Vashi", "Kandivali", "Mulund"
+            ],
+            "delhi": [
+                "Connaught Place", "Lajpat Nagar", "Dwarka",
+                "Rohini", "Karol Bagh", "Saket", "Noida",
+                "Gurgaon", "Janakpuri", "Pitampura",
+                "Vasant Kunj", "Greater Kailash",
+                "Nehru Place", "Preet Vihar", "Faridabad"
+            ],
+            "pune": [
+                "Koregaon Park", "Baner", "Hinjewadi", "Wakad",
+                "Kothrud", "Hadapsar", "Viman Nagar",
+                "Kalyani Nagar", "Aundh", "Magarpatta",
+                "Pimpri", "Chinchwad", "Kharadi", "Undri", "Kondhwa"
+            ],
+        }
+        for key, areas in city_fallback.items():
+            if key in city_lower:
+                return [f"{keyword} in {a} {city}" for a in areas]
+        return [f"{keyword} in {city}"]
+
+    # Combine AI regions + diverse queries
+    # AI regions first (most specific), then diverse queries
+    all_queries = []
+
+    # Add AI regions as direct location queries
+    for ai_region in ai_regions:
+        all_queries.append(ai_region)
+
+    # Add diverse query strategies
+    all_queries.extend(diverse_queries)
+
+    # Remove duplicates while preserving order
+    seen = set()
+    unique_queries = []
+    for q in all_queries:
+        if q.lower() not in seen:
+            seen.add(q.lower())
+            unique_queries.append(q)
+
+    st.session_state.logs += f"[SYS] Generated {len(unique_queries)} unique queries for {region}\n"
+    return unique_queries[:15]
+
 
 def generation_ui(label_suffix=""):
     # Import subscription module
@@ -1273,8 +1328,12 @@ def generation_ui(label_suffix=""):
         for sub_region in sub_regions:
             if collected_count >= target_total:
                 break
-
-            query = f"{keyword} in {sub_region} {city}"
+            # If sub_region already contains keyword (diverse query), use as-is
+            # Otherwise build the query normally
+            if keyword.lower() in sub_region.lower() or "near" in sub_region.lower() or "best" in sub_region.lower() or "top" in sub_region.lower():
+                query = sub_region if city.lower() in sub_region.lower() else f"{sub_region} {city}"
+            else:
+                query = f"{keyword} in {sub_region} {city}"
             status_text.text(f"🔄 Scraping: {query} ({collected_count}/{target_total})")
             st.session_state.logs += f"[SYS] Scraping: {query}\n"
             log_placeholder.markdown(
