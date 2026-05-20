@@ -182,8 +182,13 @@ def render_login_page():
         background: rgba(255,255,255,0.04) !important;
         border: 0.5px solid rgba(255,255,255,0.08) !important;
         border-radius: 8px !important;
-        color: rgba(255,255,255,0.5) !important;
+        color: #ffffff !important;
         font-size: 12px !important;
+    }
+    .streamlit-expanderHeader p,
+    .streamlit-expanderHeader span {
+        color: #ffffff !important;
+        font-weight: 500 !important;
     }
     </style>
     """, unsafe_allow_html=True)
