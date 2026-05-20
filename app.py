@@ -132,6 +132,253 @@ if st.session_state.authenticated and check_session_expiry():
     for key in list(st.session_state.keys()):
         del st.session_state[key]
     st.rerun()
+# ==========================================
+# LOGIN PAGE
+# ==========================================
+def render_login_page():
+    """Premium login page — click Admin or User card to reveal credentials."""
+    from auth import login, register_user
+
+    st.markdown("""
+    <style>
+    .stApp { background: #0F172A !important; }
+    [data-testid="stAppViewContainer"] { background: #0F172A !important; }
+    [data-testid="stSidebar"] { display: none !important; }
+    [data-testid="stHeader"] { background: transparent !important; }
+    .block-container {
+        max-width: 560px !important;
+        margin: 0 auto !important;
+        padding: 2rem 1rem !important;
+    }
+    div.stButton > button {
+        border-radius: 8px !important;
+        font-weight: 500 !important;
+        font-size: 13px !important;
+        border: none !important;
+        width: 100% !important;
+    }
+    .stTextInput > div > div > input {
+        background: rgba(255,255,255,0.05) !important;
+        border: 0.5px solid rgba(255,255,255,0.12) !important;
+        color: #fff !important;
+        border-radius: 8px !important;
+        font-size: 13px !important;
+    }
+    .stTextInput > div > div > input::placeholder {
+        color: rgba(255,255,255,0.2) !important;
+    }
+    .stTextInput label {
+        color: rgba(255,255,255,0.4) !important;
+        font-size: 11px !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.07em !important;
+        font-weight: 500 !important;
+    }
+    .stAlert {
+        border-radius: 8px !important;
+        font-size: 12px !important;
+    }
+    .streamlit-expanderHeader {
+        background: rgba(255,255,255,0.04) !important;
+        border: 0.5px solid rgba(255,255,255,0.08) !important;
+        border-radius: 8px !important;
+        color: rgba(255,255,255,0.5) !important;
+        font-size: 12px !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # Logo
+    st.markdown("""
+        <div style="text-align:center; padding:2rem 0 1.5rem;">
+            <div style="font-size:24px; font-weight:500; color:#fff; letter-spacing:-0.4px; margin-bottom:6px;">
+                🚀 LeadPulse Pro
+            </div>
+            <div style="font-size:12px; color:rgba(255,255,255,0.3);">
+                Production Grade Lead Extraction Engine
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+
+    # Two clickable cards
+    col1, col2 = st.columns(2, gap="medium")
+
+    with col1:
+        st.markdown("""
+            <div style="background:#1E293B; border:0.5px solid rgba(255,255,255,0.08);
+                border-top:2px solid #F59E0B; border-radius:14px; padding:18px 16px;
+                text-align:center; cursor:pointer; margin-bottom:10px;">
+                <div style="font-size:10px; font-weight:500; padding:2px 10px;
+                    background:rgba(245,158,11,0.15); color:#F59E0B; border-radius:20px;
+                    display:inline-block; margin-bottom:10px; letter-spacing:0.05em;">
+                    ADMIN
+                </div>
+                <div style="font-size:36px; margin-bottom:8px;">🛡️</div>
+                <div style="font-size:14px; font-weight:500; color:#fff; margin-bottom:4px;">
+                    Admin Console
+                </div>
+                <div style="font-size:11px; color:rgba(255,255,255,0.3); line-height:1.5;">
+                    Platform management, users and system control
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+
+    with col2:
+        st.markdown("""
+            <div style="background:#1E293B; border:0.5px solid rgba(255,255,255,0.08);
+                border-top:2px solid #2563EB; border-radius:14px; padding:18px 16px;
+                text-align:center; cursor:pointer; margin-bottom:10px;">
+                <div style="font-size:10px; font-weight:500; padding:2px 10px;
+                    background:rgba(37,99,235,0.15); color:#60A5FA; border-radius:20px;
+                    display:inline-block; margin-bottom:10px; letter-spacing:0.05em;">
+                    USER
+                </div>
+                <div style="font-size:36px; margin-bottom:8px;">👤</div>
+                <div style="font-size:14px; font-weight:500; color:#fff; margin-bottom:4px;">
+                    User Workspace
+                </div>
+                <div style="font-size:11px; color:rgba(255,255,255,0.3); line-height:1.5;">
+                    Generate leads, export data and manage plan
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+
+    # Login mode selector
+    login_mode = st.session_state.get("login_mode", None)
+
+    col3, col4 = st.columns(2, gap="medium")
+    with col3:
+        if st.button("🛡️ Login as Admin", key="select_admin", use_container_width=True):
+            st.session_state.login_mode = "admin"
+            st.rerun()
+    with col4:
+        if st.button("👤 Login as User", key="select_user", use_container_width=True):
+            st.session_state.login_mode = "user"
+            st.rerun()
+
+    # Show credentials form based on selection
+    if login_mode == "admin":
+        st.markdown("""
+            <div style="background:#1E293B; border:0.5px solid rgba(255,255,255,0.08);
+                border-top:2px solid #F59E0B; border-radius:14px;
+                padding:20px 20px 8px; margin-top:4px;">
+                <div style="display:flex; align-items:center; gap:8px; margin-bottom:14px;">
+                    <span style="font-size:18px;">🛡️</span>
+                    <span style="font-size:14px; font-weight:500; color:#fff;">
+                        Admin credentials
+                    </span>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+
+        admin_user = st.text_input("Username", placeholder="admin", key="admin_u")
+        admin_pass = st.text_input("Password", type="password", placeholder="••••••••", key="admin_p")
+
+        col5, col6 = st.columns([3, 1])
+        with col5:
+            if st.button("→ Enter Admin Console", key="admin_submit", use_container_width=True):
+                if not admin_user or not admin_pass:
+                    st.error("Enter username and password")
+                else:
+                    success, role, plan = login(admin_user, admin_pass)
+                    if success and role == "admin":
+                        st.session_state.authenticated = True
+                        st.session_state.username = admin_user
+                        st.session_state.role = role
+                        st.session_state.plan = plan
+                        st.session_state.login_time = datetime.now()
+                        st.session_state.login_mode = None
+                        st.rerun()
+                    elif success and role != "admin":
+                        st.error("This account does not have admin access")
+                    else:
+                        st.error("Invalid admin credentials")
+        with col6:
+            if st.button("✕ Cancel", key="cancel_admin", use_container_width=True):
+                st.session_state.login_mode = None
+                st.rerun()
+
+    elif login_mode == "user":
+        st.markdown("""
+            <div style="background:#1E293B; border:0.5px solid rgba(255,255,255,0.08);
+                border-top:2px solid #2563EB; border-radius:14px;
+                padding:20px 20px 8px; margin-top:4px;">
+                <div style="display:flex; align-items:center; gap:8px; margin-bottom:14px;">
+                    <span style="font-size:18px;">👤</span>
+                    <span style="font-size:14px; font-weight:500; color:#fff;">
+                        User credentials
+                    </span>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+
+        user_user = st.text_input("Username", placeholder="your username", key="user_u")
+        user_pass = st.text_input("Password", type="password", placeholder="••••••••", key="user_p")
+
+        col7, col8 = st.columns([3, 1])
+        with col7:
+            if st.button("→ Enter Workspace", key="user_submit", use_container_width=True):
+                if not user_user or not user_pass:
+                    st.error("Enter username and password")
+                else:
+                    success, role, plan = login(user_user, user_pass)
+                    if success:
+                        st.session_state.authenticated = True
+                        st.session_state.username = user_user
+                        st.session_state.role = role
+                        st.session_state.plan = plan
+                        st.session_state.login_time = datetime.now()
+                        st.session_state.login_mode = None
+                        st.rerun()
+                    else:
+                        st.error("Invalid username or password")
+        with col8:
+            if st.button("✕ Cancel", key="cancel_user", use_container_width=True):
+                st.session_state.login_mode = None
+                st.rerun()
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # Register section
+    st.markdown("""
+        <div style="background:#1E293B; border:0.5px solid rgba(255,255,255,0.07);
+            border-radius:10px; padding:12px 16px;
+            display:flex; align-items:center; justify-content:space-between;
+            margin-bottom:10px;">
+            <div>
+                <div style="font-size:12px; font-weight:500; color:#fff; margin-bottom:2px;">
+                    New to LeadPulse Pro?
+                </div>
+                <div style="font-size:11px; color:rgba(255,255,255,0.3);">
+                    50 leads/session free — no credit card needed
+                </div>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+
+    with st.expander("Create free account"):
+        reg_user = st.text_input("Username", placeholder="min 3 characters", key="reg_user")
+        reg_pass = st.text_input("Password", type="password", placeholder="min 6 characters", key="reg_pass")
+        reg_name = st.text_input("Full name", placeholder="Your name", key="reg_name")
+        reg_email = st.text_input("Email", placeholder="your@email.com", key="reg_email")
+        if st.button("Create account", key="reg_btn", use_container_width=True):
+            if not reg_user or not reg_pass:
+                st.error("Username and password required")
+            else:
+                success, msg = register_user(
+                    reg_user, reg_pass,
+                    role="user", plan="Free",
+                    name=reg_name, email=reg_email
+                )
+                st.success(msg + " — Login using User card above") if success else st.error(msg)
+
+    # Privacy bar
+    st.markdown("""
+        <div style="text-align:center; font-size:11px;
+            color:rgba(255,255,255,0.2); margin-top:12px; padding:10px;">
+            🔒 Your data is encrypted and never shared — secured by LeadPulse Pro
+        </div>
+    """, unsafe_allow_html=True)
 
 # Show login if not authenticated
 if not st.session_state.authenticated:
@@ -833,252 +1080,9 @@ def get_stats():
     except: return 0, 0, 0
 
 # ==========================================
-# LOGIN PAGE
+# LOGIN PAGE PLACEHOLDER
 # ==========================================
-def render_login_page():
-    """Premium login page — click Admin or User card to reveal credentials."""
-    from auth import login, register_user
-
-    st.markdown("""
-    <style>
-    .stApp { background: #0F172A !important; }
-    [data-testid="stAppViewContainer"] { background: #0F172A !important; }
-    [data-testid="stSidebar"] { display: none !important; }
-    [data-testid="stHeader"] { background: transparent !important; }
-    .block-container {
-        max-width: 560px !important;
-        margin: 0 auto !important;
-        padding: 2rem 1rem !important;
-    }
-    div.stButton > button {
-        border-radius: 8px !important;
-        font-weight: 500 !important;
-        font-size: 13px !important;
-        border: none !important;
-        width: 100% !important;
-    }
-    .stTextInput > div > div > input {
-        background: rgba(255,255,255,0.05) !important;
-        border: 0.5px solid rgba(255,255,255,0.12) !important;
-        color: #fff !important;
-        border-radius: 8px !important;
-        font-size: 13px !important;
-    }
-    .stTextInput > div > div > input::placeholder {
-        color: rgba(255,255,255,0.2) !important;
-    }
-    .stTextInput label {
-        color: rgba(255,255,255,0.4) !important;
-        font-size: 11px !important;
-        text-transform: uppercase !important;
-        letter-spacing: 0.07em !important;
-        font-weight: 500 !important;
-    }
-    .stAlert {
-        border-radius: 8px !important;
-        font-size: 12px !important;
-    }
-    .streamlit-expanderHeader {
-        background: rgba(255,255,255,0.04) !important;
-        border: 0.5px solid rgba(255,255,255,0.08) !important;
-        border-radius: 8px !important;
-        color: rgba(255,255,255,0.5) !important;
-        font-size: 12px !important;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
-    # Logo
-    st.markdown("""
-        <div style="text-align:center; padding:2rem 0 1.5rem;">
-            <div style="font-size:24px; font-weight:500; color:#fff; letter-spacing:-0.4px; margin-bottom:6px;">
-                🚀 LeadPulse Pro
-            </div>
-            <div style="font-size:12px; color:rgba(255,255,255,0.3);">
-                Production Grade Lead Extraction Engine
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
-
-    # Two clickable cards
-    col1, col2 = st.columns(2, gap="medium")
-
-    with col1:
-        st.markdown("""
-            <div style="background:#1E293B; border:0.5px solid rgba(255,255,255,0.08);
-                border-top:2px solid #F59E0B; border-radius:14px; padding:18px 16px;
-                text-align:center; cursor:pointer; margin-bottom:10px;">
-                <div style="font-size:10px; font-weight:500; padding:2px 10px;
-                    background:rgba(245,158,11,0.15); color:#F59E0B; border-radius:20px;
-                    display:inline-block; margin-bottom:10px; letter-spacing:0.05em;">
-                    ADMIN
-                </div>
-                <div style="font-size:36px; margin-bottom:8px;">🛡️</div>
-                <div style="font-size:14px; font-weight:500; color:#fff; margin-bottom:4px;">
-                    Admin Console
-                </div>
-                <div style="font-size:11px; color:rgba(255,255,255,0.3); line-height:1.5;">
-                    Platform management, users and system control
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
-
-    with col2:
-        st.markdown("""
-            <div style="background:#1E293B; border:0.5px solid rgba(255,255,255,0.08);
-                border-top:2px solid #2563EB; border-radius:14px; padding:18px 16px;
-                text-align:center; cursor:pointer; margin-bottom:10px;">
-                <div style="font-size:10px; font-weight:500; padding:2px 10px;
-                    background:rgba(37,99,235,0.15); color:#60A5FA; border-radius:20px;
-                    display:inline-block; margin-bottom:10px; letter-spacing:0.05em;">
-                    USER
-                </div>
-                <div style="font-size:36px; margin-bottom:8px;">👤</div>
-                <div style="font-size:14px; font-weight:500; color:#fff; margin-bottom:4px;">
-                    User Workspace
-                </div>
-                <div style="font-size:11px; color:rgba(255,255,255,0.3); line-height:1.5;">
-                    Generate leads, export data and manage plan
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
-
-    # Login mode selector
-    login_mode = st.session_state.get("login_mode", None)
-
-    col3, col4 = st.columns(2, gap="medium")
-    with col3:
-        if st.button("🛡️ Login as Admin", key="select_admin", use_container_width=True):
-            st.session_state.login_mode = "admin"
-            st.rerun()
-    with col4:
-        if st.button("👤 Login as User", key="select_user", use_container_width=True):
-            st.session_state.login_mode = "user"
-            st.rerun()
-
-    # Show credentials form based on selection
-    if login_mode == "admin":
-        st.markdown("""
-            <div style="background:#1E293B; border:0.5px solid rgba(255,255,255,0.08);
-                border-top:2px solid #F59E0B; border-radius:14px;
-                padding:20px 20px 8px; margin-top:4px;">
-                <div style="display:flex; align-items:center; gap:8px; margin-bottom:14px;">
-                    <span style="font-size:18px;">🛡️</span>
-                    <span style="font-size:14px; font-weight:500; color:#fff;">
-                        Admin credentials
-                    </span>
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
-
-        admin_user = st.text_input("Username", placeholder="admin", key="admin_u")
-        admin_pass = st.text_input("Password", type="password", placeholder="••••••••", key="admin_p")
-
-        col5, col6 = st.columns([3, 1])
-        with col5:
-            if st.button("→ Enter Admin Console", key="admin_submit", use_container_width=True):
-                if not admin_user or not admin_pass:
-                    st.error("Enter username and password")
-                else:
-                    success, role, plan = login(admin_user, admin_pass)
-                    if success and role == "admin":
-                        st.session_state.authenticated = True
-                        st.session_state.username = admin_user
-                        st.session_state.role = role
-                        st.session_state.plan = plan
-                        st.session_state.login_time = datetime.now()
-                        st.session_state.login_mode = None
-                        st.rerun()
-                    elif success and role != "admin":
-                        st.error("This account does not have admin access")
-                    else:
-                        st.error("Invalid admin credentials")
-        with col6:
-            if st.button("✕ Cancel", key="cancel_admin", use_container_width=True):
-                st.session_state.login_mode = None
-                st.rerun()
-
-    elif login_mode == "user":
-        st.markdown("""
-            <div style="background:#1E293B; border:0.5px solid rgba(255,255,255,0.08);
-                border-top:2px solid #2563EB; border-radius:14px;
-                padding:20px 20px 8px; margin-top:4px;">
-                <div style="display:flex; align-items:center; gap:8px; margin-bottom:14px;">
-                    <span style="font-size:18px;">👤</span>
-                    <span style="font-size:14px; font-weight:500; color:#fff;">
-                        User credentials
-                    </span>
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
-
-        user_user = st.text_input("Username", placeholder="your username", key="user_u")
-        user_pass = st.text_input("Password", type="password", placeholder="••••••••", key="user_p")
-
-        col7, col8 = st.columns([3, 1])
-        with col7:
-            if st.button("→ Enter Workspace", key="user_submit", use_container_width=True):
-                if not user_user or not user_pass:
-                    st.error("Enter username and password")
-                else:
-                    success, role, plan = login(user_user, user_pass)
-                    if success:
-                        st.session_state.authenticated = True
-                        st.session_state.username = user_user
-                        st.session_state.role = role
-                        st.session_state.plan = plan
-                        st.session_state.login_time = datetime.now()
-                        st.session_state.login_mode = None
-                        st.rerun()
-                    else:
-                        st.error("Invalid username or password")
-        with col8:
-            if st.button("✕ Cancel", key="cancel_user", use_container_width=True):
-                st.session_state.login_mode = None
-                st.rerun()
-
-    st.markdown("<br>", unsafe_allow_html=True)
-
-    # Register section
-    st.markdown("""
-        <div style="background:#1E293B; border:0.5px solid rgba(255,255,255,0.07);
-            border-radius:10px; padding:12px 16px;
-            display:flex; align-items:center; justify-content:space-between;
-            margin-bottom:10px;">
-            <div>
-                <div style="font-size:12px; font-weight:500; color:#fff; margin-bottom:2px;">
-                    New to LeadPulse Pro?
-                </div>
-                <div style="font-size:11px; color:rgba(255,255,255,0.3);">
-                    50 leads/session free — no credit card needed
-                </div>
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
-
-    with st.expander("Create free account"):
-        reg_user = st.text_input("Username", placeholder="min 3 characters", key="reg_user")
-        reg_pass = st.text_input("Password", type="password", placeholder="min 6 characters", key="reg_pass")
-        reg_name = st.text_input("Full name", placeholder="Your name", key="reg_name")
-        reg_email = st.text_input("Email", placeholder="your@email.com", key="reg_email")
-        if st.button("Create account", key="reg_btn", use_container_width=True):
-            if not reg_user or not reg_pass:
-                st.error("Username and password required")
-            else:
-                success, msg = register_user(
-                    reg_user, reg_pass,
-                    role="user", plan="Free",
-                    name=reg_name, email=reg_email
-                )
-                st.success(msg + " — Login using User card above") if success else st.error(msg)
-
-    # Privacy bar
-    st.markdown("""
-        <div style="text-align:center; font-size:11px;
-            color:rgba(255,255,255,0.2); margin-top:12px; padding:10px;">
-            🔒 Your data is encrypted and never shared — secured by LeadPulse Pro
-        </div>
-    """, unsafe_allow_html=True)
+# (Function moved higher to prevent NameError on startup execution)
 
 # ==========================================
 # GENERATION COMPONENT (SHARED)
