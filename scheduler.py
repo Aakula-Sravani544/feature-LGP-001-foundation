@@ -32,16 +32,17 @@ def run_scraping_job(
     max_leads: int = 50,
     use_ai: bool = False
 ) -> None:
-    """Execute scraping job in background thread."""
-    import os
+    """Execute scraping job in background thread with correct path resolution."""
+    import time
     query = f"{keyword} in {location}"
-    logger.info(f"Starting job {job_id}: {query}")
+    logger.info(f"Job {job_id} starting: {query}")
 
     # Register/update status to running immediately so it shows up in UI
     found = False
     for job in job_history:
         if job["job_id"] == job_id:
             job["status"] = "running"
+            job["started_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             found = True
             break
     if not found:
@@ -55,16 +56,28 @@ def run_scraping_job(
         })
 
     leads = []
+
     try:
-        # Get correct scraper path
+        # Resolve correct path to scraper.py
         current_dir = os.path.dirname(os.path.abspath(__file__))
         scraper_path = os.path.join(current_dir, "scraper.py")
 
+        # Fallback paths if not found
         if not os.path.exists(scraper_path):
-            scraper_path = "scraper.py"
+            fallback_paths = [
+                "/app/scraper.py",
+                os.path.join(os.getcwd(), "scraper.py"),
+                "scraper.py"
+            ]
+            for path in fallback_paths:
+                if os.path.exists(path):
+                    scraper_path = path
+                    break
+
+        logger.info(f"Job {job_id}: using scraper at {scraper_path}")
+        print(f"LOG:Scheduler job {job_id} starting: {query}", flush=True)
 
         ai_flag = "1" if use_ai else "0"
-        logger.info(f"Running: {scraper_path} {query} {max_leads}")
 
         # Setup environment with UTF-8 encoding to prevent UnicodeEncodeError in subprocess pipes
         sub_env = os.environ.copy()
@@ -81,20 +94,33 @@ def run_scraping_job(
             env=sub_env
         )
 
+        # Read output with timeout
+        start_time = time.time()
+        max_runtime = 300  # 5 minutes max
+
         for line in process.stdout:
             line = line.strip()
+
+            # Check timeout
+            if time.time() - start_time > max_runtime:
+                logger.warning(f"Job {job_id}: timeout reached")
+                process.kill()
+                break
+
             if line.startswith("DATA:"):
                 try:
-                    lead = json.loads(line.replace("DATA:", ""))
-                    leads.append(lead)
-                    logger.info(f"Job {job_id}: collected {lead.get('name','')[:30]}")
+                    lead = json.loads(line.replace("DATA:", "").strip())
+                    if lead.get("name"):
+                        leads.append(lead)
+                        logger.info(f"Job {job_id}: collected {lead.get('name','')[:30]}")
                 except Exception as e:
                     logger.debug(f"Parse error: {e}")
-            elif line.startswith("LOG:"):
-                logger.info(f"Job {job_id}: {line.replace('LOG:','')}")
 
-        process.wait(timeout=300)
-        logger.info(f"Job {job_id}: scraper finished with {len(leads)} leads")
+            elif line.startswith("LOG:"):
+                logger.info(f"Job {job_id}: {line.replace('LOG:','').strip()}")
+
+        process.wait()
+        logger.info(f"Job {job_id}: scraper finished. Leads: {len(leads)}")
 
         # Save to database
         if leads:
@@ -103,45 +129,50 @@ def run_scraping_job(
                 database.save_to_db(leads)
                 logger.info(f"Job {job_id}: saved {len(leads)} to database")
             except Exception as e:
-                logger.error(f"Job {job_id}: database save error {e}")
+                logger.error(f"Job {job_id}: database error: {e}")
 
             # Save to Google Sheets
             try:
                 import google_sheets
                 success, msg = google_sheets.save_to_google_sheets(leads)
-                logger.info(f"Job {job_id}: sheets {msg}")
+                logger.info(f"Job {job_id}: sheets sync: {msg}")
             except Exception as e:
-                logger.error(f"Job {job_id}: sheets error {e}")
+                logger.error(f"Job {job_id}: sheets error: {e}")
 
             # Email notification
-            send_job_notification(job_id, query, len(leads))
+            try:
+                send_job_notification(job_id, query, len(leads))
+            except Exception as e:
+                logger.debug(f"Job {job_id}: email error: {e}")
 
-    except subprocess.TimeoutExpired:
-        logger.error(f"Job {job_id}: timeout after 300 seconds")
-        process.kill()
     except Exception as e:
         logger.error(f"Job {job_id} error: {e}")
 
     finally:
-        # Always update job history when done
-        completed = False
+        # ALWAYS update job history when done — success or failure
+        final_status = "completed" if len(leads) > 0 else "failed"
+        final_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        updated = False
         for job in job_history:
             if job["job_id"] == job_id:
-                job["status"] = "completed" if leads else "failed"
+                job["status"] = final_status
                 job["leads_collected"] = len(leads)
-                job["completed_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                completed = True
+                job["completed_at"] = final_time
+                updated = True
                 break
-        if not completed:
+
+        if not updated:
             job_history.append({
                 "job_id": job_id,
                 "query": query,
-                "status": "completed" if leads else "failed",
+                "status": final_status,
                 "started_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 "leads_collected": len(leads),
-                "completed_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                "completed_at": final_time
             })
-        logger.info(f"Job {job_id} finished: {len(leads)} leads")
+
+        logger.info(f"Job {job_id} {final_status}: {len(leads)} leads")
 
 
 def send_job_notification(job_id: str, query: str, leads_count: int) -> None:
@@ -149,37 +180,41 @@ def send_job_notification(job_id: str, query: str, leads_count: int) -> None:
     try:
         import smtplib
         from email.mime.text import MIMEText
+        from email.mime.multipart import MIMEMultipart
 
         smtp_user = os.environ.get("SMTP_USER", "")
         smtp_pass = os.environ.get("SMTP_PASS", "")
         notify_email = os.environ.get("NOTIFY_EMAIL", smtp_user)
 
         if not smtp_user or not smtp_pass:
-            logger.debug("SMTP not configured — skipping email notification")
+            logger.debug("SMTP not configured — skipping notification")
             return
 
-        msg = MIMEText(f"""
-LeadPulse Pro — Scheduled Job Complete
-
-Job ID: {job_id}
-Query: {query}
-Leads Collected: {leads_count}
-Completed At: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-
-Login to LeadPulse Pro to view your new leads.
-        """)
-        msg["Subject"] = f"✅ LeadPulse Job Complete — {leads_count} leads collected"
+        msg = MIMEMultipart()
+        msg["Subject"] = f"✅ LeadPulse Job Done — {leads_count} leads"
         msg["From"] = smtp_user
         msg["To"] = notify_email
+
+        body = MIMEText(f"""
+LeadPulse Pro — Scheduled Job Complete
+
+Job ID     : {job_id}
+Query      : {query}
+Leads      : {leads_count}
+Completed  : {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+
+Login to view your new leads:
+{os.environ.get('APP_URL', 'https://leadpulse-pro.onrender.com')}
+        """)
+        msg.attach(body)
 
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
             server.login(smtp_user, smtp_pass)
             server.send_message(msg)
-
-        logger.info(f"Notification sent to {notify_email}")
+            logger.info(f"Email sent to {notify_email}")
 
     except Exception as e:
-        logger.debug(f"Email notification failed: {e}")
+        logger.debug(f"Email failed: {e}")
 
 
 # ==========================================
@@ -393,27 +428,59 @@ def render_scheduler_ui(plan: str) -> None:
 
     st.markdown("---")
 
-    # Job history
     st.markdown("#### 📜 Job History")
+
+    col_r1, col_r2 = st.columns(2)
+    with col_r1:
+        if st.button("🔄 Refresh Status", use_container_width=True, key="refresh_jobs"):
+            st.rerun()
+    with col_r2:
+        if st.button("🗑️ Clear History", use_container_width=True, key="clear_jobs"):
+            job_history.clear()
+            st.rerun()
+
     if job_history:
         import pandas as pd
         history_df = pd.DataFrame(job_history)
-        st.dataframe(history_df, hide_index=True, use_container_width=True)
+        display_cols = [
+            "job_id", "query", "status",
+            "started_at", "leads_collected", "completed_at"
+        ]
+        available = [c for c in display_cols if c in history_df.columns]
+        st.dataframe(
+            history_df[available],
+            hide_index=True,
+            use_container_width=True
+        )
+
+        # Summary metrics
+        completed = len([j for j in job_history if j.get("status") == "completed"])
+        running = len([j for j in job_history if j.get("status") == "running"])
+        failed = len([j for j in job_history if j.get("status") == "failed"])
+        total_leads = sum(j.get("leads_collected", 0) for j in job_history)
+
+        m1, m2, m3, m4 = st.columns(4)
+        m1.metric("Completed", completed)
+        m2.metric("Running", running)
+        m3.metric("Failed", failed)
+        m4.metric("Total Leads Collected", total_leads)
     else:
-        st.info("No jobs have run yet.")
+        st.info("No jobs run yet. Click 'Run Job Now' above.")
 
     st.markdown("---")
 
-    # Email notification settings
+    # Email status
     st.markdown("#### 📧 Email Notifications")
-    st.markdown("Add these to Render environment variables to receive job completion emails:")
-    st.code("""
-SMTP_USER=your.email@gmail.com
-SMTP_PASS=your_app_password
-NOTIFY_EMAIL=notify@email.com
-    """)
-    smtp_configured = bool(os.environ.get("SMTP_USER"))
+    smtp_configured = bool(os.environ.get("SMTP_USER")) and bool(os.environ.get("SMTP_PASS"))
     if smtp_configured:
-        st.success("✅ Email notifications configured")
+        smtp_user = os.environ.get("SMTP_USER", "")
+        notify = os.environ.get("NOTIFY_EMAIL", smtp_user)
+        st.success(f"✅ Email notifications active — sending to {notify}")
     else:
         st.warning("⚠️ Email notifications not configured")
+        st.markdown("Add these to Render environment variables:")
+        st.code("""
+    SMTP_USER=your.email@gmail.com
+    SMTP_PASS=your_app_password
+    NOTIFY_EMAIL=notify@email.com
+        """)
