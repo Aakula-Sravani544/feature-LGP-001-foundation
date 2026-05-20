@@ -1138,16 +1138,44 @@ def generation_ui(label_suffix=""):
         # Row 3 — Max leads, AI toggle, Source
         c5, c6, c7 = st.columns([2, 1, 1])
         with c5:
-            # Cap display at 200 for UI usability but respect plan limit
-            slider_max = min(max_allowed, 200) if max_allowed < 999999 else 200
-            slider_default = min(50, slider_max)
+            # Slider limits per plan — exact values from Day 12 subscription
+            plan_slider_limits = {
+                "Free": 50,
+                "Starter": 200,
+                "Pro": 1000,
+                "Enterprise": 999999
+            }
+
+            current_plan = st.session_state.get("plan", "Free")
+            plan_max = plan_slider_limits.get(current_plan, 50)
+
+            if plan_max >= 999999:
+                plan_label = "Unlimited"
+                slider_max = 999999
+                slider_step = 10
+                slider_default = 100
+            elif plan_max >= 1000:
+                plan_label = str(plan_max)
+                slider_max = plan_max
+                slider_step = 50
+                slider_default = 100
+            elif plan_max >= 200:
+                plan_label = str(plan_max)
+                slider_max = plan_max
+                slider_step = 10
+                slider_default = 50
+            else:
+                plan_label = str(plan_max)
+                slider_max = plan_max
+                slider_step = 10
+                slider_default = min(50, plan_max)
 
             max_leads = st.slider(
-                f"Max Leads / Session (Plan limit: {'Unlimited' if max_allowed >= 999999 else max_allowed})",
+                f"Max Leads / Session (Plan limit: {plan_label})",
                 min_value=10,
                 max_value=slider_max,
                 value=slider_default,
-                step=10,
+                step=slider_step,
                 key=f"max_{label_suffix}"
             )
         with c6:
