@@ -178,17 +178,33 @@ def render_login_page():
         border-radius: 8px !important;
         font-size: 12px !important;
     }
-    .streamlit-expanderHeader {
+    /* Expander styling using high-specificity selectors to force white text */
+    [data-testid="stExpander"] {
+        border: none !important;
+        background: transparent !important;
+        box-shadow: none !important;
+    }
+    [data-testid="stExpander"] summary {
         background: rgba(255,255,255,0.04) !important;
         border: 0.5px solid rgba(255,255,255,0.08) !important;
         border-radius: 8px !important;
-        color: #ffffff !important;
-        font-size: 12px !important;
+        padding: 10px 14px !important;
     }
-    .streamlit-expanderHeader p,
-    .streamlit-expanderHeader span {
+    [data-testid="stExpander"] summary * {
         color: #ffffff !important;
         font-weight: 500 !important;
+        font-size: 13px !important;
+    }
+    [data-testid="stExpander"] summary svg {
+        fill: #ffffff !important;
+        color: #ffffff !important;
+    }
+    [data-testid="stExpander"] div[role="region"] {
+        background: rgba(255,255,255,0.02) !important;
+        border: 0.5px solid rgba(255,255,255,0.08) !important;
+        border-top: none !important;
+        border-radius: 0 0 8px 8px !important;
+        padding: 16px !important;
     }
     </style>
     """, unsafe_allow_html=True)
