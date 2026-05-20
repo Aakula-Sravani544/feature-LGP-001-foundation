@@ -360,7 +360,7 @@ def enrich_leads(leads: list) -> list:
 def process_single_lead(lead, use_ai):
     if lead.get("website"):
         try:
-            resp = requests.get(lead["website"], timeout=2, headers=HEADERS)
+            resp = requests.get(lead["website"], timeout=10, headers=HEADERS)
             html = resp.text
             soup = BeautifulSoup(html, "html.parser")
 
