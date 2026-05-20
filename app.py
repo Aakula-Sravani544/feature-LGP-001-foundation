@@ -1163,33 +1163,55 @@ def generation_ui(label_suffix=""):
             current_plan = st.session_state.get("plan", "Free")
             plan_max = plan_slider_limits.get(current_plan, 50)
 
-            if plan_max >= 999999:
-                plan_label = "Unlimited"
-                slider_max = 999999
-                slider_step = 1
-                slider_default = 10
-            elif plan_max >= 1000:
-                plan_label = str(plan_max)
-                slider_max = plan_max
-                slider_step = 50
-                slider_default = 100
-            elif plan_max >= 200:
-                plan_label = str(plan_max)
-                slider_max = plan_max
-                slider_step = 10
-                slider_default = 50
-            else:
-                plan_label = str(plan_max)
-                slider_max = plan_max
-                slider_step = 10
-                slider_default = min(50, plan_max)
+            # Generate slider options
+            options = []
+            
+            # 10 to 100 in steps of 10
+            for v in range(10, 101, 10):
+                if v <= plan_max:
+                    options.append(v)
+            
+            # 110 to 200 in steps of 10
+            for v in range(110, 201, 10):
+                if v <= plan_max:
+                    options.append(v)
+                    
+            # 250 to 1000 in steps of 50
+            for v in range(250, 1001, 50):
+                if v <= plan_max:
+                    options.append(v)
+                    
+            # 1500 to 5000 in steps of 500
+            for v in range(1500, 5001, 500):
+                if v <= plan_max:
+                    options.append(v)
+                    
+            # 10000 to 50000 in steps of 5000
+            for v in range(10000, 50001, 5000):
+                if v <= plan_max:
+                    options.append(v)
+                    
+            # 100000 to 500000 in steps of 50000
+            for v in range(100000, 500001, 50000):
+                if v <= plan_max:
+                    options.append(v)
+                    
+            # Include exact plan max
+            if plan_max not in options:
+                options.append(plan_max)
+                
+            # Sort unique values
+            options = sorted(list(set(options)))
 
-            max_leads = st.slider(
+            plan_label = "Unlimited" if plan_max >= 999999 else str(plan_max)
+            slider_default = min(50, plan_max)
+            if slider_default not in options:
+                slider_default = min(options, key=lambda x: abs(x - slider_default))
+
+            max_leads = st.select_slider(
                 f"Max Leads / Session (Plan limit: {plan_label})",
-                min_value=10,
-                max_value=slider_max,
+                options=options,
                 value=slider_default,
-                step=slider_step,
                 key=f"max_{label_suffix}"
             )
         with c6:
