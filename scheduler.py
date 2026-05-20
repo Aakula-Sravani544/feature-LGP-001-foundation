@@ -42,7 +42,7 @@ def run_scraping_job(
     for job in job_history:
         if job["job_id"] == job_id:
             job["status"] = "running"
-            job["started_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            job["started_at"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S UTC")
             found = True
             break
     if not found:
@@ -50,7 +50,7 @@ def run_scraping_job(
             "job_id": job_id,
             "query": query,
             "status": "running",
-            "started_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "started_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S UTC"),
             "leads_collected": 0,
             "completed_at": ""
         })
@@ -84,7 +84,7 @@ def run_scraping_job(
         sub_env["PYTHONIOENCODING"] = "utf-8"
 
         process = subprocess.Popen(
-            [sys.executable, scraper_path, query, str(max_leads), ai_flag],
+            [sys.executable, "-X", "utf8", scraper_path, query, str(max_leads), ai_flag],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
@@ -94,30 +94,38 @@ def run_scraping_job(
             env=sub_env
         )
 
-        # Read output with timeout
-        start_time = time.time()
-        max_runtime = 300  # 5 minutes max
-
-        for line in process.stdout:
-            line = line.strip()
-
-            # Check timeout
-            if time.time() - start_time > max_runtime:
-                logger.warning(f"Job {job_id}: timeout reached")
-                process.kill()
-                break
-
-            if line.startswith("DATA:"):
-                try:
-                    lead = json.loads(line.replace("DATA:", "").strip())
-                    if lead.get("name"):
-                        leads.append(lead)
-                        logger.info(f"Job {job_id}: collected {lead.get('name','')[:30]}")
-                except Exception as e:
-                    logger.debug(f"Parse error: {e}")
-
-            elif line.startswith("LOG:"):
-                logger.info(f"Job {job_id}: {line.replace('LOG:','').strip()}")
+        try:
+            # Use communicate with 300s timeout to prevent thread blocking forever
+            stdout_data, _ = process.communicate(timeout=300)
+            
+            # Parse lines from output
+            for line in stdout_data.splitlines():
+                line = line.strip()
+                if line.startswith("DATA:"):
+                    try:
+                        lead = json.loads(line.replace("DATA:", "").strip())
+                        if lead.get("name"):
+                            leads.append(lead)
+                            logger.info(f"Job {job_id}: collected {lead.get('name','')[:30]}")
+                    except Exception as e:
+                        logger.debug(f"Parse error: {e}")
+                elif line.startswith("LOG:"):
+                    logger.info(f"Job {job_id}: {line.replace('LOG:','').strip()}")
+                    
+        except subprocess.TimeoutExpired:
+            logger.warning(f"Job {job_id}: timeout reached after 300 seconds")
+            process.kill()
+            stdout_data, _ = process.communicate()
+            # Still try to parse whatever was collected before timing out
+            for line in stdout_data.splitlines():
+                line = line.strip()
+                if line.startswith("DATA:"):
+                    try:
+                        lead = json.loads(line.replace("DATA:", "").strip())
+                        if lead.get("name"):
+                            leads.append(lead)
+                    except:
+                        pass
 
         process.wait()
         logger.info(f"Job {job_id}: scraper finished. Leads: {len(leads)}")
@@ -151,7 +159,7 @@ def run_scraping_job(
     finally:
         # ALWAYS update job history when done — success or failure
         final_status = "completed" if len(leads) > 0 else "failed"
-        final_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        final_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S UTC")
 
         updated = False
         for job in job_history:
@@ -167,7 +175,7 @@ def run_scraping_job(
                 "job_id": job_id,
                 "query": query,
                 "status": final_status,
-                "started_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "started_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S UTC"),
                 "leads_collected": len(leads),
                 "completed_at": final_time
             })
