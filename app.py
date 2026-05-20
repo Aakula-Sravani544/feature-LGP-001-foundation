@@ -990,151 +990,76 @@ def get_stats():
 # ==========================================
 def get_sub_regions_ai(keyword: str, region: str, city: str) -> list:
     """
-    Generate diverse search queries from the Region/Area field only.
-    Uses multiple strategies to get unique leads — not just sub-phases.
+    Use Gemini AI to generate detailed sub-regions for a given area.
+    Falls back to hardcoded sub-regions if AI fails.
     """
-    # Strategy 1 — Try Gemini AI for specific sub-locations within region
+    # Try Gemini AI first
     gemini_key = os.environ.get("GEMINI_API_KEY", "")
-    ai_regions = []
-
-    if gemini_key and region.strip():
+    if gemini_key:
         try:
             import google.generativeai as genai
             genai.configure(api_key=gemini_key)
             model = genai.GenerativeModel("gemini-1.5-flash")
-            prompt = f"""You are a hyper-local area expert for India.
-List specific sub-locations, road numbers, phases, sectors and landmarks
-that exist INSIDE the area "{region}" in {city}.
-Focus only on what is physically inside "{region}" — NOT the broader city.
-
-Example for KPHB: KPHB Phase 1, KPHB Phase 2, KPHB Road No 1, KPHB Road No 2, KPHB Main Road, Kukatpally Housing Board Colony, JNTU Road KPHB
-
-Return ONLY a JSON array of strings. Max 8 items. No markdown."""
+            prompt = f"""You are a local area expert for {city}, India.
+For the area "{region}" in {city}, list all specific sub-areas, phases, road numbers, sectors, and localities where {keyword} businesses might be found.
+Be very specific — include road numbers, phase numbers, colony names, sector numbers.
+Example for KPHB Hyderabad: ["KPHB Phase 1", "KPHB Phase 2", "KPHB Phase 3", "KPHB Phase 4", "KPHB Phase 5", "KPHB Phase 6", "KPHB Colony Road 1", "KPHB Colony Road 2", "KPHB Main Road", "Kukatpally Housing Board"]
+Return ONLY a JSON array of strings. No other text. No markdown."""
 
             response = model.generate_content(prompt)
             raw = response.text.strip().replace("```json","").replace("```","").strip()
-            import json as _json
-            parsed = _json.loads(raw)
-            if isinstance(parsed, list) and len(parsed) > 0:
-                ai_regions = [str(r) for r in parsed[:8]]
+            import json
+            sub_regions = json.loads(raw)
+            if isinstance(sub_regions, list) and len(sub_regions) > 0:
+                return sub_regions[:15]
         except Exception as e:
-            st.session_state.logs += f"[SYS] AI sub-region: {e}\n"
+            st.session_state.logs += f"[SYS] AI sub-region failed: {e}\n"
 
-    # Strategy 2 — Build diverse query variants for the region
-    # These hit DIFFERENT Google Maps results than phase queries
-    diverse_queries = []
+    # Fallback hardcoded sub-regions
+    fallback = {
+        "kphb": ["KPHB Phase 1", "KPHB Phase 2", "KPHB Phase 3", "KPHB Phase 4", "KPHB Phase 5", "KPHB Phase 6", "KPHB Main Road", "Kukatpally Main Road", "JNTU Road KPHB", "KPHB Colony"],
+        "banjara hills": ["Banjara Hills Road 1", "Banjara Hills Road 2", "Banjara Hills Road 3", "Banjara Hills Road 10", "Banjara Hills Road 12", "Banjara Hills Road 13", "Banjara Hills Road 14"],
+        "jubilee hills": ["Jubilee Hills Road 36", "Jubilee Hills Road 45", "Jubilee Hills Check Post", "Jubilee Hills Main Road"],
+        "hitech city": ["Hitech City Main Road", "Madhapur Hitech City", "Cyber Towers Hitech City", "Hitech City Phase 1", "Hitech City Phase 2"],
+        "gachibowli": ["Gachibowli Main Road", "Gachibowli Stadium Road", "Financial District Gachibowli", "ISB Road Gachibowli"],
+        "kukatpally": ["Kukatpally Main Road", "KPHB Kukatpally", "Moosapet Kukatpally", "Bhavani Nagar Kukatpally"],
+        "ameerpet": ["Ameerpet Main Road", "SR Nagar Ameerpet", "Punjagutta Ameerpet", "Erramanzil Ameerpet"],
+        "secunderabad": ["Secunderabad Main Road", "SD Road Secunderabad", "MG Road Secunderabad", "Paradise Secunderabad"],
+        "begumpet": ["Begumpet Main Road", "Begumpet Colony", "Somajiguda Begumpet", "Raj Bhavan Road Begumpet"],
+        "t nagar": ["T Nagar Main Road", "Usman Road T Nagar", "Venkatnarayana Road T Nagar", "GN Chetty Road T Nagar"],
+        "anna nagar": ["Anna Nagar Main Road", "Anna Nagar 2nd Avenue", "Anna Nagar Tower", "Anna Nagar West"],
+        "koramangala": ["Koramangala 1st Block", "Koramangala 4th Block", "Koramangala 5th Block", "Koramangala 6th Block", "Koramangala 7th Block"],
+        "indiranagar": ["Indiranagar 100 Feet Road", "Indiranagar 12th Main", "Indiranagar CMH Road", "Indiranagar Double Road"],
+    }
 
-    if region.strip():
-        r = region.strip()
-        diverse_queries = [
-            f"{keyword} near {r} {city}",
-            f"best {keyword} in {r} {city}",
-            f"top {keyword} {r} {city}",
-            f"{keyword} {r} main road {city}",
-            f"{keyword} around {r} {city}",
-            f"{keyword} {r} colony {city}",
-            f"{keyword} {r} road {city}",
-        ]
-    else:
-        # No region — use city sub-areas
-        city_lower = city.lower()
-        city_fallback = {
-            "hyderabad": [
-                "Banjara Hills", "Jubilee Hills", "Hitech City",
-                "Gachibowli", "Secunderabad", "Kukatpally",
-                "Ameerpet", "Madhapur", "Begumpet", "Kondapur",
-                "Manikonda", "Miyapur", "LB Nagar", "Dilsukhnagar",
-                "Mehdipatnam"
-            ],
-            "chennai": [
-                "T Nagar", "Anna Nagar", "Adyar", "Velachery",
-                "Nungambakkam", "Mylapore", "Tambaram", "OMR",
-                "Porur", "Chromepet", "Perambur", "Egmore",
-                "Kodambakkam", "Guindy", "Royapettah"
-            ],
-            "bangalore": [
-                "Koramangala", "Indiranagar", "Whitefield",
-                "Electronic City", "Jayanagar", "HSR Layout",
-                "Marathahalli", "JP Nagar", "BTM Layout",
-                "Rajajinagar", "Malleshwaram", "Hebbal",
-                "Yelahanka", "Sarjapur", "Bannerghatta"
-            ],
-            "vijayawada": [
-                "Benz Circle", "MG Road", "Governorpet",
-                "Labbipet", "Patamata", "Gunadala",
-                "Suryaraopet", "Eluru Road", "Auto Nagar",
-                "Kandrika", "Moghalrajpuram", "Gandhi Nagar"
-            ],
-            "guntur": [
-                "Brodipet", "Arundelpet", "Kothapet",
-                "AT Agraharam", "Old Town", "Amaravathi Road",
-                "Vidyanagar", "Nallapadu", "Naaz Centre",
-                "Brindavan Gardens", "Lakshmipuram", "Pattabhipuram"
-            ],
-            "mumbai": [
-                "Andheri", "Bandra", "Powai", "Worli",
-                "Malad", "Goregaon", "Juhu", "Kurla",
-                "Borivali", "Thane", "Dadar", "Chembur",
-                "Vashi", "Kandivali", "Mulund"
-            ],
-            "delhi": [
-                "Connaught Place", "Lajpat Nagar", "Dwarka",
-                "Rohini", "Karol Bagh", "Saket", "Noida",
-                "Gurgaon", "Janakpuri", "Pitampura",
-                "Vasant Kunj", "Greater Kailash",
-                "Nehru Place", "Preet Vihar", "Faridabad"
-            ],
-            "pune": [
-                "Koregaon Park", "Baner", "Hinjewadi", "Wakad",
-                "Kothrud", "Hadapsar", "Viman Nagar",
-                "Kalyani Nagar", "Aundh", "Magarpatta",
-                "Pimpri", "Chinchwad", "Kharadi", "Undri", "Kondhwa"
-            ],
-        }
-        for key, areas in city_fallback.items():
-            if key in city_lower:
-                return [f"{keyword} in {a} {city}" for a in areas]
-        return [f"{keyword} in {city}"]
+    region_lower = region.lower()
+    for key, regions in fallback.items():
+        if key in region_lower:
+            return regions
 
-    # Combine AI regions + diverse queries
-    # AI regions first (most specific), then diverse queries
-    all_queries = []
+    # Generic fallback — use city sub-regions
+    city_fallback = {
+        "hyderabad": ["Banjara Hills", "Jubilee Hills", "Hitech City", "Gachibowli", "Secunderabad", "Kukatpally", "Ameerpet", "Madhapur", "Begumpet", "Kondapur", "Manikonda", "Miyapur", "LB Nagar", "Dilsukhnagar", "Mehdipatnam"],
+        "chennai": ["T Nagar", "Anna Nagar", "Adyar", "Velachery", "Nungambakkam", "Mylapore", "Tambaram", "OMR", "Porur", "Chromepet"],
+        "bangalore": ["Koramangala", "Indiranagar", "Whitefield", "Electronic City", "Jayanagar", "HSR Layout", "Marathahalli", "JP Nagar", "Bannerghatta", "BTM Layout"],
+        "vijayawada": ["Benz Circle", "MG Road", "Governorpet", "Labbipet", "Patamata", "Gunadala", "Suryaraopet", "Eluru Road", "Auto Nagar", "Kandrika"],
+        "guntur": ["Brodipet", "Arundelpet", "Kothapet", "AT Agraharam", "Old Town", "Amaravathi Road", "Vidyanagar", "Nallapadu", "Naaz Centre", "Brindavan Gardens"],
+    }
 
-    # Add AI regions as direct location queries
-    for ai_region in ai_regions:
-        all_queries.append(ai_region)
+    city_lower = city.lower()
+    for key, regions in city_fallback.items():
+        if key in city_lower:
+            return regions
 
-    # Add diverse query strategies
-    all_queries.extend(diverse_queries)
-
-    # Remove duplicates while preserving order
-    seen = set()
-    unique_queries = []
-    for q in all_queries:
-        if q.lower() not in seen:
-            seen.add(q.lower())
-            unique_queries.append(q)
-
-    st.session_state.logs += f"[SYS] Generated {len(unique_queries)} unique queries for {region}\n"
-    return unique_queries[:15]
+    return [region or city]
 
 
 def generation_ui(label_suffix=""):
-    # Import subscription module
-    from subscription import (
-        get_max_leads, can_use_linkedin, can_use_ai,
-        get_upgrade_message, render_upgrade_banner, get_plan
-    )
-
-    # Get current user plan
-    current_plan = st.session_state.get("plan", "Free")
-    max_allowed = get_max_leads(current_plan)
-
     st.markdown(f"### 🔍 Start New Extraction {label_suffix}")
 
     with st.container():
         # Row 1 — Category and Business Type
-        c1, c2, c3 = st.columns([2, 2, 1])
+        c1, c2 = st.columns(2)
         with c1:
             category = st.selectbox(
                 "Business Category",
@@ -1155,8 +1080,6 @@ def generation_ui(label_suffix=""):
                 placeholder="e.g. Biryani shops, Car wash",
                 key=f"custom_{label_suffix}"
             )
-        with c3:
-            source = st.selectbox("Source", ["Google Maps", "LinkedIn"], key=f"src_{label_suffix}")
 
         # Row 2 — City and Region
         c3, c4 = st.columns(2)
@@ -1172,36 +1095,25 @@ def generation_ui(label_suffix=""):
                 placeholder="e.g. KPHB, Banjara Hills",
                 key=f"region_{label_suffix}"
             )
-            if region.strip():
-                st.markdown(f"""
-                    <div class="ai-info-box">
-                        🤖 AI will analyze your city/region and automatically search nearby sub-regions to improve lead coverage.
-                    </div>
-                """, unsafe_allow_html=True)
 
         # Row 3 — Max leads, AI toggle, Source
         c5, c6, c7 = st.columns([2, 1, 1])
         with c5:
             max_leads = st.slider(
-                f"Max Leads / Session (Plan limit: {max_allowed})",
+                "Max Leads / Session",
                 min_value=10,
-                max_value=min(max_allowed, 1000), # Cap slider at 1000 for UI, or use max_allowed
-                value=min(50, max_allowed),
+                max_value=100,
+                value=50,
                 step=10,
                 key=f"max_{label_suffix}"
             )
         with c6:
             st.markdown("<br>", unsafe_allow_html=True)
-            ai_allowed = can_use_ai(current_plan)
             use_ai = st.toggle(
                 "🤖 Enable AI Scoring",
                 value=False,
-                disabled=not ai_allowed,
-                help=get_upgrade_message(current_plan, "ai_scoring") if not ai_allowed else "Enable AI lead scoring",
                 key=f"ai_{label_suffix}"
             )
-            if not ai_allowed:
-                st.caption(f"🔒 AI Scoring requires Starter plan. You are on {current_plan}.")
         with c7:
             st.markdown("<br>", unsafe_allow_html=True)
             btn_generate = st.button(
@@ -1212,18 +1124,6 @@ def generation_ui(label_suffix=""):
             )
 
     if btn_generate:
-        # Enforce lead cap
-        if max_leads > max_allowed:
-            st.error(f"Your {current_plan} plan allows max {max_allowed} leads per session.")
-            render_upgrade_banner(current_plan)
-            return
-
-        # When LinkedIn is selected but not allowed
-        if source == "LinkedIn" and not can_use_linkedin(current_plan):
-            st.error(get_upgrade_message(current_plan, "linkedin"))
-            render_upgrade_banner(current_plan)
-            st.stop()
-
         # Build keyword
         keyword = custom_keyword.strip() if custom_keyword.strip() else category
 
@@ -1254,55 +1154,6 @@ def generation_ui(label_suffix=""):
             m3_metric = m3.empty()
 
         # Step 1 — Generate sub-regions using AI
-        if source == "LinkedIn":
-            status_text.text("🔍 Searching LinkedIn profiles...")
-            try:
-                from linkedin_scraper import scrape_linkedin
-                
-                # Fetch existing maps leads for cross-linking
-                try:
-                    df_master = database.load_db()
-                    maps_leads = df_master.to_dict('records') if not df_master.empty else []
-                except:
-                    maps_leads = []
-                    
-                profiles = scrape_linkedin(keyword, city if not region else f"{region} {city}", maps_leads=maps_leads, limit=max_leads)
-                
-                for i, profile in enumerate(profiles):
-                    # Apply AI Scoring here so UI updates per lead
-                    if use_ai:
-                        try:
-                            from ai_engine import analyze_single_lead
-                            profile = analyze_single_lead(profile)
-                        except Exception as e:
-                            print(f"LOG:AI Enrichment Error: {e}", flush=True)
-                            
-                    st.session_state.session_leads.append(profile)
-                    progress_bar.progress((i+1)/max(len(profiles),1))
-                    status_text.text(f"LinkedIn: {i+1}/{len(profiles)} profiles collected & scored...")
-                    m1_metric.metric("Total Scraped", i+1)
-                    m2_metric.metric("Valid Leads", i+1)
-                    m3_metric.metric("Duplicates Skipped", 0)
-                    with table_placeholder.container():
-                        df_view = pd.DataFrame(st.session_state.session_leads)
-                        cols = [c for c in ["name","description","website","validation_status"] if c in df_view.columns]
-                        st.dataframe(df_view[cols] if cols else df_view, hide_index=True)
-                
-                database.save_to_db(st.session_state.session_leads)
-                success, msg = google_sheets.save_to_google_sheets(st.session_state.session_leads)
-                if success:
-                    st.success(f"✅ {len(profiles)} LinkedIn profiles saved!")
-                else:
-                    st.warning(f"Saved locally. Sheets: {msg}")
-            except Exception as e:
-                st.error(f"LinkedIn error: {e}")
-            
-            st.session_state.is_scraping = False
-            time.sleep(1)
-            st.rerun()
-            return
-
-        # Step 1 — Generate sub-regions using AI (for Google Maps)
         status_text.text(f"🤖 AI analyzing sub-regions for {region or city}...")
         st.session_state.logs += f"[SYS] Generating sub-regions for {region or city}...\n"
         log_placeholder.markdown(
@@ -1328,12 +1179,8 @@ def generation_ui(label_suffix=""):
         for sub_region in sub_regions:
             if collected_count >= target_total:
                 break
-            # If sub_region already contains keyword (diverse query), use as-is
-            # Otherwise build the query normally
-            if keyword.lower() in sub_region.lower() or "near" in sub_region.lower() or "best" in sub_region.lower() or "top" in sub_region.lower():
-                query = sub_region if city.lower() in sub_region.lower() else f"{sub_region} {city}"
-            else:
-                query = f"{keyword} in {sub_region} {city}"
+
+            query = f"{keyword} in {sub_region} {city}"
             status_text.text(f"🔄 Scraping: {query} ({collected_count}/{target_total})")
             st.session_state.logs += f"[SYS] Scraping: {query}\n"
             log_placeholder.markdown(

@@ -232,7 +232,7 @@ def search_with_serper(query: str, limit: int = 10) -> list:
         places = data.get("places", [])
         print(f"LOG:Serper returned {len(places)} places for: {query}", flush=True)
 
-        for place in places:
+        for place in places[:limit*2]:
             name = place.get("title", "").strip()
             if not name or name.lower() in seen_names:
                 continue
@@ -260,6 +260,7 @@ def search_with_serper(query: str, limit: int = 10) -> list:
         print(f"LOG:Serper error: {e}", flush=True)
 
     return leads
+
 
 def enrich_leads(leads: list) -> list:
     """Visit each website with strict 5 second total timeout per lead."""
@@ -360,42 +361,35 @@ def main():
     if len(sys.argv) < 2:
         return
     query = sys.argv[1]
-    limit = min(int(sys.argv[2]) if len(sys.argv) > 2 else 10, 100)
+    limit = min(int(sys.argv[2]) if len(sys.argv) > 2 else 10, 20)
     use_ai = sys.argv[3] == "1" if len(sys.argv) > 3 else False
 
     print(f"LOG:🚀 LeadPulse Pro Engine | Target: {limit}", flush=True)
     print(f"LOG:Query: {query}", flush=True)
 
+    # Search with exact query (sub-region already in query)
     leads = search_with_serper(query, limit)
 
     if not leads:
         print(f"LOG:No results for: {query}", flush=True)
         return
 
-    print(f"LOG:Found {len(leads)} leads. Processing...", flush=True)
-
+    # Enrich each lead
     for i, lead in enumerate(leads):
         print(f"LOG:Processing {i+1}/{len(leads)}: {lead.get('name','')[:30]}", flush=True)
 
-        # Fast enrichment — skip if already has phone and email
-        if lead.get("website") and not (lead.get("phone") and lead.get("email")):
+        if lead.get("website"):
             try:
-                resp = requests.get(
-                    lead["website"],
-                    timeout=2,
-                    headers=HEADERS,
-                    allow_redirects=True,
-                    stream=False
-                )
-                html = resp.text[:30000]
+                resp = requests.get(lead["website"], timeout=2, headers=HEADERS)
+                html = resp.text
                 soup = BeautifulSoup(html, "html.parser")
 
                 if not lead.get("email"):
                     for a in soup.find_all("a", href=re.compile(r"^mailto:")):
-                        raw = a["href"].replace("mailto:", "").split("?")[0].strip()
+                        email = a["href"].replace("mailto:", "").split("?")[0].strip()
                         try:
-                            validate_email(raw)
-                            lead["email"] = raw
+                            validate_email(email)
+                            lead["email"] = email
                             break
                         except: continue
 
@@ -404,17 +398,19 @@ def main():
                     "facebook": r'facebook\.com/[^\s\'"<>\)]{3,50}',
                     "instagram": r'instagram\.com/[^\s\'"<>\)]{3,50}'
                 }.items():
-                    for match in re.findall(pattern, html):
+                    matches = re.findall(pattern, html)
+                    for match in matches:
                         clean = match.rstrip('/"\'').strip()
                         if len(clean) > 10:
                             social[platform] = "https://" + clean
                             break
                 lead["social_media"] = json.dumps(social) if social else ""
 
-            except Exception:
+            except Exception as e:
+                logger.debug(f"Enrichment failed: {e}")
                 lead["social_media"] = ""
         else:
-            lead["social_media"] = lead.get("social_media", "")
+            lead["social_media"] = ""
 
         if use_ai:
             try:
@@ -429,14 +425,10 @@ def main():
                 lead["ai_score"] = score.get("score", 0)
             except: pass
 
-        try:
-            lead = validate_lead(lead)
-        except:
-            lead["validation_status"] = "Pending"
-
+        lead = validate_lead(lead)
         print(f"DATA:{json.dumps(lead)}", flush=True)
 
-    print(f"LOG:✅ Done: {len(leads)} leads", flush=True)
+    print(f"LOG:✅ Done: {len(leads)} leads from {query}", flush=True)
 
 
 if __name__ == "__main__":
