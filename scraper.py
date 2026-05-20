@@ -366,7 +366,6 @@ def main():
     print(f"LOG:🚀 LeadPulse Pro Engine | Target: {limit}", flush=True)
     print(f"LOG:Query: {query}", flush=True)
 
-    # Search
     leads = search_with_serper(query, limit)
 
     if not leads:
@@ -378,10 +377,9 @@ def main():
     for i, lead in enumerate(leads):
         print(f"LOG:Processing {i+1}/{len(leads)}: {lead.get('name','')[:30]}", flush=True)
 
-        # Website enrichment — skip entirely if taking too long
-        if lead.get("website"):
+        # Fast enrichment — skip if already has phone and email
+        if lead.get("website") and not (lead.get("phone") and lead.get("email")):
             try:
-                import signal
                 resp = requests.get(
                     lead["website"],
                     timeout=2,
@@ -389,10 +387,9 @@ def main():
                     allow_redirects=True,
                     stream=False
                 )
-                html = resp.text[:50000]  # Limit HTML size
+                html = resp.text[:30000]
                 soup = BeautifulSoup(html, "html.parser")
 
-                # Email only
                 if not lead.get("email"):
                     for a in soup.find_all("a", href=re.compile(r"^mailto:")):
                         raw = a["href"].replace("mailto:", "").split("?")[0].strip()
@@ -402,14 +399,12 @@ def main():
                             break
                         except: continue
 
-                # Social media
                 social = {}
                 for platform, pattern in {
                     "facebook": r'facebook\.com/[^\s\'"<>\)]{3,50}',
                     "instagram": r'instagram\.com/[^\s\'"<>\)]{3,50}'
                 }.items():
-                    matches = re.findall(pattern, html)
-                    for match in matches:
+                    for match in re.findall(pattern, html):
                         clean = match.rstrip('/"\'').strip()
                         if len(clean) > 10:
                             social[platform] = "https://" + clean
@@ -417,36 +412,28 @@ def main():
                 lead["social_media"] = json.dumps(social) if social else ""
 
             except Exception:
-                # CRITICAL: never crash — just skip enrichment
                 lead["social_media"] = ""
-                lead["additional_data"] = ""
         else:
-            lead["social_media"] = ""
-            lead["additional_data"] = ""
+            lead["social_media"] = lead.get("social_media", "")
 
-        # AI scoring — wrapped in try/except so it never crashes
         if use_ai:
             try:
                 from ai_engine import analyze_single_lead
                 lead = analyze_single_lead(lead)
-            except Exception:
-                pass
+            except: pass
         else:
             try:
                 from ai_engine import rule_based_score
                 score = rule_based_score(lead)
                 lead["ai_analysis"] = json.dumps(score)
                 lead["ai_score"] = score.get("score", 0)
-            except Exception:
-                pass
+            except: pass
 
-        # Validate
         try:
             lead = validate_lead(lead)
-        except Exception:
+        except:
             lead["validation_status"] = "Pending"
 
-        # OUTPUT IMMEDIATELY
         print(f"DATA:{json.dumps(lead)}", flush=True)
 
     print(f"LOG:✅ Done: {len(leads)} leads", flush=True)
