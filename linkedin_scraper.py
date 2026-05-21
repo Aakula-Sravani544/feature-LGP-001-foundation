@@ -13,39 +13,28 @@ logger = logging.getLogger(__name__)
 HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
 
 
-def get_linkedin_structure() -> Dict:
-    """Returns LinkedIn lead using same column names as Google Sheets."""
-    try:
-        from zoneinfo import ZoneInfo
-        now_ist = datetime.now(ZoneInfo("Asia/Kolkata"))
-    except ImportError:
-        from datetime import timedelta
-        now_ist = datetime.utcnow() + timedelta(hours=5, minutes=30)
-        
+def get_linkedin_structure() -> dict:
     return {
         "lead_id": "",
-        "name": "",           # full_name goes here
-        "address": "",        # location goes here
-        "phone": "",          # phone if available
-        "email": "",          # email_guessed goes here
-        "website": "",        # linkedin_url goes here
+        "name": "",          # full_name goes here
+        "address": "",       # location/city goes here
+        "phone": "",
+        "email": "",         # email_guessed goes here
+        "website": "",       # linkedin_url goes here
         "rating": "",
         "reviews": "",
         "category": "LinkedIn Contact",
         "google_maps_url": "",
-        "description": "",    # job_title + company_name goes here
+        "description": "",   # job_title + company goes here
         "hours": "",
         "social_media": "",
-        "additional_data": "", # company_size + industry goes here
-        "scraped_date": now_ist.strftime("%Y-%m-%d %H:%M:%S"),
-        "ai_analysis": "{}",
-        "validation_status": "Pending",
+        "additional_data": "",
+        "scraped_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "ai_analysis": "N/A",
+        "validation_status": "Valid",
         "validation_notes": "",
         "sub_region": "",
-        # LinkedIn specific extra fields stored in description/additional_data
-        "source": "LinkedIn",
-        "company_name": "",
-        "cross_linked_to": ""
+        "source": "LinkedIn"
     }
 
 
@@ -188,14 +177,15 @@ def scrape_linkedin(
                     company_size = size.group(1)
 
                 # After parsing name and title, map to Google Sheets columns:
+                p["name"] = p_full_name
+                p["email"] = email_guessed
+                p["website"] = linkedin_url
+                p["address"] = location
+                p["description"] = f"{job_title} at {company_name}"
+                p["category"] = "LinkedIn Contact"
+                p["validation_status"] = "Valid" if p_full_name else "Pending"
                 p["lead_id"] = lead_id
-                p["name"] = p_full_name          # full name
-                p["email"] = email_guessed       # guessed email
-                p["website"] = linkedin_url      # linkedin URL
-                p["address"] = location          # city
-                p["description"] = f"{job_title} at {company_name}"  # job info
-                p["company_name"] = company_name  # Issue 1 fix
-                p["cross_linked_to"] = ""         # Issue 3 fix
+                
                 p["additional_data"] = json.dumps({
                     "job_title": job_title,
                     "company_name": company_name,
@@ -204,8 +194,6 @@ def scrape_linkedin(
                     "connection_degree": "2nd",
                     "source": "LinkedIn"
                 })
-                p["category"] = "LinkedIn Contact"
-                p["validation_status"] = "Valid" if p["name"] else "Pending"
 
                 all_profiles.append(p)
                 new_this_query += 1

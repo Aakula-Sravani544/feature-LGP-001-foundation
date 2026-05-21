@@ -1389,10 +1389,98 @@ def generation_ui(label_suffix=""):
             render_upgrade_banner(current_plan)
             return
 
-        if source == "LinkedIn" and not can_use_linkedin(current_plan):
-            st.error(get_upgrade_message(current_plan, "linkedin"))
-            render_upgrade_banner(current_plan)
-            st.stop()
+        # Handle LinkedIn source
+        if "LinkedIn" in source and "🔒" not in source:
+            if not can_use_linkedin(current_plan):
+                st.error(get_upgrade_message(current_plan, "linkedin"))
+                render_upgrade_banner(current_plan)
+                return
+
+            keyword = custom_keyword.strip() if custom_keyword.strip() else category
+
+            if not city.strip():
+                st.warning("Please enter a city name.")
+                return
+
+            st.session_state.is_extracting = True
+            st.session_state.session_leads = []
+            st.session_state.logs = ""
+
+            progress_bar = st.progress(0)
+            status_text = st.empty()
+            log_placeholder = st.empty()
+            metrics_placeholder = st.empty()
+            table_placeholder = st.empty()
+
+            with metrics_placeholder.container():
+                mc1, mc2, mc3 = st.columns(3)
+                m1 = mc1.empty()
+                m2 = mc2.empty()
+                m3 = mc3.empty()
+
+            status_text.text(f"🔍 Searching LinkedIn: {keyword} in {city}...")
+            st.session_state.logs += f"[SYS] Starting LinkedIn scraper...\n"
+            log_placeholder.markdown(
+                f'<div class="log-box">{st.session_state.logs}</div>',
+                unsafe_allow_html=True
+            )
+
+            try:
+                from linkedin_scraper import scrape_linkedin
+                import pandas as pd
+                profiles = scrape_linkedin(keyword, city, limit=max_leads)
+
+                st.session_state.logs += f"[SYS] LinkedIn returned {len(profiles)} profiles\n"
+                log_placeholder.markdown(
+                    f'<div class="log-box">{st.session_state.logs}</div>',
+                    unsafe_allow_html=True
+                )
+
+                for i, profile in enumerate(profiles):
+                    st.session_state.session_leads.append(profile)
+                    progress_bar.progress((i+1)/max(len(profiles),1))
+                    status_text.text(f"LinkedIn: {i+1}/{len(profiles)} profiles collected...")
+                    m1.metric("Total Scraped", i+1)
+                    m2.metric("Valid Leads", i+1)
+                    m3.metric("Duplicates Skipped", 0)
+                    st.session_state.logs += f"[SYS] ✅ {profile.get('name','')[:40]}\n"
+
+                    with table_placeholder.container():
+                        df_view = pd.DataFrame(st.session_state.session_leads)
+                        linkedin_cols = [c for c in [
+                            "name", "description", "email",
+                            "website", "category", "validation_status"
+                        ] if c in df_view.columns]
+                        st.dataframe(
+                            df_view[linkedin_cols] if linkedin_cols else df_view,
+                            hide_index=True
+                        )
+
+                # Save to database
+                if st.session_state.session_leads:
+                    database.save_to_db(st.session_state.session_leads)
+                    try:
+                        success, msg = google_sheets.save_to_google_sheets(
+                            st.session_state.session_leads
+                        )
+                        if success:
+                            st.success(f"✅ {len(profiles)} LinkedIn profiles saved!")
+                        else:
+                            st.warning(f"Saved locally. Sheets: {msg}")
+                    except Exception as e:
+                        st.warning(f"Sheets sync: {e}")
+                else:
+                    st.warning("LinkedIn returned 0 profiles. Try different keyword or city.")
+
+            except Exception as e:
+                st.error(f"LinkedIn error: {e}")
+                st.session_state.logs += f"[SYS] LinkedIn error: {e}\n"
+
+            st.session_state.is_extracting = False
+            import time as _time
+            _time.sleep(1)
+            st.rerun()
+            return
 
         keyword = custom_keyword.strip() if custom_keyword.strip() else category
         if not city:
