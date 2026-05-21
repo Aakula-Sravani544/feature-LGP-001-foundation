@@ -1275,7 +1275,8 @@ def generation_ui(label_suffix=""):
 
         # Stop button
         with stop_placeholder.container():
-            if st.button("⏹️ Stop Extraction", key=f"stop_{label_suffix}_{int(time.time())}"):
+            import time as _time
+            if st.button("⏹️ Stop Extraction", key=f"stop_{label_suffix}_{label_suffix}"):
                 st.session_state.is_scraping = False
                 st.warning("Extraction stopped by user.")
                 st.rerun()
@@ -1380,8 +1381,8 @@ def generation_ui(label_suffix=""):
             st.success(f"✅ {collected_count} leads collected from {len(sub_regions)} sub-regions!")
 
         st.session_state.is_scraping = False
-        import time
-        time.sleep(2)
+        import time as _time
+        _time.sleep(2)
         st.rerun()
 
 # ==========================================
