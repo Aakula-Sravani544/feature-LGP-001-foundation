@@ -1081,7 +1081,7 @@ def get_sub_regions_ai(keyword: str, region: str, city: str) -> list:
     }
 
     city_hubs_fallback = {
-        "hyderabad": ["KPHB", "Kukatpally", "Madhapur", "Hitech City", "Gachibowli", "Miyapur", "Kondapur", "Banjara Hills", "Jubilee Hills", "Secunderabad", "Ameerpet", "Begumpet", "Manikonda", "LB Nagar", "Dilsukhnagar", "Mehdipatnam"],
+        "hyderabad": ["KPHB", "Kukatpally", "JNTU Road", "Madhapur", "Hitech City", "Gachibowli", "Miyapur", "Kondapur", "Jubilee Hills", "Banjara Hills", "Hyderabad"],
         "chennai": ["T Nagar", "Anna Nagar", "Adyar", "Velachery", "Nungambakkam", "Mylapore", "Tambaram", "OMR", "Porur", "Chromepet"],
         "bangalore": ["Koramangala", "Indiranagar", "Whitefield", "Electronic City", "Jayanagar", "HSR Layout", "Marathahalli", "JP Nagar", "Bannerghatta", "BTM Layout"],
         "vijayawada": ["Benz Circle", "MG Road", "Governorpet", "Labbipet", "Patamata", "Gunadala", "Suryaraopet", "Eluru Road", "Auto Nagar", "Kandrika"],
@@ -1504,31 +1504,40 @@ def generation_ui(label_suffix=""):
                         data = json.loads(line.replace("DATA:", "").strip())
                         leads_found_this_query += 1
 
-                        is_dup = False
+                        is_session_dup = False
                         data_keys = get_lead_keys(data)
                         for k in data_keys:
                             if k in seen_session_ids:
-                                is_dup = True
+                                is_session_dup = True
                                 break
                         
-                        if not is_dup:
+                        if is_session_dup:
+                            st.session_state.logs += f"[SYS] Session duplicate skipped: {data.get('name', 'Unknown')}\n"
+                            duplicates_skipped_this_query += 1
+                            duplicates_skipped += 1
+                        else:
+                            is_db_dup = False
                             for db_lead in db_leads_list:
                                 if is_db_duplicate_lead(data, db_lead):
-                                    is_dup = True
+                                    is_db_dup = True
                                     break
 
-                        if not is_dup:
                             for k in data_keys:
                                 seen_session_ids.add(k)
                                 
                             st.session_state.session_leads.append(data)
-                            database.save_to_db([data])
-                            db_leads_list.append(data)
                             
+                            if is_db_dup:
+                                st.session_state.logs += f"[SYS] Existing DB duplicate allowed in session: {data.get('name', 'Unknown')}\n"
+                            else:
+                                database.save_to_db([data])
+                                db_leads_list.append(data)
+                                
                             unique_added_this_query += 1
                             st.session_state.collected_leads = len(st.session_state.session_leads)
                             st.session_state.remaining_leads = st.session_state.target_leads - st.session_state.collected_leads
                             batch_collected += 1
+                            
                             if batch_collected >= batch_target:
                                 st.session_state.completed_batches += 1
                                 google_sheets.save_to_google_sheets(st.session_state.session_leads)
@@ -1536,9 +1545,6 @@ def generation_ui(label_suffix=""):
                                 st.session_state.logs += f"[SYS] Batch {st.session_state.completed_batches} completed: {st.session_state.collected_leads}/{st.session_state.target_leads}\n"
                                 st.session_state.logs += f"[SYS] Saved progress: {st.session_state.collected_leads}/{st.session_state.target_leads}\n"
                                 st.session_state.logs += f"[SYS] Resume available if interrupted\n"
-                        else:
-                            duplicates_skipped_this_query += 1
-                            duplicates_skipped += 1
 
                         valid_count = len([x for x in st.session_state.session_leads if x.get("validation_status") == "Valid"])
                         m1_metric.metric("Total Scraped", st.session_state.collected_leads)
