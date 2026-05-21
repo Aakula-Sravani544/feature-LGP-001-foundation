@@ -130,7 +130,7 @@ if "scheduler" not in st.session_state:
 check_payment_success()
 
 # Check session expiry
-if st.session_state.authenticated and not st.session_state.get("is_scraping", False) and check_session_expiry():
+if st.session_state.authenticated and not st.session_state.get("is_extracting", False) and check_session_expiry():
     st.warning("Session expired. Please login again.")
     for key in list(st.session_state.keys()):
         del st.session_state[key]
@@ -1081,7 +1081,7 @@ def get_sub_regions_ai(keyword: str, region: str, city: str) -> list:
     }
 
     city_hubs_fallback = {
-        "hyderabad": ["KPHB", "Kukatpally", "JNTU Road", "Madhapur", "Hitech City", "Gachibowli", "Miyapur", "Kondapur", "Jubilee Hills", "Banjara Hills", "Hyderabad"],
+        "hyderabad": ["KPHB", "Kukatpally", "JNTU Road", "Hitech City", "Madhapur", "Gachibowli", "Kondapur", "Miyapur", "Ameerpet", "Banjara Hills", "Hyderabad"],
         "chennai": ["T Nagar", "Anna Nagar", "Adyar", "Velachery", "Nungambakkam", "Mylapore", "Tambaram", "OMR", "Porur", "Chromepet"],
         "bangalore": ["Koramangala", "Indiranagar", "Whitefield", "Electronic City", "Jayanagar", "HSR Layout", "Marathahalli", "JP Nagar", "Bannerghatta", "BTM Layout"],
         "vijayawada": ["Benz Circle", "MG Road", "Governorpet", "Labbipet", "Patamata", "Gunadala", "Suryaraopet", "Eluru Road", "Auto Nagar", "Kandrika"],
@@ -1328,7 +1328,7 @@ def generation_ui(label_suffix=""):
             btn_resume = False
             
             # Show Resume if extraction stopped mid-way
-            if not st.session_state.get("is_scraping", False) and st.session_state.get("remaining_leads", 0) > 0 and len(st.session_state.get("session_leads", [])) > 0:
+            if not st.session_state.get("is_extracting", False) and st.session_state.get("remaining_leads", 0) > 0 and len(st.session_state.get("session_leads", [])) > 0:
                 btn_resume = st.button(
                     f"▶️ Resume Extraction ({st.session_state.get('collected_leads', 0)}/{st.session_state.get('target_leads', 0)})",
                     key=f"btn_resume_{label_suffix}",
@@ -1337,7 +1337,7 @@ def generation_ui(label_suffix=""):
             else:
                 btn_generate = st.button(
                     "🚀 Generate Leads",
-                    disabled=st.session_state.get("is_scraping", False),
+                    disabled=st.session_state.get("is_extracting", False),
                     key=f"btn_{label_suffix}",
                     use_container_width=True
                 )
@@ -1358,7 +1358,7 @@ def generation_ui(label_suffix=""):
             st.warning("Please enter a city name.")
             return
 
-        st.session_state.is_scraping = True
+        st.session_state.is_extracting = True
         st.session_state.target_leads = max_leads
         st.session_state.collected_leads = 0
         st.session_state.remaining_leads = max_leads
@@ -1380,14 +1380,16 @@ def generation_ui(label_suffix=""):
         st.session_state.fallback_idx = 0
         st.session_state.q_idx = 0
         st.session_state.consecutive_zero_yields = 0
+        st.session_state.area_duplicates = 0
         
         st.rerun()
 
     if btn_resume:
-        st.session_state.is_scraping = True
+        st.session_state.is_extracting = True
+        st.session_state.setdefault("area_duplicates", 0)
         st.rerun()
 
-    if st.session_state.get("is_scraping", False):
+    if st.session_state.get("is_extracting", False):
         progress_bar = st.progress(min(st.session_state.collected_leads / st.session_state.target_leads, 1.0) if st.session_state.target_leads else 0.0)
         status_text = st.empty()
         stop_placeholder = st.empty()
@@ -1397,7 +1399,7 @@ def generation_ui(label_suffix=""):
 
         with stop_placeholder.container():
             if st.button("⏹️ Stop Extraction", key=f"stop_{label_suffix}_{label_suffix}"):
-                st.session_state.is_scraping = False
+                st.session_state.is_extracting = False
                 st.warning("Extraction stopped by user. You can resume later.")
                 import time as _time
                 _time.sleep(2)
@@ -1433,7 +1435,7 @@ def generation_ui(label_suffix=""):
         # UI log refresh
         log_placeholder.markdown(f'<div class="log-box">{st.session_state.logs[-3000:]}</div>', unsafe_allow_html=True)
         
-        while st.session_state.get("is_scraping", False) and st.session_state.collected_leads < st.session_state.target_leads:
+        while st.session_state.get("is_extracting", False) and st.session_state.collected_leads < st.session_state.target_leads:
             
             # Determine Query
             query = ""
@@ -1465,6 +1467,11 @@ def generation_ui(label_suffix=""):
                     continue
                     
                 q_variant = query_variants[st.session_state.q_idx]
+                if q_variant.startswith("Top ") and any(v.startswith("Best ") for v in query_variants):
+                    st.session_state.logs += f"[SYS] Skipping similar query: {q_variant} because Best {st.session_state.keyword} already used\n"
+                    st.session_state.q_idx += 1
+                    continue
+                    
                 if fallback_area:
                     query = f"{q_variant} in {fallback_area} {st.session_state.city}"
                 else:
@@ -1518,6 +1525,7 @@ def generation_ui(label_suffix=""):
                             st.session_state.logs += f"[SYS] Session duplicate skipped: {data.get('name', 'Unknown')}\n"
                             duplicates_skipped_this_query += 1
                             duplicates_skipped += 1
+                            st.session_state.area_duplicates += 1
                         else:
                             is_db_dup = False
                             for db_lead in db_leads_list:
@@ -1575,7 +1583,10 @@ def generation_ui(label_suffix=""):
             _time.sleep(1)  # Let Render recover memory between batches
 
             if st.session_state.phase == 1:
+                if st.session_state.get("area_duplicates", 0) > 5:
+                    st.session_state.logs += f"[SYS] Duplicate threshold reached for {current_sub_region}. Moving to next area...\n"
                 st.session_state.area_idx += 1
+                st.session_state.area_duplicates = 0
                 if st.session_state.area_idx < len(st.session_state.specific_sub_regions):
                     next_area = st.session_state.specific_sub_regions[st.session_state.area_idx]
                     st.session_state.logs += f"[SYS] Moving to next area: {next_area}\n"
@@ -1586,10 +1597,13 @@ def generation_ui(label_suffix=""):
                 else:
                     st.session_state.consecutive_zero_yields = 0
 
-                if st.session_state.consecutive_zero_yields >= 3:
+                if st.session_state.get("area_duplicates", 0) > 5 or st.session_state.consecutive_zero_yields >= 2:
+                    if st.session_state.get("area_duplicates", 0) > 5:
+                        st.session_state.logs += f"[SYS] Duplicate threshold reached for {current_sub_region}. Moving to next area...\n"
                     st.session_state.fallback_idx += 1
                     st.session_state.q_idx = 0
                     st.session_state.consecutive_zero_yields = 0
+                    st.session_state.area_duplicates = 0
                     if st.session_state.fallback_idx < len(st.session_state.fallback_areas):
                         next_area = st.session_state.fallback_areas[st.session_state.fallback_idx]
                         st.session_state.logs += f"[SYS] Moving to next area: {next_area}\n"
@@ -1599,8 +1613,8 @@ def generation_ui(label_suffix=""):
             log_placeholder.markdown(f'<div class="log-box">{st.session_state.logs[-3000:]}</div>', unsafe_allow_html=True)
             
         # End of extraction
-        if st.session_state.get("is_scraping", False):
-            st.session_state.is_scraping = False
+        if st.session_state.get("is_extracting", False):
+            st.session_state.is_extracting = False
             st.session_state.remaining_leads = 0
             if st.session_state.collected_leads >= st.session_state.target_leads:
                 st.session_state.logs += f"[SYS] Target reached: {st.session_state.collected_leads}/{st.session_state.target_leads}\n"
@@ -1870,7 +1884,7 @@ def show_user_dashboard():
     with c2:
         st.markdown(f'<div class="metric-card"><div class="metric-label">Data Accuracy</div><div class="metric-value">{quality_pct}%</div></div>', unsafe_allow_html=True)
     with c3:
-        status_text = "ACTIVE" if st.session_state.is_scraping else "IDLE"
+        status_text = "ACTIVE" if st.session_state.is_extracting else "IDLE"
         st.markdown(f'<div class="metric-card"><div class="metric-label">Engine Status</div><div class="metric-value">{status_text}</div></div>', unsafe_allow_html=True)
     with c4:
         gs_connected = google_sheets.check_connection()
@@ -1889,7 +1903,7 @@ def show_user_dashboard():
 
     with tab1:
         generation_ui()
-        if not st.session_state.is_scraping and st.session_state.session_leads:
+        if not st.session_state.is_extracting and st.session_state.session_leads:
             st.markdown("### ⚡ Session Preview")
             import pandas as pd
             st.dataframe(pd.DataFrame(st.session_state.session_leads), hide_index=True)
@@ -1978,7 +1992,7 @@ def show_admin_dashboard():
     # ==========================================
     with tabs[0]:
         generation_ui("(Admin)")
-        if not st.session_state.is_scraping and st.session_state.session_leads:
+        if not st.session_state.is_extracting and st.session_state.session_leads:
             st.markdown("### ⚡ Session Preview")
             st.dataframe(pd.DataFrame(st.session_state.session_leads), hide_index=True)
 
