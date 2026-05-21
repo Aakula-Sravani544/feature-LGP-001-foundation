@@ -1479,18 +1479,21 @@ def generation_ui(label_suffix=""):
             log_placeholder.markdown(f'<div class="log-box">{st.session_state.logs[-3000:]}</div>', unsafe_allow_html=True)
             
             ai_flag = "1" if use_ai else "0"
-            sub_batch_target = min(10, st.session_state.target_leads - st.session_state.collected_leads, batch_target - batch_collected)
+            # Keep batch small to prevent Render memory crash
+            sub_batch_target = min(5, st.session_state.target_leads - st.session_state.collected_leads, batch_target - batch_collected)
             
             import subprocess
             import sys
             import json
+            import os
             process = subprocess.Popen(
-                [sys.executable, "scraper.py", query, str(sub_batch_target), ai_flag],
+                [sys.executable, "-u", "scraper.py", query, str(sub_batch_target), ai_flag],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
                 bufsize=1,
-                universal_newlines=True
+                universal_newlines=True,
+                env={**os.environ, "PYTHONUNBUFFERED": "1"}
             )
 
             leads_found_this_query = 0
@@ -1567,6 +1570,9 @@ def generation_ui(label_suffix=""):
                     log_placeholder.markdown(f'<div class="log-box">{st.session_state.logs[-3000:]}</div>', unsafe_allow_html=True)
 
             process.wait()
+            
+            import time as _time
+            _time.sleep(1)  # Let Render recover memory between batches
 
             if st.session_state.phase == 1:
                 st.session_state.area_idx += 1

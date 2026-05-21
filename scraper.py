@@ -365,54 +365,105 @@ def enrich_leads(leads: list) -> list:
     return leads
 
 def process_single_lead(lead, use_ai):
+    """Memory-safe lead enrichment."""
+    # Skip website enrichment if lead already has phone and email
+    # This saves memory on Render free tier
+    if lead.get("phone") and lead.get("email"):
+        lead["social_media"] = ""
+        # Still do AI scoring
+        if use_ai:
+            try:
+                from ai_engine import analyze_single_lead
+                lead = analyze_single_lead(lead)
+            except Exception:
+                pass
+        else:
+            try:
+                from ai_engine import rule_based_score
+                score = rule_based_score(lead)
+                lead["ai_analysis"] = json.dumps(score)
+                lead["ai_score"] = score.get("score", 0)
+            except Exception:
+                pass
+        try:
+            lead = validate_lead(lead)
+        except Exception:
+            lead["validation_status"] = "Pending"
+        return lead
+        
+    """Memory-safe lead enrichment — strict limits to prevent RAM crash."""
     if lead.get("website"):
         try:
-            resp = requests.get(lead["website"], timeout=2, headers=HEADERS)
-            html = resp.text
-            soup = BeautifulSoup(html, "html.parser")
+            resp = requests.get(
+                lead["website"],
+                timeout=2,
+                headers=HEADERS,
+                allow_redirects=True,
+                stream=True
+            )
+            # Read only first 20KB — prevents memory crash
+            html = ""
+            size = 0
+            for chunk in resp.iter_content(chunk_size=4096, decode_unicode=True):
+                if chunk:
+                    html += chunk if isinstance(chunk, str) else chunk.decode("utf-8", errors="ignore")
+                    size += len(html)
+                    if size > 20000:
+                        break
+            resp.close()
 
+            # Email only
             if not lead.get("email"):
-                for a in soup.find_all("a", href=re.compile(r"^mailto:")):
-                    email = a["href"].replace("mailto:", "").split("?")[0].strip()
+                emails = re.findall(r'mailto:([^\s\'"<>?]+)', html)
+                for email in emails:
+                    email = email.strip()
                     try:
                         validate_email(email)
-                        lead["email"] = email
-                        break
+                        if not any(x in email.lower() for x in ['png','jpg','css','js']):
+                            lead["email"] = email
+                            break
                     except: continue
 
+            # Social media — quick regex only
             social = {}
-            for platform, pattern in {
-                "facebook": r'facebook\.com/[^\s\'"<>\)]{3,50}',
-                "instagram": r'instagram\.com/[^\s\'"<>\)]{3,50}'
-            }.items():
-                matches = re.findall(pattern, html)
-                for match in matches:
-                    clean = match.rstrip('/"\'').strip()
-                    if len(clean) > 10:
-                        social[platform] = "https://" + clean
-                        break
+            fb = re.search(r'facebook\.com/([^\s\'"<>\)]{3,40})', html)
+            ig = re.search(r'instagram\.com/([^\s\'"<>\)]{3,40})', html)
+            if fb:
+                social["facebook"] = f"https://facebook.com/{fb.group(1).rstrip('/')}"
+            if ig:
+                social["instagram"] = f"https://instagram.com/{ig.group(1).rstrip('/')}"
             lead["social_media"] = json.dumps(social) if social else ""
 
-        except Exception as e:
-            logger.debug(f"Enrichment failed: {e}")
+            # Clear html from memory immediately
+            del html
+
+        except Exception:
             lead["social_media"] = ""
     else:
         lead["social_media"] = ""
+        lead["additional_data"] = ""
 
+    # AI scoring
     if use_ai:
         try:
             from ai_engine import analyze_single_lead
             lead = analyze_single_lead(lead)
-        except: pass
+        except Exception:
+            pass
     else:
         try:
             from ai_engine import rule_based_score
             score = rule_based_score(lead)
             lead["ai_analysis"] = json.dumps(score)
             lead["ai_score"] = score.get("score", 0)
-        except: pass
+        except Exception:
+            pass
 
-    lead = validate_lead(lead)
+    try:
+        lead = validate_lead(lead)
+    except Exception:
+        lead["validation_status"] = "Pending"
+
     return lead
 
 
@@ -467,28 +518,30 @@ def main():
     print(f"LOG:🚀 LeadPulse Pro Engine | Target: {limit}", flush=True)
     print(f"LOG:Query: {query}", flush=True)
 
-    # Search with exact query (sub-region already in query)
+    # Search
     leads = search_with_serper(query, limit)
 
     if not leads:
         print(f"LOG:No results for: {query}", flush=True)
         return
 
-    # No database duplicate check — duplicates handled in app.py by name comparison
-    unique_leads = leads
+    print(f"LOG:Found {len(leads)} leads. Processing...", flush=True)
 
-    print(f"LOG:Processing {len(unique_leads)} leads...", flush=True)
-    for i, lead in enumerate(unique_leads):
-        print(f"LOG:Processing {i+1}/{len(unique_leads)}: {lead.get('name','')[:30]}", flush=True)
+    for i, lead in enumerate(leads):
+        print(f"LOG:Processing {i+1}/{len(leads)}: {lead.get('name','')[:30]}", flush=True)
         try:
             enriched = process_single_lead(lead, use_ai)
             print(f"DATA:{json.dumps(enriched)}", flush=True)
+            # Clear from memory immediately after printing
+            del enriched
         except Exception as e:
             logger.debug(f"Lead failed: {e}")
             lead["validation_status"] = "Pending"
             print(f"DATA:{json.dumps(lead)}", flush=True)
+        finally:
+            del lead
 
-    print(f"LOG:✅ Done: {len(unique_leads)} leads from {query}", flush=True)
+    print(f"LOG:✅ Done: {len(leads)} leads from {query}", flush=True)
 
 
 if __name__ == "__main__":
