@@ -133,6 +133,29 @@ if "current_query" not in st.session_state:
 
 if "authenticated" not in st.session_state:
     st.session_state["authenticated"] = False
+
+# Fix Streamlit native blur/disabled overlay issue
+if not st.session_state.get("is_extracting", False):
+    st.markdown("""
+    <style>
+    /* Remove Streamlit default blur/overlay during normal interactions */
+    [data-testid="stAppViewContainer"],
+    [data-testid="stMainBlockContainer"],
+    .stApp,
+    [data-testid="stSidebar"],
+    .main,
+    .block-container,
+    form, button {
+        opacity: 1 !important;
+        filter: blur(0px) !important;
+        pointer-events: auto !important;
+    }
+    /* Hide Streamlit running modal backdrop */
+    [data-testid="stModalBackdrop"] {
+        display: none !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 if "user_nav" not in st.session_state:
     st.session_state["user_nav"] = "Generate"
 if "admin_nav" not in st.session_state:
