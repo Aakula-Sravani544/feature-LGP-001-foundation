@@ -474,30 +474,8 @@ def main():
         print(f"LOG:No results for: {query}", flush=True)
         return
 
-    # Check duplicate names from DB to skip them before slow enrichment
-    try:
-        import database
-        df_db = database.load_db()
-        db_records = df_db.to_dict(orient="records")
-    except Exception as e:
-        db_records = []
-
-    # Filter out duplicates
-    unique_leads = []
-    for lead in leads:
-        is_dup = False
-        for db_lead in db_records:
-            if is_db_duplicate_lead(lead, db_lead):
-                is_dup = True
-                break
-        if is_dup:
-            print(f"LOG:Duplicate skipped before enrichment: {lead.get('name')}", flush=True)
-            continue
-        unique_leads.append(lead)
-
-    if not unique_leads:
-        print(f"LOG:All leads from query were duplicates.", flush=True)
-        return
+    # No database duplicate check — duplicates handled in app.py by name comparison
+    unique_leads = leads
 
     print(f"LOG:Processing {len(unique_leads)} leads...", flush=True)
     for i, lead in enumerate(unique_leads):
