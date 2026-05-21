@@ -1040,20 +1040,22 @@ def is_db_duplicate_lead(lead1, lead2):
         return True
     return False
 
-def get_broadened_keywords(keyword):
+def get_query_variants(keyword):
     kw_lower = keyword.lower()
+    variants = [keyword]
     if "hotel" in kw_lower:
-        return ["Budget hotels", "Lodges", "Service apartments", "Guest houses"]
+        variants.extend(["Budget hotels", "Lodges", "Guest houses", "Service apartments"])
     elif "restaurant" in kw_lower or "food" in kw_lower or "cafe" in kw_lower:
-        return ["Cafes", "Fast food", "Diners", "Bistros"]
+        variants.extend(["Family restaurants", "Cafes", "Biryani restaurants", "Fast food restaurants"])
     elif "hospital" in kw_lower or "clinic" in kw_lower or "doctor" in kw_lower:
-        return ["Clinics", "Medical centers", "Health care", "Doctors"]
+        variants.extend(["Clinics", "Medical centers", "Health care", "Doctors"])
     elif "school" in kw_lower or "college" in kw_lower or "coaching" in kw_lower:
-        return ["Coaching centers", "Academies", "Institutes", "Training centers"]
+        variants.extend(["Coaching centers", "Academies", "Institutes", "Training centers"])
     elif "real estate" in kw_lower or "property" in kw_lower or "builder" in kw_lower:
-        return ["Property dealers", "Builders", "Real estate agents", "Apartments"]
+        variants.extend(["Property dealers", "Builders", "Real estate agents", "Apartments"])
     else:
-        return [f"Top {keyword}", f"Best {keyword}", f"Local {keyword}", f"Affordable {keyword}"]
+        variants.extend([f"Best {keyword}", f"Top {keyword}", f"Local {keyword}", f"Affordable {keyword}"])
+    return variants
 
 
 def get_sub_regions_ai(keyword: str, region: str, city: str) -> list:
@@ -1139,14 +1141,19 @@ Return ONLY a JSON array of strings. No other text. No markdown."""
     combined = []
     seen = set()
     
-    # Add specific regions first
+    # 4a. Add specific sub-regions first
     for r in specific_regions:
         if r.lower() not in seen:
             combined.append(r)
             seen.add(r.lower())
 
-    # Add city hubs as fallback (excluding the user's primary region to prevent duplicate processing of it)
+    # 4b. Add parent region
     region_norm = normalize_str(region)
+    if region.strip() and region.strip().lower() not in seen:
+        combined.append(region.strip())
+        seen.add(region.strip().lower())
+
+    # 4c. Add city hubs as fallback (excluding the user's primary region to prevent duplicate processing of it)
     for r in city_hubs:
         r_lower = r.lower()
         r_norm = normalize_str(r)
@@ -1175,8 +1182,9 @@ Return ONLY a JSON array of strings. No other text. No markdown."""
                 combined.append(r)
                 seen.add(r_lower)
 
-    if not combined:
-        return [region or city]
+    # 4d. Add empty string as city-wide fallback
+    if "" not in seen:
+        combined.append("")
 
     return combined
 
@@ -1398,128 +1406,130 @@ def generation_ui(label_suffix=""):
             for k in get_lead_keys(l):
                 seen_session_ids.add(k)
 
-        max_passes = 3
-        pass_num = 0
-        processed_sub_regions = set()
+        total_areas = len(sub_regions)
         
-        while collected_count < target_total and pass_num < max_passes:
-            pass_num += 1
-            new_leads_in_pass = 0
+        for area_idx, sub_region in enumerate(sub_regions):
+            if collected_count >= target_total:
+                break
+                
+            display_area = sub_region if sub_region else f"{city} (City-wide)"
+            st.session_state.logs += f"[SYS] Area {area_idx+1}/{total_areas}: {display_area}\n"
+            log_placeholder.markdown(f'<div class="log-box">{st.session_state.logs[-3000:]}</div>', unsafe_allow_html=True)
             
-            for sub_region in sub_regions:
+            query_variants = get_query_variants(keyword)
+            consecutive_zero_yields = 0
+
+            for q_variant in query_variants:
                 if collected_count >= target_total:
                     break
 
-                sub_region_lower = sub_region.strip().lower()
-                if sub_region_lower in processed_sub_regions:
-                    continue
-                processed_sub_regions.add(sub_region_lower)
-
-                queries_to_try = [f"{keyword} in {sub_region} {city}"]
-                for alt_kw in get_broadened_keywords(keyword):
-                    queries_to_try.append(f"{alt_kw} in {sub_region} {city}")
-
-                for query in queries_to_try:
-                    if collected_count >= target_total:
-                        break
-
-                    status_text.text(f"🔄 Scraping: {query} ({collected_count}/{target_total})")
-                    st.session_state.logs += f"[SYS] Scraping: {query}\n"
-                    log_placeholder.markdown(
-                        f'<div class="log-box">{st.session_state.logs[-3000:]}</div>',
-                        unsafe_allow_html=True
-                    )
-
-                    ai_flag = "1" if use_ai else "0"
-                    batch_target = min(10, target_total - collected_count)
-
-                    process = subprocess.Popen(
-                        [sys.executable, "scraper.py", query, str(batch_target), ai_flag],
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.STDOUT,
-                        text=True,
-                        bufsize=1,
-                        universal_newlines=True
-                    )
-
-                    leads_found_this_query = 0
-                    duplicates_skipped_this_query = 0
-                    unique_added_this_query = 0
-
-                    for line in process.stdout:
-                        line = line.strip()
-                        if line.startswith("DATA:"):
-                            try:
-                                data = json.loads(line.replace("DATA:", "").strip())
-                                leads_found_this_query += 1
-
-                                is_dup = False
-                                data_keys = get_lead_keys(data)
-                                for k in data_keys:
-                                    if k in seen_session_ids:
-                                        is_dup = True
-                                        break
-                                
-                                if not is_dup:
-                                    for db_lead in db_leads_list:
-                                        if is_db_duplicate_lead(data, db_lead):
-                                            is_dup = True
-                                            break
-
-                                if not is_dup:
-                                    for k in data_keys:
-                                        seen_session_ids.add(k)
-                                        
-                                    st.session_state.session_leads.append(data)
-                                    database.save_to_db([data])
-                                    db_leads_list.append(data)
-                                    
-                                    unique_added_this_query += 1
-                                    new_leads_in_pass += 1
-                                    collected_count = len(st.session_state.session_leads)
-                                else:
-                                    duplicates_skipped_this_query += 1
-                                    duplicates_skipped += 1
-
-                                valid_count = len([x for x in st.session_state.session_leads if x.get("validation_status") == "Valid"])
-                                m1_metric.metric("Total Scraped", collected_count)
-                                m2_metric.metric("Valid Leads", valid_count)
-                                m3_metric.metric("Duplicates Skipped", duplicates_skipped)
-                                progress_bar.progress(min(collected_count / target_total, 1.0))
-
-                                with table_placeholder.container():
-                                    df_view = pd.DataFrame(st.session_state.session_leads).iloc[::-1]
-                                    cols = [c for c in ["name", "phone", "email", "sub_region", "validation_status"] if c in df_view.columns]
-                                    st.dataframe(df_view[cols] if cols else df_view, hide_index=True)
-                            except Exception as e:
-                                logger.debug(f"Data parse error: {e}")
-
-                        elif line.startswith("LOG:"):
-                            msg = line.replace("LOG:", "").strip()
-                            st.session_state.logs += f"[SYS] {msg}\n"
-                            log_placeholder.markdown(
-                                f'<div class="log-box">{st.session_state.logs[-3000:]}</div>',
-                                unsafe_allow_html=True
-                            )
-
-                    process.wait()
-
-                    st.session_state.logs += f"[SYS] Found {leads_found_this_query} | Unique added {unique_added_this_query} | Duplicates skipped {duplicates_skipped_this_query} | Total collected {collected_count}/{target_total}\n"
-                    log_placeholder.markdown(
-                        f'<div class="log-box">{st.session_state.logs[-3000:]}</div>',
-                        unsafe_allow_html=True
-                    )
-
-                    if unique_added_this_query > 0:
-                        break
-
-            if new_leads_in_pass == 0:
-                st.session_state.logs += "[SYS] No new unique leads found across any sub-regions. Stopping extraction.\n"
+                if sub_region:
+                    query = f"{q_variant} in {sub_region} {city}"
+                else:
+                    query = f"{q_variant} in {city}"
+                status_text.text(f"🔄 Scraping: {query} ({collected_count}/{target_total})")
+                st.session_state.logs += f"[SYS] Query: {query}\n"
                 log_placeholder.markdown(
                     f'<div class="log-box">{st.session_state.logs[-3000:]}</div>',
                     unsafe_allow_html=True
                 )
-                break
+
+                ai_flag = "1" if use_ai else "0"
+                batch_target = min(10, target_total - collected_count)
+
+                process = subprocess.Popen(
+                    [sys.executable, "scraper.py", query, str(batch_target), ai_flag],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    bufsize=1,
+                    universal_newlines=True
+                )
+
+                leads_found_this_query = 0
+                duplicates_skipped_this_query = 0
+                unique_added_this_query = 0
+
+                for line in process.stdout:
+                    line = line.strip()
+                    if line.startswith("DATA:"):
+                        try:
+                            data = json.loads(line.replace("DATA:", "").strip())
+                            leads_found_this_query += 1
+
+                            is_dup = False
+                            data_keys = get_lead_keys(data)
+                            for k in data_keys:
+                                if k in seen_session_ids:
+                                    is_dup = True
+                                    break
+                            
+                            if not is_dup:
+                                for db_lead in db_leads_list:
+                                    if is_db_duplicate_lead(data, db_lead):
+                                        is_dup = True
+                                        break
+
+                            if not is_dup:
+                                for k in data_keys:
+                                    seen_session_ids.add(k)
+                                    
+                                st.session_state.session_leads.append(data)
+                                database.save_to_db([data])
+                                db_leads_list.append(data)
+                                
+                                unique_added_this_query += 1
+                                collected_count = len(st.session_state.session_leads)
+                            else:
+                                duplicates_skipped_this_query += 1
+                                duplicates_skipped += 1
+
+                            valid_count = len([x for x in st.session_state.session_leads if x.get("validation_status") == "Valid"])
+                            m1_metric.metric("Total Scraped", collected_count)
+                            m2_metric.metric("Valid Leads", valid_count)
+                            m3_metric.metric("Duplicates Skipped", duplicates_skipped)
+                            progress_bar.progress(min(collected_count / target_total, 1.0))
+
+                            with table_placeholder.container():
+                                df_view = pd.DataFrame(st.session_state.session_leads).iloc[::-1]
+                                cols = [c for c in ["name", "phone", "email", "sub_region", "validation_status"] if c in df_view.columns]
+                                st.dataframe(df_view[cols] if cols else df_view, hide_index=True)
+                        except Exception as e:
+                            logger.debug(f"Data parse error: {e}")
+
+                    elif line.startswith("LOG:"):
+                        msg = line.replace("LOG:", "").strip()
+                        st.session_state.logs += f"[SYS] {msg}\n"
+                        log_placeholder.markdown(
+                            f'<div class="log-box">{st.session_state.logs[-3000:]}</div>',
+                            unsafe_allow_html=True
+                        )
+
+                process.wait()
+
+                st.session_state.logs += f"[SYS] Found {leads_found_this_query} | Added {unique_added_this_query} | Duplicates {duplicates_skipped_this_query} | Total {collected_count}/{target_total}\n\n"
+                log_placeholder.markdown(
+                    f'<div class="log-box">{st.session_state.logs[-3000:]}</div>',
+                    unsafe_allow_html=True
+                )
+
+                if unique_added_this_query == 0:
+                    consecutive_zero_yields += 1
+                else:
+                    consecutive_zero_yields = 0
+
+                # High-yield fallback: skip to next area if 3 consecutive queries yield 0
+                if consecutive_zero_yields >= 3:
+                    st.session_state.logs += f"[SYS] Area yielding no new leads. Moving to next area...\n"
+                    log_placeholder.markdown(f'<div class="log-box">{st.session_state.logs[-3000:]}</div>', unsafe_allow_html=True)
+                    break
+
+        if collected_count >= target_total:
+            st.session_state.logs += f"[SYS] Target reached: {collected_count}/{target_total}\n"
+        else:
+            st.session_state.logs += f"[SYS] All fallback areas exhausted. Final total: {collected_count}/{target_total}\n"
+        
+        log_placeholder.markdown(f'<div class="log-box">{st.session_state.logs[-3000:]}</div>', unsafe_allow_html=True)
 
         # Step 3 — Save to Google Sheets
         status_text.text("✅ Extraction Complete! Syncing to Cloud...")
