@@ -409,6 +409,47 @@ def process_single_lead(lead, use_ai):
     return lead
 
 
+def normalize_str(val):
+    if not val:
+        return ""
+    return "".join(c for c in str(val).lower() if c.isalnum())
+
+def get_lead_keys(lead):
+    name = lead.get("name") or lead.get("business_name")
+    name_norm = normalize_str(name)
+    if not name_norm:
+        return []
+    keys = []
+    phone = lead.get("phone")
+    phone_norm = normalize_str(phone)
+    if phone_norm:
+        keys.append(f"np_{name_norm}_{phone_norm}")
+    maps_url = lead.get("google_maps_url") or lead.get("maps_url")
+    maps_url_norm = normalize_str(maps_url)
+    if maps_url_norm:
+        keys.append(f"nm_{name_norm}_{maps_url_norm}")
+    address = lead.get("address")
+    address_norm = normalize_str(address)
+    if address_norm:
+        keys.append(f"na_{name_norm}_{address_norm}")
+    return keys
+
+def is_db_duplicate_lead(lead1, lead2):
+    name1 = normalize_str(lead1.get("name") or lead1.get("business_name"))
+    name2 = normalize_str(lead2.get("name") or lead2.get("business_name"))
+    if not name1 or name1 != name2:
+        return False
+    phone1 = normalize_str(lead1.get("phone"))
+    phone2 = normalize_str(lead2.get("phone"))
+    if phone1 and phone2 and phone1 == phone2:
+        return True
+    url1 = normalize_str(lead1.get("google_maps_url") or lead1.get("maps_url"))
+    url2 = normalize_str(lead2.get("google_maps_url") or lead2.get("maps_url"))
+    if url1 and url2 and url1 == url2:
+        return True
+    return False
+
+
 def main():
     if len(sys.argv) < 2:
         return
@@ -430,16 +471,19 @@ def main():
     try:
         import database
         df_db = database.load_db()
-        name_col = "name" if "name" in df_db.columns else "business_name" if "business_name" in df_db.columns else None
-        existing_names = set(df_db[name_col].str.lower().tolist()) if name_col else set()
+        db_records = df_db.to_dict(orient="records")
     except Exception as e:
-        existing_names = set()
+        db_records = []
 
     # Filter out duplicates
     unique_leads = []
     for lead in leads:
-        name_lower = lead.get("name", "").strip().lower()
-        if name_lower in existing_names:
+        is_dup = False
+        for db_lead in db_records:
+            if is_db_duplicate_lead(lead, db_lead):
+                is_dup = True
+                break
+        if is_dup:
             print(f"LOG:Duplicate skipped before enrichment: {lead.get('name')}", flush=True)
             continue
         unique_leads.append(lead)

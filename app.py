@@ -993,9 +993,69 @@ def get_stats():
 # ==========================================
 # (Function moved higher to prevent NameError on startup execution)
 
-# ==========================================
-# GENERATION COMPONENT (SHARED)
-# ==========================================
+def normalize_str(val):
+    if not val:
+        return ""
+    return "".join(c for c in str(val).lower() if c.isalnum())
+
+def get_lead_keys(lead):
+    name = lead.get("name") or lead.get("business_name")
+    name_norm = normalize_str(name)
+    if not name_norm:
+        return []
+    keys = []
+    phone = lead.get("phone")
+    phone_norm = normalize_str(phone)
+    if phone_norm:
+        keys.append(f"np_{name_norm}_{phone_norm}")
+    maps_url = lead.get("google_maps_url") or lead.get("maps_url")
+    maps_url_norm = normalize_str(maps_url)
+    if maps_url_norm:
+        keys.append(f"nm_{name_norm}_{maps_url_norm}")
+    address = lead.get("address")
+    address_norm = normalize_str(address)
+    if address_norm:
+        keys.append(f"na_{name_norm}_{address_norm}")
+    return keys
+
+def is_duplicate_lead(lead1, lead2):
+    keys1 = get_lead_keys(lead1)
+    keys2 = get_lead_keys(lead2)
+    if not keys1 or not keys2:
+        return False
+    return not set(keys1).isdisjoint(keys2)
+
+def is_db_duplicate_lead(lead1, lead2):
+    name1 = normalize_str(lead1.get("name") or lead1.get("business_name"))
+    name2 = normalize_str(lead2.get("name") or lead2.get("business_name"))
+    if not name1 or name1 != name2:
+        return False
+    phone1 = normalize_str(lead1.get("phone"))
+    phone2 = normalize_str(lead2.get("phone"))
+    if phone1 and phone2 and phone1 == phone2:
+        return True
+    url1 = normalize_str(lead1.get("google_maps_url") or lead1.get("maps_url"))
+    url2 = normalize_str(lead2.get("google_maps_url") or lead2.get("maps_url"))
+    if url1 and url2 and url1 == url2:
+        return True
+    return False
+
+def get_broadened_keywords(keyword):
+    kw_lower = keyword.lower()
+    if "hotel" in kw_lower:
+        return ["Budget hotels", "Lodges", "Service apartments", "Guest houses"]
+    elif "restaurant" in kw_lower or "food" in kw_lower or "cafe" in kw_lower:
+        return ["Cafes", "Fast food", "Diners", "Bistros"]
+    elif "hospital" in kw_lower or "clinic" in kw_lower or "doctor" in kw_lower:
+        return ["Clinics", "Medical centers", "Health care", "Doctors"]
+    elif "school" in kw_lower or "college" in kw_lower or "coaching" in kw_lower:
+        return ["Coaching centers", "Academies", "Institutes", "Training centers"]
+    elif "real estate" in kw_lower or "property" in kw_lower or "builder" in kw_lower:
+        return ["Property dealers", "Builders", "Real estate agents", "Apartments"]
+    else:
+        return [f"Top {keyword}", f"Best {keyword}", f"Local {keyword}", f"Affordable {keyword}"]
+
+
 def get_sub_regions_ai(keyword: str, region: str, city: str) -> list:
     """
     Use Gemini AI to generate detailed sub-regions for a given area.
@@ -1034,18 +1094,28 @@ def get_sub_regions_ai(keyword: str, region: str, city: str) -> list:
         try:
             import google.generativeai as genai
             genai.configure(api_key=gemini_key)
-            model = genai.GenerativeModel("gemini-1.5-flash")
             prompt = f"""You are a local area expert for {city}, India.
 For the area "{region}" in {city}, list all specific sub-areas, phases, road numbers, sectors, and localities where {keyword} businesses might be found.
 Be very specific — include road numbers, phase numbers, colony names, sector numbers.
 Return ONLY a JSON array of strings. No other text. No markdown."""
 
-            response = model.generate_content(prompt)
-            raw = response.text.strip().replace("```json","").replace("```","").strip()
-            import json
-            res = json.loads(raw)
-            if isinstance(res, list) and len(res) > 0:
-                specific_regions = res[:15]
+            models_to_try = ["gemini-2.0-flash", "gemini-1.5-flash-latest", "gemini-pro"]
+            response = None
+            for model_name in models_to_try:
+                try:
+                    model = genai.GenerativeModel(model_name)
+                    response = model.generate_content(prompt)
+                    if response and response.text:
+                        break
+                except Exception as model_err:
+                    st.session_state.logs += f"[SYS] Model {model_name} failed: {model_err}\n"
+
+            if response:
+                raw = response.text.strip().replace("```json","").replace("```","").strip()
+                import json
+                res = json.loads(raw)
+                if isinstance(res, list) and len(res) > 0:
+                    specific_regions = res[:15]
         except Exception as e:
             st.session_state.logs += f"[SYS] AI sub-region failed: {e}\n"
 
@@ -1310,68 +1380,132 @@ def generation_ui(label_suffix=""):
         duplicates_skipped = 0
         target_total = max_leads
 
-        for sub_region in sub_regions:
-            if collected_count >= target_total:
-                break
+        try:
+            df_db = database.load_db()
+            db_leads_list = df_db.to_dict(orient="records")
+        except:
+            db_leads_list = []
 
-            query = f"{keyword} in {sub_region} {city}"
-            status_text.text(f"🔄 Scraping: {query} ({collected_count}/{target_total})")
-            st.session_state.logs += f"[SYS] Scraping: {query}\n"
-            log_placeholder.markdown(
-                f'<div class="log-box">{st.session_state.logs[-3000:]}</div>',
-                unsafe_allow_html=True
-            )
+        seen_session_ids = set()
+        for l in st.session_state.session_leads:
+            for k in get_lead_keys(l):
+                seen_session_ids.add(k)
 
-            ai_flag = "1" if use_ai else "0"
-            batch_target = min(10, target_total - collected_count)
+        max_passes = 3
+        pass_num = 0
+        
+        while collected_count < target_total and pass_num < max_passes:
+            pass_num += 1
+            new_leads_in_pass = 0
+            
+            for sub_region in sub_regions:
+                if collected_count >= target_total:
+                    break
 
-            process = subprocess.Popen(
-                [sys.executable, "scraper.py", query, str(batch_target), ai_flag],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=True,
-                bufsize=1,
-                universal_newlines=True
-            )
+                queries_to_try = [f"{keyword} in {sub_region} {city}"]
+                for alt_kw in get_broadened_keywords(keyword):
+                    queries_to_try.append(f"{alt_kw} in {sub_region} {city}")
 
-            for line in process.stdout:
-                line = line.strip()
-                if line.startswith("DATA:"):
-                    try:
-                        data = json.loads(line.replace("DATA:", "").strip())
-                        # Check duplicate by name
-                        existing_names = [l.get("name","").lower() for l in st.session_state.session_leads]
-                        if data.get("name","").lower() not in existing_names:
-                            st.session_state.session_leads.append(data)
-                            database.save_to_db([data])
-                            collected_count = len(st.session_state.session_leads)
-                        else:
-                            duplicates_skipped += 1
+                for query in queries_to_try:
+                    if collected_count >= target_total:
+                        break
 
-                        valid_count = len([x for x in st.session_state.session_leads if x.get("validation_status") == "Valid"])
-                        m1_metric.metric("Total Scraped", collected_count)
-                        m2_metric.metric("Valid Leads", valid_count)
-                        m3_metric.metric("Duplicates Skipped", duplicates_skipped)
-                        progress_bar.progress(min(collected_count / target_total, 1.0))
-
-                        with table_placeholder.container():
-                            df_view = pd.DataFrame(st.session_state.session_leads).iloc[::-1]
-                            cols = [c for c in ["name", "phone", "email", "sub_region", "validation_status"] if c in df_view.columns]
-                            st.dataframe(df_view[cols] if cols else df_view, hide_index=True)
-                    except Exception as e:
-                        logger.debug(f"Data parse error: {e}")
-
-                elif line.startswith("LOG:"):
-                    msg = line.replace("LOG:", "").strip()
-                    st.session_state.logs += f"[SYS] {msg}\n"
+                    status_text.text(f"🔄 Scraping: {query} ({collected_count}/{target_total})")
+                    st.session_state.logs += f"[SYS] Scraping: {query}\n"
                     log_placeholder.markdown(
                         f'<div class="log-box">{st.session_state.logs[-3000:]}</div>',
                         unsafe_allow_html=True
                     )
 
-            process.wait()
+                    ai_flag = "1" if use_ai else "0"
+                    batch_target = min(10, target_total - collected_count)
 
-            if collected_count >= target_total:
+                    process = subprocess.Popen(
+                        [sys.executable, "scraper.py", query, str(batch_target), ai_flag],
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.STDOUT,
+                        text=True,
+                        bufsize=1,
+                        universal_newlines=True
+                    )
+
+                    leads_found_this_query = 0
+                    duplicates_skipped_this_query = 0
+                    unique_added_this_query = 0
+
+                    for line in process.stdout:
+                        line = line.strip()
+                        if line.startswith("DATA:"):
+                            try:
+                                data = json.loads(line.replace("DATA:", "").strip())
+                                leads_found_this_query += 1
+
+                                is_dup = False
+                                data_keys = get_lead_keys(data)
+                                for k in data_keys:
+                                    if k in seen_session_ids:
+                                        is_dup = True
+                                        break
+                                
+                                if not is_dup:
+                                    for db_lead in db_leads_list:
+                                        if is_db_duplicate_lead(data, db_lead):
+                                            is_dup = True
+                                            break
+
+                                if not is_dup:
+                                    for k in data_keys:
+                                        seen_session_ids.add(k)
+                                        
+                                    st.session_state.session_leads.append(data)
+                                    database.save_to_db([data])
+                                    db_leads_list.append(data)
+                                    
+                                    unique_added_this_query += 1
+                                    new_leads_in_pass += 1
+                                    collected_count = len(st.session_state.session_leads)
+                                else:
+                                    duplicates_skipped_this_query += 1
+                                    duplicates_skipped += 1
+
+                                valid_count = len([x for x in st.session_state.session_leads if x.get("validation_status") == "Valid"])
+                                m1_metric.metric("Total Scraped", collected_count)
+                                m2_metric.metric("Valid Leads", valid_count)
+                                m3_metric.metric("Duplicates Skipped", duplicates_skipped)
+                                progress_bar.progress(min(collected_count / target_total, 1.0))
+
+                                with table_placeholder.container():
+                                    df_view = pd.DataFrame(st.session_state.session_leads).iloc[::-1]
+                                    cols = [c for c in ["name", "phone", "email", "sub_region", "validation_status"] if c in df_view.columns]
+                                    st.dataframe(df_view[cols] if cols else df_view, hide_index=True)
+                            except Exception as e:
+                                logger.debug(f"Data parse error: {e}")
+
+                        elif line.startswith("LOG:"):
+                            msg = line.replace("LOG:", "").strip()
+                            st.session_state.logs += f"[SYS] {msg}\n"
+                            log_placeholder.markdown(
+                                f'<div class="log-box">{st.session_state.logs[-3000:]}</div>',
+                                unsafe_allow_html=True
+                            )
+
+                    process.wait()
+
+                    st.session_state.logs += f"[SYS] Found {leads_found_this_query} | Unique added {unique_added_this_query} | Duplicates skipped {duplicates_skipped_this_query} | Total collected {collected_count}/{target_total}\n"
+                    log_placeholder.markdown(
+                        f'<div class="log-box">{st.session_state.logs[-3000:]}</div>',
+                        unsafe_allow_html=True
+                    )
+
+                    if unique_added_this_query > 0:
+                        break
+
+            if new_leads_in_pass == 0:
+                st.session_state.logs += "[SYS] No new unique leads found across any sub-regions. Stopping extraction.\n"
+                log_placeholder.markdown(
+                    f'<div class="log-box">{st.session_state.logs[-3000:]}</div>',
+                    unsafe_allow_html=True
+                )
                 break
 
         # Step 3 — Save to Google Sheets
