@@ -115,6 +115,24 @@ from scheduler import render_scheduler_ui, start_scheduler
 
 # Initialize session
 init_session()
+
+if "is_extracting" not in st.session_state:
+    st.session_state["is_extracting"] = False
+
+if "session_leads" not in st.session_state:
+    st.session_state["session_leads"] = []
+
+if "collected_count" not in st.session_state:
+    st.session_state["collected_count"] = 0
+
+if "target_leads" not in st.session_state:
+    st.session_state["target_leads"] = 0
+
+if "current_query" not in st.session_state:
+    st.session_state["current_query"] = ""
+
+if "authenticated" not in st.session_state:
+    st.session_state["authenticated"] = False
 if "user_nav" not in st.session_state:
     st.session_state["user_nav"] = "Generate"
 if "admin_nav" not in st.session_state:
@@ -1884,7 +1902,7 @@ def show_user_dashboard():
     with c2:
         st.markdown(f'<div class="metric-card"><div class="metric-label">Data Accuracy</div><div class="metric-value">{quality_pct}%</div></div>', unsafe_allow_html=True)
     with c3:
-        status_text = "ACTIVE" if st.session_state.is_extracting else "IDLE"
+        status_text = "ACTIVE" if st.session_state.get("is_extracting", False) else "IDLE"
         st.markdown(f'<div class="metric-card"><div class="metric-label">Engine Status</div><div class="metric-value">{status_text}</div></div>', unsafe_allow_html=True)
     with c4:
         gs_connected = google_sheets.check_connection()
@@ -1903,7 +1921,7 @@ def show_user_dashboard():
 
     with tab1:
         generation_ui()
-        if not st.session_state.is_extracting and st.session_state.session_leads:
+        if not st.session_state.get("is_extracting", False) and st.session_state.get("session_leads", []):
             st.markdown("### ⚡ Session Preview")
             import pandas as pd
             st.dataframe(pd.DataFrame(st.session_state.session_leads), hide_index=True)
@@ -1992,7 +2010,7 @@ def show_admin_dashboard():
     # ==========================================
     with tabs[0]:
         generation_ui("(Admin)")
-        if not st.session_state.is_extracting and st.session_state.session_leads:
+        if not st.session_state.get("is_extracting", False) and st.session_state.get("session_leads", []):
             st.markdown("### ⚡ Session Preview")
             st.dataframe(pd.DataFrame(st.session_state.session_leads), hide_index=True)
 
