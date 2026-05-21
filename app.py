@@ -1145,28 +1145,35 @@ Return ONLY a JSON array of strings. No other text. No markdown."""
             combined.append(r)
             seen.add(r.lower())
 
-    # Only add city hubs if no region was specified
-    if not region.strip():
-        # Add city hubs (expanding them if they have specific area fallbacks)
-        for r in city_hubs:
-            r_lower = r.lower()
+    # Add city hubs as fallback (excluding the user's primary region to prevent duplicate processing of it)
+    region_norm = normalize_str(region)
+    for r in city_hubs:
+        r_lower = r.lower()
+        r_norm = normalize_str(r)
+        
+        # Skip the user's primary region or matches to avoid duplication
+        if region_norm and (region_norm in r_lower or r_lower in region_norm or r_norm in region_norm):
+            continue
             
-            matched_fallback_key = None
-            for key in specific_area_fallback.keys():
-                if key in r_lower or r_lower in key:
-                    matched_fallback_key = key
-                    break
-                    
-            if matched_fallback_key:
-                # Expand this hub into its sub-regions
-                for sub_area in specific_area_fallback[matched_fallback_key]:
-                    if sub_area.lower() not in seen:
-                        combined.append(sub_area)
-                        seen.add(sub_area.lower())
-            else:
-                if r_lower not in seen:
-                    combined.append(r)
-                    seen.add(r_lower)
+        matched_fallback_key = None
+        for key in specific_area_fallback.keys():
+            if key in r_lower or r_lower in key:
+                matched_fallback_key = key
+                break
+                
+        if matched_fallback_key:
+            # Expand this hub into its sub-regions
+            for sub_area in specific_area_fallback[matched_fallback_key]:
+                sub_area_lower = sub_area.lower()
+                if region_norm and (region_norm in sub_area_lower or sub_area_lower in region_norm):
+                    continue
+                if sub_area_lower not in seen:
+                    combined.append(sub_area)
+                    seen.add(sub_area_lower)
+        else:
+            if r_lower not in seen:
+                combined.append(r)
+                seen.add(r_lower)
 
     if not combined:
         return [region or city]
@@ -1393,6 +1400,7 @@ def generation_ui(label_suffix=""):
 
         max_passes = 3
         pass_num = 0
+        processed_sub_regions = set()
         
         while collected_count < target_total and pass_num < max_passes:
             pass_num += 1
@@ -1401,6 +1409,11 @@ def generation_ui(label_suffix=""):
             for sub_region in sub_regions:
                 if collected_count >= target_total:
                     break
+
+                sub_region_lower = sub_region.strip().lower()
+                if sub_region_lower in processed_sub_regions:
+                    continue
+                processed_sub_regions.add(sub_region_lower)
 
                 queries_to_try = [f"{keyword} in {sub_region} {city}"]
                 for alt_kw in get_broadened_keywords(keyword):
