@@ -123,12 +123,19 @@ def search_multi_region(query: str, limit: int = 100) -> list:
 
 def get_full_structure() -> dict:
     """Returns a standardized lead dictionary."""
+    try:
+        from zoneinfo import ZoneInfo
+        now_ist = datetime.now(ZoneInfo("Asia/Kolkata"))
+    except ImportError:
+        from datetime import timedelta
+        now_ist = datetime.utcnow() + timedelta(hours=5, minutes=30)
+        
     return {
         "lead_id": "", "name": "", "address": "", "phone": "",
         "email": "", "website": "", "rating": "", "reviews": "",
         "category": "", "google_maps_url": "", "description": "",
         "hours": "", "social_media": "", "additional_data": "",
-        "scraped_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "scraped_date": now_ist.strftime("%Y-%m-%d %H:%M:%S"),
         "ai_analysis": "N/A", "validation_status": "Pending",
         "validation_notes": "", "sub_region": ""
     }

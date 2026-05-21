@@ -15,6 +15,13 @@ HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
 
 def get_linkedin_structure() -> Dict:
     """Returns LinkedIn lead using same column names as Google Sheets."""
+    try:
+        from zoneinfo import ZoneInfo
+        now_ist = datetime.now(ZoneInfo("Asia/Kolkata"))
+    except ImportError:
+        from datetime import timedelta
+        now_ist = datetime.utcnow() + timedelta(hours=5, minutes=30)
+        
     return {
         "lead_id": "",
         "name": "",           # full_name goes here
@@ -30,7 +37,7 @@ def get_linkedin_structure() -> Dict:
         "hours": "",
         "social_media": "",
         "additional_data": "", # company_size + industry goes here
-        "scraped_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "scraped_date": now_ist.strftime("%Y-%m-%d %H:%M:%S"),
         "ai_analysis": "{}",
         "validation_status": "Pending",
         "validation_notes": "",

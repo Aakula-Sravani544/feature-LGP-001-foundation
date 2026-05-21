@@ -80,6 +80,13 @@ def create_lead(name, website, snippet, source):
         if len(parts) > 1:
             address = f"{parts[-2].strip()}, {parts[-1].strip()}"[:100]
 
+    try:
+        from zoneinfo import ZoneInfo
+        now_ist = datetime.now(ZoneInfo("Asia/Kolkata"))
+    except ImportError:
+        from datetime import timedelta
+        now_ist = datetime.utcnow() + timedelta(hours=5, minutes=30)
+
     return {
         "name": name,
         "address": address,
@@ -94,7 +101,7 @@ def create_lead(name, website, snippet, source):
         "hours": "N/A",
         "social_media": "",
         "additional_data": f"Engine: {source}",
-        "scraped_date": datetime.now().strftime("%Y-%m-%d"),
+        "scraped_date": now_ist.strftime("%Y-%m-%d %H:%M:%S"),
         "ai_analysis": "N/A",
         "validation_status": "Pending",
         "validation_notes": "",
