@@ -130,7 +130,7 @@ if "scheduler" not in st.session_state:
 check_payment_success()
 
 # Check session expiry
-if st.session_state.authenticated and check_session_expiry():
+if st.session_state.authenticated and not st.session_state.get("is_scraping", False) and check_session_expiry():
     st.warning("Session expired. Please login again.")
     for key in list(st.session_state.keys()):
         del st.session_state[key]
@@ -1433,7 +1433,7 @@ def generation_ui(label_suffix=""):
         # UI log refresh
         log_placeholder.markdown(f'<div class="log-box">{st.session_state.logs[-3000:]}</div>', unsafe_allow_html=True)
         
-        while batch_collected < batch_target and st.session_state.collected_leads < st.session_state.target_leads:
+        while st.session_state.get("is_scraping", False) and st.session_state.collected_leads < st.session_state.target_leads:
             
             # Determine Query
             query = ""
@@ -1529,6 +1529,11 @@ def generation_ui(label_suffix=""):
                             st.session_state.collected_leads = len(st.session_state.session_leads)
                             st.session_state.remaining_leads = st.session_state.target_leads - st.session_state.collected_leads
                             batch_collected += 1
+                            if batch_collected >= batch_target:
+                                st.session_state.completed_batches += 1
+                                google_sheets.save_to_google_sheets(st.session_state.session_leads)
+                                batch_collected = 0
+                                st.session_state.logs += f"[SYS] Batch completed. Progress saved. Continuing to next batch...\n"
                         else:
                             duplicates_skipped_this_query += 1
                             duplicates_skipped += 1
@@ -1579,8 +1584,8 @@ def generation_ui(label_suffix=""):
                     
             log_placeholder.markdown(f'<div class="log-box">{st.session_state.logs[-3000:]}</div>', unsafe_allow_html=True)
             
-        # End of batch
-        if st.session_state.collected_leads >= st.session_state.target_leads or st.session_state.phase >= 3:
+        # End of extraction
+        if st.session_state.get("is_scraping", False):
             st.session_state.is_scraping = False
             st.session_state.remaining_leads = 0
             if st.session_state.collected_leads >= st.session_state.target_leads:
@@ -1594,10 +1599,6 @@ def generation_ui(label_suffix=""):
             success, msg = google_sheets.save_to_google_sheets(st.session_state.session_leads)
             import time as _time
             _time.sleep(2)
-            st.rerun()
-        else:
-            # Batch limit hit, but target not reached. Re-run to process next batch automatically.
-            st.session_state.completed_batches += 1
             st.rerun()
 
 # ==========================================
