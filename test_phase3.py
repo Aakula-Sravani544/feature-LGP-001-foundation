@@ -4,6 +4,9 @@ Day 20 — Full Regression Testing
 Run: python test_phase3.py
 """
 
+from dotenv import load_dotenv
+load_dotenv()
+
 import sys
 import os
 import json
