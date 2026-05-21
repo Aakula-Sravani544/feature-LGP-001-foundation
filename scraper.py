@@ -366,9 +366,9 @@ def enrich_leads(leads: list) -> list:
 
 def process_single_lead(lead, use_ai):
     """Memory-safe lead enrichment."""
-    # Skip website enrichment if lead already has phone and email
-    # This saves memory on Render free tier
-    if lead.get("phone") and lead.get("email"):
+    # Skip website enrichment if lead already has phone to speed up generation
+    # Only fetch website when email is missing AND phone is missing
+    if lead.get("phone"):
         lead["social_media"] = ""
         # Still do AI scoring
         if use_ai:

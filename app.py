@@ -1445,7 +1445,12 @@ def generation_ui(label_suffix=""):
                 seen_session_ids.add(k)
 
         # Batch execution
-        batch_target = 25
+        batch_target = 10
+        fast_mode = st.session_state.target_leads >= 50
+        if fast_mode and "fast_mode_logged" not in st.session_state:
+            st.session_state.logs += "[SYS] Fast Mode Enabled\n"
+            st.session_state["fast_mode_logged"] = True
+            
         initial_collected = st.session_state.collected_leads
         batch_collected = 0
         duplicates_skipped = 0
@@ -1478,7 +1483,8 @@ def generation_ui(label_suffix=""):
                 fallback_area = st.session_state.fallback_areas[st.session_state.fallback_idx]
                 query_variants = get_query_variants(st.session_state.keyword)
                 
-                if st.session_state.q_idx >= len(query_variants):
+                max_q = 2 if fast_mode else len(query_variants)
+                if st.session_state.q_idx >= max_q:
                     st.session_state.fallback_idx += 1
                     st.session_state.q_idx = 0
                     st.session_state.consecutive_zero_yields = 0
@@ -1505,7 +1511,7 @@ def generation_ui(label_suffix=""):
             
             ai_flag = "1" if use_ai else "0"
             # Keep batch small to prevent Render memory crash
-            sub_batch_target = min(5, st.session_state.target_leads - st.session_state.collected_leads, batch_target - batch_collected)
+            sub_batch_target = min(batch_target, st.session_state.target_leads - st.session_state.collected_leads, batch_target - batch_collected)
             
             import subprocess
             import sys
@@ -1544,6 +1550,10 @@ def generation_ui(label_suffix=""):
                             duplicates_skipped_this_query += 1
                             duplicates_skipped += 1
                             st.session_state.area_duplicates += 1
+                            if duplicates_skipped_this_query >= 5:
+                                st.session_state.logs += f"[SYS] Duplicate-heavy query skipped\n"
+                                process.terminate()
+                                break
                         else:
                             is_db_dup = False
                             for db_lead in db_leads_list:
@@ -1571,7 +1581,7 @@ def generation_ui(label_suffix=""):
                                 st.session_state.completed_batches += 1
                                 google_sheets.save_to_google_sheets(st.session_state.session_leads)
                                 batch_collected = 0
-                                st.session_state.logs += f"[SYS] Batch {st.session_state.completed_batches} completed: {st.session_state.collected_leads}/{st.session_state.target_leads}\n"
+                                st.session_state.logs += f"[SYS] Batch completed {st.session_state.collected_leads}/{st.session_state.target_leads}\n"
                                 st.session_state.logs += f"[SYS] Saved progress: {st.session_state.collected_leads}/{st.session_state.target_leads}\n"
                                 st.session_state.logs += f"[SYS] Resume available if interrupted\n"
 
