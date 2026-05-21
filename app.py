@@ -1081,7 +1081,7 @@ def get_sub_regions_ai(keyword: str, region: str, city: str) -> list:
     }
 
     city_hubs_fallback = {
-        "hyderabad": ["Madhapur", "Banjara Hills", "Jubilee Hills", "Hitech City", "Gachibowli", "Secunderabad", "Kukatpally", "Ameerpet", "Begumpet", "Kondapur", "Manikonda", "Miyapur", "LB Nagar", "Dilsukhnagar", "Mehdipatnam"],
+        "hyderabad": ["KPHB", "Kukatpally", "Madhapur", "Hitech City", "Gachibowli", "Miyapur", "Kondapur", "Banjara Hills", "Jubilee Hills", "Secunderabad", "Ameerpet", "Begumpet", "Manikonda", "LB Nagar", "Dilsukhnagar", "Mehdipatnam"],
         "chennai": ["T Nagar", "Anna Nagar", "Adyar", "Velachery", "Nungambakkam", "Mylapore", "Tambaram", "OMR", "Porur", "Chromepet"],
         "bangalore": ["Koramangala", "Indiranagar", "Whitefield", "Electronic City", "Jayanagar", "HSR Layout", "Marathahalli", "JP Nagar", "Bannerghatta", "BTM Layout"],
         "vijayawada": ["Benz Circle", "MG Road", "Governorpet", "Labbipet", "Patamata", "Gunadala", "Suryaraopet", "Eluru Road", "Auto Nagar", "Kandrika"],
@@ -1110,7 +1110,7 @@ Return ONLY a JSON array of strings. No other text. No markdown."""
                     if response and response.text:
                         break
                 except Exception as model_err:
-                    st.session_state.logs += f"[SYS] Model {model_name} failed: {model_err}\n"
+                    pass
 
             if response:
                 raw = response.text.strip().replace("```json","").replace("```","").strip()
@@ -1119,7 +1119,7 @@ Return ONLY a JSON array of strings. No other text. No markdown."""
                 if isinstance(res, list) and len(res) > 0:
                     specific_regions = res[:15]
         except Exception as e:
-            st.session_state.logs += f"[SYS] AI sub-region failed: {e}\n"
+            st.session_state.logs += f"[SYS] AI sub-region generation unavailable. Using fallback sub-regions...\n"
 
     # 2. Try Hardcoded area fallback if AI failed or not used
     if not specific_regions and region.strip():
@@ -1533,7 +1533,9 @@ def generation_ui(label_suffix=""):
                                 st.session_state.completed_batches += 1
                                 google_sheets.save_to_google_sheets(st.session_state.session_leads)
                                 batch_collected = 0
-                                st.session_state.logs += f"[SYS] Batch completed. Progress saved. Continuing to next batch...\n"
+                                st.session_state.logs += f"[SYS] Batch {st.session_state.completed_batches} completed: {st.session_state.collected_leads}/{st.session_state.target_leads}\n"
+                                st.session_state.logs += f"[SYS] Saved progress: {st.session_state.collected_leads}/{st.session_state.target_leads}\n"
+                                st.session_state.logs += f"[SYS] Resume available if interrupted\n"
                         else:
                             duplicates_skipped_this_query += 1
                             duplicates_skipped += 1
@@ -1561,24 +1563,24 @@ def generation_ui(label_suffix=""):
             process.wait()
 
             if st.session_state.phase == 1:
-                if unique_added_this_query == 0:
-                    st.session_state.logs += f"[SYS] Sub-region attempted: {current_sub_region} | Found 0 | Moving next\n\n"
-                else:
-                    st.session_state.logs += f"[SYS] Sub-region attempted: {current_sub_region} | Found {leads_found_this_query} | Unique added {unique_added_this_query}\n\n"
                 st.session_state.area_idx += 1
+                if st.session_state.area_idx < len(st.session_state.specific_sub_regions):
+                    next_area = st.session_state.specific_sub_regions[st.session_state.area_idx]
+                    st.session_state.logs += f"[SYS] Moving to next area: {next_area}\n"
                 
             elif st.session_state.phase == 2:
-                st.session_state.logs += f"[SYS] Found {leads_found_this_query} | Added {unique_added_this_query} | Total {st.session_state.collected_leads}/{st.session_state.target_leads}\n\n"
                 if unique_added_this_query == 0:
                     st.session_state.consecutive_zero_yields += 1
                 else:
                     st.session_state.consecutive_zero_yields = 0
 
                 if st.session_state.consecutive_zero_yields >= 3:
-                    st.session_state.logs += f"[SYS] Fallback area yielding no new leads. Moving to next fallback...\n"
                     st.session_state.fallback_idx += 1
                     st.session_state.q_idx = 0
                     st.session_state.consecutive_zero_yields = 0
+                    if st.session_state.fallback_idx < len(st.session_state.fallback_areas):
+                        next_area = st.session_state.fallback_areas[st.session_state.fallback_idx]
+                        st.session_state.logs += f"[SYS] Moving to next area: {next_area}\n"
                 else:
                     st.session_state.q_idx += 1
                     
