@@ -134,28 +134,29 @@ if "current_query" not in st.session_state:
 if "authenticated" not in st.session_state:
     st.session_state["authenticated"] = False
 
-# Fix Streamlit native blur/disabled overlay issue
-if not st.session_state.get("is_extracting", False):
-    st.markdown("""
-    <style>
-    /* Remove Streamlit default blur/overlay during normal interactions */
-    [data-testid="stAppViewContainer"],
-    [data-testid="stMainBlockContainer"],
-    .stApp,
-    [data-testid="stSidebar"],
-    .main,
-    .block-container,
-    form, button {
-        opacity: 1 !important;
-        filter: blur(0px) !important;
-        pointer-events: auto !important;
-    }
-    /* Hide Streamlit running modal backdrop */
-    [data-testid="stModalBackdrop"] {
-        display: none !important;
-    }
-    </style>
-    """, unsafe_allow_html=True)
+# Fix Streamlit native blur/disabled overlay issue permanently
+st.markdown("""
+<style>
+/* Remove Streamlit default blur/overlay during all interactions */
+[data-testid="stAppViewContainer"],
+[data-testid="stMainBlockContainer"],
+.stApp,
+[data-testid="stSidebar"],
+.main,
+.block-container,
+form, button {
+    opacity: 1 !important;
+    filter: blur(0px) !important;
+    pointer-events: auto !important;
+}
+/* Hide Streamlit running modal backdrop */
+[data-testid="stModalBackdrop"] {
+    display: none !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
+
 if "user_nav" not in st.session_state:
     st.session_state["user_nav"] = "Generate"
 if "admin_nav" not in st.session_state:
@@ -2032,12 +2033,14 @@ def show_user_dashboard():
 
     with tab1:
         generation_ui()
-        if not st.session_state.get("is_extracting", False) and st.session_state.get("session_leads", []):
+        if st.session_state.get("session_leads", []):
             st.markdown("### ⚡ Session Preview")
             import pandas as pd
             st.dataframe(pd.DataFrame(st.session_state.session_leads), hide_index=True)
 
     with tab2:
+        if st.session_state.get("is_extracting", False):
+            st.info("Extraction running in background — progress saved. Return to Generate to view live table.")
         if st.session_state.session_leads:
             st.markdown("### 📋 My Leads Table")
             import pandas as pd
@@ -2057,9 +2060,13 @@ def show_user_dashboard():
             st.info("💡 Generate leads first to see your leads table.")
 
     with tab3:
+        if st.session_state.get("is_extracting", False):
+            st.info("Extraction running in background — progress saved. Return to Generate to view live table.")
         show_user_analytics(st.session_state.get("username", ""))
 
     with tab4:
+        if st.session_state.get("is_extracting", False):
+            st.info("Extraction running in background — progress saved. Return to Generate to view live table.")
         render_billing_tab()
 
 
@@ -2220,13 +2227,16 @@ def show_admin_dashboard():
     ]
     
     selected_tab = st.radio("Navigation", tabs, horizontal=True, label_visibility="collapsed", key="admin_nav")
+    
+    if st.session_state.get("is_extracting", False) and selected_tab != tabs[0]:
+        st.info("Extraction running in background — progress saved. Return to Generate to view live table.")
 
     # ==========================================
     # TAB 1 — Generate
     # ==========================================
     if selected_tab == tabs[0]:
         generation_ui("(Admin)")
-        if not st.session_state.get("is_extracting", False) and st.session_state.get("session_leads", []):
+        if st.session_state.get("session_leads", []):
             st.markdown("### ⚡ Session Preview")
             st.dataframe(pd.DataFrame(st.session_state.session_leads), hide_index=True)
 
