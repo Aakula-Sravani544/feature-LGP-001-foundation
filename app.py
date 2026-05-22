@@ -169,13 +169,16 @@ if "scheduler" not in st.session_state:
 
 # Check for payment success from Stripe redirect
 check_payment_success()
-
 # Check session expiry
-if st.session_state.authenticated and not st.session_state.get("is_extracting", False) and check_session_expiry():
-    st.warning("Session expired. Please login again.")
-    for key in list(st.session_state.keys()):
-        del st.session_state[key]
-    st.rerun()
+if st.session_state.authenticated and check_session_expiry():
+    if not st.session_state.get("is_extracting", False):
+        st.warning("Session expired. Please login again.")
+        for key in list(st.session_state.keys()):
+            if key not in ["authenticated", "username", "role", "plan"]:
+                del st.session_state[key]
+        st.session_state["authenticated"] = False
+        st.rerun()
+
 # ==========================================
 # LOGIN PAGE
 # ==========================================
@@ -1126,7 +1129,7 @@ def get_sub_regions_ai(keyword: str, region: str, city: str) -> list:
         "chennai": ["T Nagar", "Anna Nagar", "Adyar", "Velachery", "Nungambakkam", "Mylapore", "Tambaram", "OMR", "Porur", "Chromepet"],
         "bangalore": ["Koramangala", "Indiranagar", "Whitefield", "Electronic City", "Jayanagar", "HSR Layout", "Marathahalli", "JP Nagar", "Bannerghatta", "BTM Layout"],
         "vijayawada": ["Benz Circle", "MG Road", "Governorpet", "Labbipet", "Patamata", "Gunadala", "Suryaraopet", "Eluru Road", "Auto Nagar", "Kandrika"],
-        "guntur": ["Brodipet", "Arundelpet", "Kothapet", "AT Agraharam", "Old Town", "Amaravathi Road", "Vidyanagar", "Nallapadu", "Naaz Centre", "Brindavan Gardens"],
+        "guntur": ["Brodipet", "Arundelpet", "Kothapet", "AT Agraharam", "Old Town", "Amaravathi Road", "Vidyanagar", "Naaz Centre", "Brindavan Gardens"],
     }
 
     specific_regions = []
@@ -1361,6 +1364,9 @@ def generation_ui(label_suffix=""):
                 help=get_upgrade_message(current_plan, "ai_scoring") if not ai_allowed else "Enable AI lead scoring",
                 key=f"ai_{label_suffix}"
             )
+            # Add Deep Enrichment toggle
+            deep_enrich = st.toggle("🧪 Deep Enrichment", value=False, help="Deep search contact info (10x slower)", key=f"deep_{label_suffix}")
+            
             if not ai_allowed:
                 st.caption(f"🔒 AI Scoring requires Starter plan. You are on {current_plan}.")
         with c7:
@@ -1499,6 +1505,8 @@ def generation_ui(label_suffix=""):
         st.session_state.keyword = keyword
         st.session_state.city = city
         st.session_state.region = region
+        st.session_state.use_ai = use_ai
+        st.session_state.deep_enrich = deep_enrich
         
         status_text = st.empty()
         status_text.text(f"🤖 AI analyzing sub-regions for {region or city}...")
@@ -1556,13 +1564,13 @@ def generation_ui(label_suffix=""):
                 seen_session_ids.add(k)
 
         # Batch execution
-        batch_target = 10
+        deep_enrich = st.session_state.get("deep_enrich", False)
+        batch_target = 20 if not deep_enrich else 5
         fast_mode = st.session_state.target_leads >= 50
         if fast_mode and "fast_mode_logged" not in st.session_state:
             st.session_state.logs += "[SYS] Fast Mode Enabled\n"
             st.session_state["fast_mode_logged"] = True
             
-        initial_collected = st.session_state.collected_leads
         batch_collected = 0
         duplicates_skipped = 0
         
@@ -1620,16 +1628,16 @@ def generation_ui(label_suffix=""):
             status_text.text(f"🔄 Scraping: {query} ({st.session_state.collected_leads}/{st.session_state.target_leads})")
             log_placeholder.markdown(f'<div class="log-box">{st.session_state.logs[-3000:]}</div>', unsafe_allow_html=True)
             
-            ai_flag = "1" if use_ai else "0"
-            # Keep batch small to prevent Render memory crash
-            sub_batch_target = min(batch_target, st.session_state.target_leads - st.session_state.collected_leads, batch_target - batch_collected)
+            ai_flag = "1" if st.session_state.use_ai else "0"
+            deep_flag = "1" if deep_enrich else "0"
+            sub_batch_target = min(batch_target, st.session_state.target_leads - st.session_state.collected_leads)
             
             import subprocess
             import sys
             import json
             import os
             process = subprocess.Popen(
-                [sys.executable, "-u", "scraper.py", query, str(sub_batch_target), ai_flag],
+                [sys.executable, "-u", "scraper.py", query, str(sub_batch_target), ai_flag, deep_flag],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
@@ -1638,8 +1646,6 @@ def generation_ui(label_suffix=""):
                 env={**os.environ, "PYTHONUNBUFFERED": "1"}
             )
 
-            leads_found_this_query = 0
-            duplicates_skipped_this_query = 0
             unique_added_this_query = 0
 
             for line in process.stdout:
@@ -1647,54 +1653,44 @@ def generation_ui(label_suffix=""):
                 if line.startswith("DATA:"):
                     try:
                         data = json.loads(line.replace("DATA:", "").strip())
-                        leads_found_this_query += 1
-
-                        is_session_dup = False
+                        is_dup = False
                         data_keys = get_lead_keys(data)
                         for k in data_keys:
                             if k in seen_session_ids:
-                                is_session_dup = True
+                                is_dup = True
                                 break
                         
-                        if is_session_dup:
-                            st.session_state.logs += f"[SYS] Session duplicate skipped: {data.get('name', 'Unknown')}\n"
-                            duplicates_skipped_this_query += 1
+                        if is_dup:
                             duplicates_skipped += 1
-                            st.session_state.area_duplicates += 1
-                            if duplicates_skipped_this_query >= 5:
-                                st.session_state.logs += f"[SYS] Duplicate-heavy query skipped\n"
+                            st.session_state.area_duplicates = st.session_state.get("area_duplicates", 0) + 1
+                            if st.session_state.area_duplicates >= 5:
+                                st.session_state.logs += f"[SYS] 5 consecutive duplicates found. Stopping query...\n"
                                 process.terminate()
                                 break
                         else:
-                            is_db_dup = False
-                            for db_lead in db_leads_list:
-                                if is_db_duplicate_lead(data, db_lead):
-                                    is_db_dup = True
-                                    break
-
-                            for k in data_keys:
-                                seen_session_ids.add(k)
-                                
-                            st.session_state.session_leads.append(data)
+                            data["validation_status"] = "Valid"
+                            for k in data_keys: seen_session_ids.add(k)
                             
-                            if is_db_dup:
-                                st.session_state.logs += f"[SYS] Existing DB duplicate allowed in session: {data.get('name', 'Unknown')}\n"
-                            else:
-                                database.save_to_db([data])
-                                db_leads_list.append(data)
-                                
-                            unique_added_this_query += 1
+                            st.session_state.session_leads.append(data)
+                            database.save_to_db([data])
+                            
                             st.session_state.collected_leads = len(st.session_state.session_leads)
                             st.session_state.remaining_leads = st.session_state.target_leads - st.session_state.collected_leads
+                            unique_added_this_query += 1
                             batch_collected += 1
+                            st.session_state.area_duplicates = 0
                             
-                            if batch_collected >= batch_target:
+                            if batch_collected >= batch_target or st.session_state.collected_leads >= st.session_state.target_leads:
                                 st.session_state.completed_batches += 1
                                 google_sheets.save_to_google_sheets(st.session_state.session_leads)
                                 batch_collected = 0
                                 st.session_state.logs += f"[SYS] Batch completed {st.session_state.collected_leads}/{st.session_state.target_leads}\n"
-                                st.session_state.logs += f"[SYS] Saved progress: {st.session_state.collected_leads}/{st.session_state.target_leads}\n"
-                                st.session_state.logs += f"[SYS] Resume available if interrupted\n"
+                                log_placeholder.markdown(f'<div class="log-box">{st.session_state.logs[-3000:]}</div>', unsafe_allow_html=True)
+                                
+                                if st.session_state.collected_leads >= st.session_state.target_leads:
+                                    process.terminate()
+                                    break
+                    except: pass
 
                         valid_count = len([x for x in st.session_state.session_leads if x.get("validation_status") == "Valid"])
                         m1_metric.metric("Total Scraped", st.session_state.collected_leads)

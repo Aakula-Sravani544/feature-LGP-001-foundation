@@ -364,35 +364,15 @@ def enrich_leads(leads: list) -> list:
 
     return leads
 
-def process_single_lead(lead, use_ai):
+def process_single_lead(lead, use_ai, deep_enrich=False):
     """Memory-safe lead enrichment."""
-    # Skip website enrichment if lead already has phone to speed up generation
-    # Only fetch website when email is missing AND phone is missing
-    if lead.get("phone"):
-        lead["social_media"] = ""
-        # Still do AI scoring
-        if use_ai:
-            try:
-                from ai_engine import analyze_single_lead
-                lead = analyze_single_lead(lead)
-            except Exception:
-                pass
-        else:
-            try:
-                from ai_engine import rule_based_score
-                score = rule_based_score(lead)
-                lead["ai_analysis"] = json.dumps(score)
-                lead["ai_score"] = score.get("score", 0)
-            except Exception:
-                pass
-        try:
-            lead = validate_lead(lead)
-        except Exception:
-            lead["validation_status"] = "Pending"
-        return lead
-        
-    """Memory-safe lead enrichment — strict limits to prevent RAM crash."""
-    if lead.get("website"):
+    # Fast Google Maps Mode: Do not fetch website HTML unless email is missing AND Deep Enrichment is enabled
+    should_fetch_website = False
+    if lead.get("website") and not lead.get("email"):
+        if deep_enrich:
+            should_fetch_website = True
+
+    if should_fetch_website:
         try:
             resp = requests.get(
                 lead["website"],
@@ -514,6 +494,7 @@ def main():
     query = sys.argv[1]
     limit = min(int(sys.argv[2]) if len(sys.argv) > 2 else 10, 100)
     use_ai = sys.argv[3] == "1" if len(sys.argv) > 3 else False
+    deep_enrich = sys.argv[4] == "1" if len(sys.argv) > 4 else False
 
     print(f"LOG:🚀 LeadPulse Pro Engine | Target: {limit}", flush=True)
     print(f"LOG:Query: {query}", flush=True)
@@ -530,7 +511,7 @@ def main():
     for i, lead in enumerate(leads):
         print(f"LOG:Processing {i+1}/{len(leads)}: {lead.get('name','')[:30]}", flush=True)
         try:
-            enriched = process_single_lead(lead, use_ai)
+            enriched = process_single_lead(lead, use_ai, deep_enrich)
             print(f"DATA:{json.dumps(enriched)}", flush=True)
             # Clear from memory immediately after printing
             del enriched
