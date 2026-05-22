@@ -10,6 +10,9 @@ import json
 import requests
 import logging
 from datetime import datetime
+from dotenv import load_dotenv
+
+load_dotenv()
 
 logging.basicConfig(level=logging.WARNING)
 
@@ -43,14 +46,28 @@ def run_launch_checklist():
     # SECTION 1 — Environment Variables
     # ==========================================
     print("\n📋 Environment Variables")
-    check("SERPER_API_KEY configured", bool(os.environ.get("SERPER_API_KEY")))
-    check("GEMINI_API_KEY configured", bool(os.environ.get("GEMINI_API_KEY")))
-    check("GOOGLE_SHEETS_CREDENTIALS configured", bool(os.environ.get("GOOGLE_SHEETS_CREDENTIALS")))
-    check("SHEET_NAME configured", bool(os.environ.get("SHEET_NAME")))
-    check("APP_URL configured", bool(os.environ.get("APP_URL")))
-    check("APOLLO_API_KEY configured", bool(os.environ.get("APOLLO_API_KEY")), warn_only=True)
-    check("STRIPE_SECRET_KEY configured", bool(os.environ.get("STRIPE_SECRET_KEY")), warn_only=True)
-    check("SMTP_USER configured", bool(os.environ.get("SMTP_USER")), warn_only=True)
+    check("SERPER_API_KEY configured", bool(os.getenv("SERPER_API_KEY")))
+    check("GEMINI_API_KEY configured", bool(os.getenv("GEMINI_API_KEY")))
+    
+    google_creds = os.getenv("GOOGLE_SHEETS_CREDENTIALS", "")
+    is_valid_creds = False
+    if google_creds:
+        if google_creds.endswith(".json") and os.path.exists(google_creds):
+            is_valid_creds = True
+        else:
+            try:
+                parsed = json.loads(google_creds)
+                if isinstance(parsed, dict) and "project_id" in parsed:
+                    is_valid_creds = True
+            except:
+                pass
+    check("GOOGLE_SHEETS_CREDENTIALS configured", is_valid_creds)
+    
+    check("SHEET_NAME configured", bool(os.getenv("SHEET_NAME")))
+    check("APP_URL configured", bool(os.getenv("APP_URL")))
+    check("APOLLO_API_KEY configured", bool(os.getenv("APOLLO_API_KEY")), warn_only=True)
+    check("STRIPE_SECRET_KEY configured", bool(os.getenv("STRIPE_SECRET_KEY")), warn_only=True)
+    check("SMTP_USER configured", bool(os.getenv("SMTP_USER")), warn_only=True)
 
     # ==========================================
     # SECTION 2 — Required Files
@@ -180,7 +197,7 @@ def run_launch_checklist():
     # SECTION 10 — App Health
     # ==========================================
     print("\n🌐 App Health Check")
-    app_url = os.environ.get("APP_URL", "https://leadpulse-pro.onrender.com")
+    app_url = os.getenv("APP_URL", "https://feature-lgp-001-foundation-art9.onrender.com")
     try:
         response = requests.get(f"{app_url}/_stcore/health", timeout=15)
         check("App responding", response.status_code == 200)
@@ -212,7 +229,7 @@ def run_launch_checklist():
 
 🚀 You have successfully completed the 21-day build!
 
-Share your app: https://leadpulse-pro.onrender.com
+Share your app: https://feature-lgp-001-foundation-art9.onrender.com
         """)
     elif rate >= 70:
         print("⚠️ MOSTLY READY — Fix failing checks before sharing")
