@@ -2159,20 +2159,31 @@ def show_admin_dashboard():
     div[data-testid="stRadio"] > div[role="radiogroup"] {
         display: flex;
         flex-direction: row;
-        gap: 0px !important;
-        border-bottom: 2px solid #E2E8F0;
+        flex-wrap: nowrap !important;
+        overflow-x: auto !important;
+        white-space: nowrap !important;
+        gap: 24px !important;
+        border-bottom: 1px solid #dbe3ef !important;
         padding-bottom: 0px;
         margin-bottom: 20px;
     }
+    div[data-testid="stRadio"] > div[role="radiogroup"]::-webkit-scrollbar {
+        display: none;
+    }
+    div[data-testid="stRadio"] > div[role="radiogroup"] {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
     div[data-testid="stRadio"] > div[role="radiogroup"] > label {
-        padding: 10px 20px !important;
+        padding: 10px 0px !important;
         margin: 0 !important;
         background: transparent !important;
         border: none !important;
         border-radius: 0 !important;
         cursor: pointer !important;
         border-bottom: 2px solid transparent !important;
-        margin-bottom: -2px !important;
+        margin-bottom: -1px !important;
+        white-space: nowrap !important;
     }
     /* Hide the radio circle */
     div[data-testid="stRadio"] > div[role="radiogroup"] > label > div:first-child {
@@ -2183,12 +2194,13 @@ def show_admin_dashboard():
         font-weight: 600 !important;
         color: #64748B !important;
         margin: 0 !important;
+        white-space: nowrap !important;
     }
     div[data-testid="stRadio"] > div[role="radiogroup"] > label:hover p {
         color: #3B82F6 !important;
     }
     div[data-testid="stRadio"] > div[role="radiogroup"] > label:has(input:checked) {
-        border-bottom: 2px solid #EF4444 !important;
+        border-bottom: 2px solid red !important;
     }
     div[data-testid="stRadio"] > div[role="radiogroup"] > label:has(input:checked) p {
         color: #3B82F6 !important;
