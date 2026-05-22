@@ -2087,25 +2087,73 @@ def show_admin_dashboard():
     mrr = sum(plan_revenue.get(u.get("plan", "Free"), 0) for u in all_users)
 
     # Top row metrics
+    
+    st.markdown("""
+    <style>
+    /* Metric Card Buttons */
+    div[data-testid="column"] button[kind="secondary"] {
+        background: #fff !important;
+        border: 0.5px solid #E2E8F0 !important;
+        border-radius: 12px !important;
+        padding: 16px !important;
+        text-align: center !important;
+        height: auto !important;
+        min-height: 90px !important;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.02) !important;
+        transition: all 0.2s ease !important;
+        cursor: pointer !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: center !important;
+    }
+    div[data-testid="column"] button[kind="secondary"]:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 8px 15px rgba(0,0,0,0.05) !important;
+        border-color: #3B82F6 !important;
+    }
+    div[data-testid="column"] button[kind="secondary"] p {
+        font-size: 13px !important;
+        font-weight: 500 !important;
+        color: #64748B !important;
+        margin: 0 !important;
+        line-height: 1.2 !important;
+    }
+    div[data-testid="column"] button[kind="secondary"] p:nth-of-type(2) {
+        font-size: 24px !important;
+        font-weight: 600 !important;
+        color: #0F172A !important;
+        margin-top: 8px !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    def nav_to(page):
+        st.session_state["admin_nav"] = page
+
     c1, c2, c3, c4, c5 = st.columns(5)
     with c1:
-        st.markdown(f'<div class="metric-card"><div class="metric-label">Total Leads</div><div class="metric-value">{total_leads}</div></div>', unsafe_allow_html=True)
+        if st.button(f"Total Leads\n\n**{total_leads}**", key="nav_total_leads", use_container_width=True):
+            nav_to("🗄️ Master Database")
     with c2:
-        st.markdown(f'<div class="metric-card"><div class="metric-label">Active Users</div><div class="metric-value">{len(all_users)}</div></div>', unsafe_allow_html=True)
+        if st.button(f"Active Users\n\n**{len(all_users)}**", key="nav_active_users", use_container_width=True):
+            nav_to("👥 User Management")
     with c3:
-        st.markdown(f'<div class="metric-card"><div class="metric-label">Global Quality</div><div class="metric-value">{quality_pct}%</div></div>', unsafe_allow_html=True)
+        if st.button(f"Global Quality\n\n**{quality_pct}%**", key="nav_global_quality", use_container_width=True):
+            nav_to("📊 Analytics")
     with c4:
-        st.markdown(f'<div class="metric-card"><div class="metric-label">MRR</div><div class="metric-value">${mrr}</div></div>', unsafe_allow_html=True)
+        if st.button(f"MRR\n\n**${mrr}**", key="nav_mrr", use_container_width=True):
+            nav_to("💰 Revenue")
     with c5:
         paid_users = sum(1 for u in all_users if u.get("plan", "Free") != "Free")
-        st.markdown(f'<div class="metric-card"><div class="metric-label">Paid Users</div><div class="metric-value">{paid_users}</div></div>', unsafe_allow_html=True)
+        if st.button(f"Paid Users\n\n**{paid_users}**", key="nav_paid_users", use_container_width=True):
+            nav_to("💰 Revenue")
 
     st.markdown("<br><hr><br>", unsafe_allow_html=True)
 
     # ==========================================
-    # TABS
+    # TABS (Using radio for programmable state)
     # ==========================================
-    tabs = st.tabs([
+    tabs = [
         "🚀 Generate",
         "🗄️ Master Database",
         "👥 User Management",
@@ -2114,12 +2162,14 @@ def show_admin_dashboard():
         "💰 Revenue",
         "⏰ Scheduler",
         "🛠️ System Settings"
-    ])
+    ]
+    
+    selected_tab = st.radio("Navigation", tabs, horizontal=True, label_visibility="collapsed", key="admin_nav")
 
     # ==========================================
     # TAB 1 — Generate
     # ==========================================
-    with tabs[0]:
+    if selected_tab == tabs[0]:
         generation_ui("(Admin)")
         if not st.session_state.get("is_extracting", False) and st.session_state.get("session_leads", []):
             st.markdown("### ⚡ Session Preview")
@@ -2128,7 +2178,7 @@ def show_admin_dashboard():
     # ==========================================
     # TAB 2 — Master Database
     # ==========================================
-    with tabs[1]:
+    if selected_tab == tabs[1]:
         st.markdown("### 🗄️ Master Lead Repository")
         df_master = database.load_db()
         if df_master.empty:
@@ -2181,7 +2231,7 @@ def show_admin_dashboard():
     # ==========================================
     # TAB 3 — User Management (CRUD)
     # ==========================================
-    with tabs[2]:
+    if selected_tab == tabs[2]:
         st.markdown("### 👥 User Management")
         from auth import get_all_users, register_user, delete_user, update_user_plan, update_password
 
@@ -2245,7 +2295,7 @@ def show_admin_dashboard():
     # ==========================================
     # TAB 4 — Activity Logs
     # ==========================================
-    with tabs[3]:
+    if selected_tab == tabs[3]:
         st.markdown("### 📜 System Activity Logs")
         try:
             logs_df = database.get_logs()
@@ -2259,7 +2309,7 @@ def show_admin_dashboard():
     # ==========================================
     # TAB 5 — Analytics
     # ==========================================
-    with tabs[4]:
+    if selected_tab == tabs[4]:
         st.markdown("### 📊 Platform Analytics")
         if not df_master.empty:
             import plotly.express as px
@@ -2326,7 +2376,7 @@ def show_admin_dashboard():
     # ==========================================
     # TAB 6 — Revenue
     # ==========================================
-    with tabs[5]:
+    if selected_tab == tabs[5]:
         st.markdown("### 💰 Revenue Dashboard")
         from auth import get_all_users
         all_users_rev = get_all_users()
@@ -2355,19 +2405,19 @@ def show_admin_dashboard():
     # ==========================================
     # TAB 7 — Scheduler
     # ==========================================
-    with tabs[6]:
+    if selected_tab == tabs[6]:
         render_scheduler_ui(st.session_state.get("plan", "Free"))
 
     # ==========================================
     # TAB 8 — System Settings
     # ==========================================
-    with tabs[7]:
+    if selected_tab == tabs[7]:
         st.markdown("### ⚙️ System Settings")
 
         st.markdown("#### ☁️ Google Sheets Sync")
         col1, col2 = st.columns(2)
         with col1:
-            if st.button("🔄 Force Cloud Sync", use_container_width=True):
+            if st.button("🔄 Force Cloud Sync", use_container_width=True, type="primary"):
                 with st.spinner("Syncing..."):
                     df_local = database.load_db()
                     if not df_local.empty:
@@ -2418,7 +2468,7 @@ def show_admin_dashboard():
             json_master = df_master.to_json(orient="records").encode("utf-8")
             st.download_button("📥 Master JSON", json_master, "master.json", "application/json", use_container_width=True)
         with dm_col3:
-            if st.button("🚨 Wipe System", use_container_width=True):
+            if st.button("🚨 Wipe System", use_container_width=True, type="primary"):
                 database.clear_all_leads()
                 google_sheets.clear_sheet_data()
                 st.success("✅ System wiped")
