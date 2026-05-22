@@ -364,80 +364,26 @@ def enrich_leads(leads: list) -> list:
 
     return leads
 
-def process_single_lead(lead, use_ai, deep_enrich=False):
-    """Memory-safe lead enrichment."""
-    # Fast Google Maps Mode: Do not fetch website HTML unless email is missing AND Deep Enrichment is enabled
-    should_fetch_website = False
-    if lead.get("website") and not lead.get("email"):
-        if deep_enrich:
-            should_fetch_website = True
+def process_single_lead(lead, use_ai=False, deep_enrich=False):
+    """Lightweight Fast Mode lead enrichment."""
+    # Fast Mode: NEVER fetch websites to save memory
+    lead["social_media"] = ""
+    lead["additional_data"] = ""
+    
+    # Missing data safety
+    if not lead.get("email"):
+        lead["email"] = ""
+    if not lead.get("website"):
+        lead["website"] = ""
 
-    if should_fetch_website:
-        try:
-            resp = requests.get(
-                lead["website"],
-                timeout=2,
-                headers=HEADERS,
-                allow_redirects=True,
-                stream=True
-            )
-            # Read only first 20KB — prevents memory crash
-            html = ""
-            size = 0
-            for chunk in resp.iter_content(chunk_size=4096, decode_unicode=True):
-                if chunk:
-                    html += chunk if isinstance(chunk, str) else chunk.decode("utf-8", errors="ignore")
-                    size += len(html)
-                    if size > 20000:
-                        break
-            resp.close()
-
-            # Email only
-            if not lead.get("email"):
-                emails = re.findall(r'mailto:([^\s\'"<>?]+)', html)
-                for email in emails:
-                    email = email.strip()
-                    try:
-                        validate_email(email)
-                        if not any(x in email.lower() for x in ['png','jpg','css','js']):
-                            lead["email"] = email
-                            break
-                    except: continue
-
-            # Social media — quick regex only
-            social = {}
-            fb = re.search(r'facebook\.com/([^\s\'"<>\)]{3,40})', html)
-            ig = re.search(r'instagram\.com/([^\s\'"<>\)]{3,40})', html)
-            if fb:
-                social["facebook"] = f"https://facebook.com/{fb.group(1).rstrip('/')}"
-            if ig:
-                social["instagram"] = f"https://instagram.com/{ig.group(1).rstrip('/')}"
-            lead["social_media"] = json.dumps(social) if social else ""
-
-            # Clear html from memory immediately
-            del html
-
-        except Exception:
-            lead["social_media"] = ""
-    else:
-        lead["social_media"] = ""
-        lead["additional_data"] = ""
-
-    # AI scoring
-    if use_ai:
-        try:
-            from ai_engine import analyze_single_lead
-            lead = analyze_single_lead(lead)
-        except Exception:
-            pass
-    else:
-        try:
-            from ai_engine import rule_based_score
-            score = rule_based_score(lead)
-            lead["ai_analysis"] = json.dumps(score)
-            lead["ai_score"] = score.get("score", 0)
-        except Exception:
-            pass
+    # ONLY rule-based AI scoring to avoid Gemini memory spikes
+    try:
+        from ai_engine import rule_based_score
+        score = rule_based_score(lead)
+        lead["ai_analysis"] = json.dumps(score)
+        lead["ai_score"] = score.get("score", 0)
+    except Exception:
+        pass
 
     try:
         lead = validate_lead(lead)
@@ -494,9 +440,8 @@ def main():
     query = sys.argv[1]
     limit = min(int(sys.argv[2]) if len(sys.argv) > 2 else 10, 100)
     use_ai = sys.argv[3] == "1" if len(sys.argv) > 3 else False
-    deep_enrich = sys.argv[4] == "1" if len(sys.argv) > 4 else False
 
-    print(f"LOG:🚀 LeadPulse Pro Engine | Target: {limit}", flush=True)
+    print(f"LOG:🚀 LeadPulse Fast Mode | Target: {limit}", flush=True)
     print(f"LOG:Query: {query}", flush=True)
 
     # Search
@@ -511,7 +456,7 @@ def main():
     for i, lead in enumerate(leads):
         print(f"LOG:Processing {i+1}/{len(leads)}: {lead.get('name','')[:30]}", flush=True)
         try:
-            enriched = process_single_lead(lead, use_ai, deep_enrich)
+            enriched = process_single_lead(lead, use_ai)
             print(f"DATA:{json.dumps(enriched)}", flush=True)
             # Clear from memory immediately after printing
             del enriched

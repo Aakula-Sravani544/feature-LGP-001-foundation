@@ -1558,14 +1558,12 @@ def generation_ui(label_suffix=""):
         except:
             db_leads_list = []
 
-        seen_session_ids = set()
-        for l in st.session_state.session_leads:
-            for k in get_lead_keys(l):
-                seen_session_ids.add(k)
+        # No longer using seen_session_ids for memory efficiency
 
         # Batch execution
-        deep_enrich = st.session_state.get("deep_enrich", False)
-        batch_target = 20 if not deep_enrich else 5
+        FAST_MODE = True
+        deep_enrich = st.session_state.get("deep_enrich", False) and not FAST_MODE
+        batch_target = 3
         fast_mode = st.session_state.target_leads >= 50
         if fast_mode and "fast_mode_logged" not in st.session_state:
             st.session_state.logs += "[SYS] Fast Mode Enabled\n"
@@ -1630,7 +1628,7 @@ def generation_ui(label_suffix=""):
             
             ai_flag = "1" if st.session_state.use_ai else "0"
             deep_flag = "1" if deep_enrich else "0"
-            sub_batch_target = min(batch_target, st.session_state.target_leads - st.session_state.collected_leads)
+            sub_batch_target = min(3, st.session_state.target_leads - st.session_state.collected_leads)
             
             import subprocess
             import sys
@@ -1654,11 +1652,12 @@ def generation_ui(label_suffix=""):
                     try:
                         data = json.loads(line.replace("DATA:", "").strip())
                         is_dup = False
-                        data_keys = get_lead_keys(data)
-                        for k in data_keys:
-                            if k in seen_session_ids:
-                                is_dup = True
-                                break
+                        # Memory-safe duplicate check
+                        recent_leads = st.session_state.session_leads[-50:]
+                        existing_names = [l.get("name","").lower() for l in recent_leads]
+
+                        if data.get("name","").lower() in existing_names:
+                            is_dup = True
                         
                         if is_dup:
                             duplicates_skipped += 1
@@ -1669,7 +1668,6 @@ def generation_ui(label_suffix=""):
                                 break
                         else:
                             data["validation_status"] = "Valid"
-                            for k in data_keys: seen_session_ids.add(k)
                             
                             st.session_state.session_leads.append(data)
                             database.save_to_db([data])
@@ -1714,7 +1712,7 @@ def generation_ui(label_suffix=""):
             process.wait()
             
             import time as _time
-            _time.sleep(1)  # Let Render recover memory between batches
+            _time.sleep(2)  # Let Render recover memory between batches
 
             if st.session_state.phase == 1:
                 if st.session_state.get("area_duplicates", 0) > 5:
