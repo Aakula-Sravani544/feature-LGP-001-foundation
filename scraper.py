@@ -263,7 +263,14 @@ def search_with_serper(query: str, limit: int = 10) -> list:
             lead["rating"] = str(place.get("rating", ""))
             
             # 6. REVIEWS
-            lead["reviews"] = str(place.get("reviews") or place.get("reviewsCount") or place.get("userRatingCount") or "")
+            reviews = (
+                place.get("reviews")
+                or place.get("reviewsCount")
+                or place.get("review_count")
+                or place.get("userRatingCount")
+                or 0
+            )
+            lead["reviews"] = str(reviews)
             
             # 7. CATEGORY
             lead["category"] = place.get("category") or place.get("type") or place.get("businessType") or query.split()[0].title()
@@ -386,6 +393,106 @@ def enrich_leads(leads: list) -> list:
         time.sleep(0.1)
 
     return leads
+
+def enrich_single_fast(lead: dict) -> dict:
+    """Safe, fast website enrichment with strict limits."""
+    for k in ["email", "social_media", "additional_data", "hours"]:
+        if not lead.get(k):
+            lead[k] = ""
+            
+    if not lead.get("website") or not str(lead["website"]).startswith("http"):
+        return lead
+        
+    needs_enrich = not lead["email"] or not lead["social_media"] or not lead["additional_data"]
+    if not needs_enrich:
+        return lead
+        
+    try:
+        resp = requests.get(
+            lead["website"],
+            timeout=1,
+            headers=HEADERS,
+            stream=True,
+            allow_redirects=False
+        )
+        
+        html = ""
+        for chunk in resp.iter_content(chunk_size=2048):
+            html += chunk.decode('utf-8', errors='ignore')
+            if len(html) > 15360:  # 15KB limit
+                break
+        resp.close()
+        
+        if html:
+            # 1. Email Extraction
+            if not lead["email"]:
+                mailto_match = re.search(r'href=[\'"]mailto:([^\'"?]+)', html, re.IGNORECASE)
+                if mailto_match:
+                    try:
+                        email = mailto_match.group(1).strip()
+                        validate_email(email)
+                        lead["email"] = email
+                    except: pass
+                    
+                if not lead["email"]:
+                    emails = re.findall(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', html)
+                    for e in emails:
+                        e_lower = e.lower()
+                        if not any(x in e_lower for x in ['png', 'jpg', 'jpeg', 'css', 'js', 'example', 'noreply', 'no-reply']):
+                            try:
+                                validate_email(e)
+                                lead["email"] = e
+                                break
+                            except: pass
+                            
+            # 2. Social Media Extraction
+            if not lead["social_media"]:
+                social = {}
+                patterns = {
+                    "facebook": r'facebook\.com/[^\s\'"<>\)]{3,50}',
+                    "instagram": r'instagram\.com/[^\s\'"<>\)]{3,50}',
+                    "linkedin": r'linkedin\.com/(?:company|in)/[^\s\'"<>\)]{3,50}',
+                    "twitter": r'(?:twitter|x)\.com/[^\s\'"<>\)]{3,50}',
+                    "youtube": r'youtube\.com/[^\s\'"<>\)]{3,50}'
+                }
+                for platform, pattern in patterns.items():
+                    matches = re.findall(pattern, html, re.IGNORECASE)
+                    if matches:
+                        clean = matches[0].rstrip('/"\'').strip()
+                        if len(clean) > 10:
+                            social[platform] = "https://" + clean
+                if social:
+                    lead["social_media"] = json.dumps(social)
+                    
+            # 3. Additional Data Extraction
+            if not lead["additional_data"]:
+                add_data = {}
+                tech = []
+                html_lower = html.lower()
+                if "wp-content" in html_lower or "wp-includes" in html_lower: tech.append("WordPress")
+                if "shopify" in html_lower: tech.append("Shopify")
+                if "wix.com" in html_lower: tech.append("Wix")
+                if "gtag" in html_lower or "google-analytics" in html_lower: tech.append("Google Analytics")
+                if tech: add_data["tech_stack"] = tech
+                    
+                title_match = re.search(r'<title[^>]*>([^<]+)</title>', html, re.IGNORECASE)
+                if title_match: add_data["page_title"] = title_match.group(1).strip()
+                    
+                meta_match = re.search(r'<meta[^>]*name=[\'"]description[\'"][^>]*content=[\'"]([^\'"]+)[\'"]', html, re.IGNORECASE)
+                if not meta_match:
+                    meta_match = re.search(r'<meta[^>]*content=[\'"]([^\'"]+)[\'"][^>]*name=[\'"]description[\'"]', html, re.IGNORECASE)
+                if meta_match: add_data["meta_description"] = meta_match.group(1).strip()
+                    
+                if add_data:
+                    data_str = json.dumps(add_data)
+                    if len(data_str) > 500: data_str = data_str[:497] + "..."
+                    lead["additional_data"] = data_str
+                    
+        del html
+    except Exception:
+        pass
+        
+    return lead
 
 def process_single_lead(lead, use_ai=False, deep_enrich=False):
     """Lightweight Fast Mode lead enrichment with Optional Deep Enrichment."""
@@ -555,10 +662,25 @@ def main():
     for i, lead in enumerate(leads):
         print(f"LOG:Processing {i+1}/{len(leads)}: {lead.get('name','')[:30]}", flush=True)
         try:
-            enriched = process_single_lead(lead, use_ai, deep_enrich)
-            print(f"DATA:{json.dumps(enriched)}", flush=True)
-            # Clear from memory immediately after printing
-            del enriched
+            # 1. Fast Enrichment
+            lead = enrich_single_fast(lead)
+            
+            # 2. Rule-based score
+            try:
+                from ai_engine import rule_based_score
+                score = rule_based_score(lead)
+                lead["ai_analysis"] = json.dumps(score)
+                lead["ai_score"] = score.get("score", 0)
+            except Exception:
+                pass
+                
+            # 3. Validate
+            try:
+                lead = validate_lead(lead)
+            except Exception:
+                lead["validation_status"] = "Pending"
+                
+            print(f"DATA:{json.dumps(lead)}", flush=True)
         except Exception as e:
             logger.debug(f"Lead failed: {e}")
             lead["validation_status"] = "Pending"
