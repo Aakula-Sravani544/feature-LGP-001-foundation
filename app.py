@@ -2153,6 +2153,49 @@ def show_admin_dashboard():
     # ==========================================
     # TABS (Using radio for programmable state)
     # ==========================================
+    st.markdown("""
+    <style>
+    /* Radio Tabs Styling */
+    div[data-testid="stRadio"] > div[role="radiogroup"] {
+        display: flex;
+        flex-direction: row;
+        gap: 0px !important;
+        border-bottom: 2px solid #E2E8F0;
+        padding-bottom: 0px;
+        margin-bottom: 20px;
+    }
+    div[data-testid="stRadio"] > div[role="radiogroup"] > label {
+        padding: 10px 20px !important;
+        margin: 0 !important;
+        background: transparent !important;
+        border: none !important;
+        border-radius: 0 !important;
+        cursor: pointer !important;
+        border-bottom: 2px solid transparent !important;
+        margin-bottom: -2px !important;
+    }
+    /* Hide the radio circle */
+    div[data-testid="stRadio"] > div[role="radiogroup"] > label > div:first-child {
+        display: none !important;
+    }
+    div[data-testid="stRadio"] > div[role="radiogroup"] > label p {
+        font-size: 14px !important;
+        font-weight: 600 !important;
+        color: #64748B !important;
+        margin: 0 !important;
+    }
+    div[data-testid="stRadio"] > div[role="radiogroup"] > label:hover p {
+        color: #3B82F6 !important;
+    }
+    div[data-testid="stRadio"] > div[role="radiogroup"] > label:has(input:checked) {
+        border-bottom: 2px solid #EF4444 !important;
+    }
+    div[data-testid="stRadio"] > div[role="radiogroup"] > label:has(input:checked) p {
+        color: #3B82F6 !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
     tabs = [
         "🚀 Generate",
         "🗄️ Master Database",
