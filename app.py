@@ -1628,12 +1628,16 @@ def generation_ui(label_suffix=""):
             
             ai_flag = "1" if st.session_state.use_ai else "0"
             deep_flag = "1" if deep_enrich else "0"
-            sub_batch_target = min(3, st.session_state.target_leads - st.session_state.collected_leads)
+            sub_batch_target = 10
+            target_unique_per_phase = 5
             
             import subprocess
             import sys
             import json
             import os
+            
+            st.session_state.logs += f"[SYS] Phase target: {target_unique_per_phase} unique leads\n"
+            
             process = subprocess.Popen(
                 [sys.executable, "-u", "scraper.py", query, str(sub_batch_target), ai_flag, deep_flag],
                 stdout=subprocess.PIPE,
@@ -1644,11 +1648,14 @@ def generation_ui(label_suffix=""):
                 env={**os.environ, "PYTHONUNBUFFERED": "1"}
             )
 
+            leads_found_this_query = 0
             unique_added_this_query = 0
+            duplicates_this_query = 0
 
             for line in process.stdout:
                 line = line.strip()
                 if line.startswith("DATA:"):
+                    leads_found_this_query += 1
                     try:
                         data = json.loads(line.replace("DATA:", "").strip())
                         is_dup = False
@@ -1661,11 +1668,7 @@ def generation_ui(label_suffix=""):
                         
                         if is_dup:
                             duplicates_skipped += 1
-                            st.session_state.area_duplicates = st.session_state.get("area_duplicates", 0) + 1
-                            if st.session_state.area_duplicates >= 5:
-                                st.session_state.logs += f"[SYS] 5 consecutive duplicates found. Stopping query...\n"
-                                process.terminate()
-                                break
+                            duplicates_this_query += 1
                         else:
                             data["validation_status"] = "Valid"
                             
@@ -1676,18 +1679,14 @@ def generation_ui(label_suffix=""):
                             st.session_state.remaining_leads = st.session_state.target_leads - st.session_state.collected_leads
                             unique_added_this_query += 1
                             batch_collected += 1
-                            st.session_state.area_duplicates = 0
                             
-                            if batch_collected >= batch_target or st.session_state.collected_leads >= st.session_state.target_leads:
+                            if unique_added_this_query >= target_unique_per_phase or st.session_state.collected_leads >= st.session_state.target_leads:
                                 st.session_state.completed_batches += 1
                                 google_sheets.save_to_google_sheets(st.session_state.session_leads)
                                 batch_collected = 0
-                                st.session_state.logs += f"[SYS] Batch completed {st.session_state.collected_leads}/{st.session_state.target_leads}\n"
-                                log_placeholder.markdown(f'<div class="log-box">{st.session_state.logs[-3000:]}</div>', unsafe_allow_html=True)
                                 
-                                if st.session_state.collected_leads >= st.session_state.target_leads:
-                                    process.terminate()
-                                    break
+                                process.terminate()
+                                break
 
                         valid_count = len([x for x in st.session_state.session_leads if x.get("validation_status") == "Valid"])
                         m1_metric.metric("Total Scraped", st.session_state.collected_leads)
@@ -1711,14 +1710,15 @@ def generation_ui(label_suffix=""):
 
             process.wait()
             
+            st.session_state.logs += f"[SYS] Found {leads_found_this_query} | Added {unique_added_this_query} unique | Duplicates {duplicates_this_query}\n"
+            st.session_state.logs += f"[SYS] Moving to next phase\n"
+            log_placeholder.markdown(f'<div class="log-box">{st.session_state.logs[-3000:]}</div>', unsafe_allow_html=True)
+            
             import time as _time
             _time.sleep(2)  # Let Render recover memory between batches
 
             if st.session_state.phase == 1:
-                if st.session_state.get("area_duplicates", 0) > 5:
-                    st.session_state.logs += f"[SYS] Duplicate threshold reached for {current_sub_region}. Moving to next area...\n"
                 st.session_state.area_idx += 1
-                st.session_state.area_duplicates = 0
                 if st.session_state.area_idx < len(st.session_state.specific_sub_regions):
                     next_area = st.session_state.specific_sub_regions[st.session_state.area_idx]
                     st.session_state.logs += f"[SYS] Moving to next area: {next_area}\n"
@@ -1729,13 +1729,10 @@ def generation_ui(label_suffix=""):
                 else:
                     st.session_state.consecutive_zero_yields = 0
 
-                if st.session_state.get("area_duplicates", 0) > 5 or st.session_state.consecutive_zero_yields >= 2:
-                    if st.session_state.get("area_duplicates", 0) > 5:
-                        st.session_state.logs += f"[SYS] Duplicate threshold reached for {current_sub_region}. Moving to next area...\n"
+                if st.session_state.consecutive_zero_yields >= 2:
                     st.session_state.fallback_idx += 1
                     st.session_state.q_idx = 0
                     st.session_state.consecutive_zero_yields = 0
-                    st.session_state.area_duplicates = 0
                     if st.session_state.fallback_idx < len(st.session_state.fallback_areas):
                         next_area = st.session_state.fallback_areas[st.session_state.fallback_idx]
                         st.session_state.logs += f"[SYS] Moving to next area: {next_area}\n"
