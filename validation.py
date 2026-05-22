@@ -110,13 +110,9 @@ def validate_lead(lead: Dict[str, Any]) -> Dict[str, Any]:
     # "Valid" -> phone OR email is present and passed validation
     if has_phone or has_email:
         lead["validation_status"] = "Valid"
-    # "Invalid" -> phone/email present but both failed validation
-    elif raw_phone or raw_email:
-        lead["validation_status"] = "Invalid"
-    # "Pending" -> both phone and email are completely absent
     else:
         lead["validation_status"] = "Pending"
-        notes.append("No contact data found")
+        notes.append("Contact details not available from source")
 
     lead["validation_notes"] = ", ".join(notes)
     return lead

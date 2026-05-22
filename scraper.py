@@ -240,21 +240,44 @@ def search_with_serper(query: str, limit: int = 10) -> list:
         print(f"LOG:Serper returned {len(places)} places for: {query}", flush=True)
 
         for place in places:
-            name = place.get("title", "").strip()
+            # 1. NAME
+            name = place.get("title") or place.get("name") or ""
+            name = name.strip()
             if not name or name.lower() in seen_names:
                 continue
             seen_names.add(name.lower())
 
             lead = get_full_structure()
             lead["name"] = name
-            lead["address"] = place.get("address", "")
-            lead["phone"] = place.get("phoneNumber", "")
-            lead["website"] = place.get("website", "")
+            
+            # 2. ADDRESS
+            lead["address"] = place.get("address") or place.get("fullAddress") or ""
+            
+            # 3. PHONE
+            lead["phone"] = place.get("phoneNumber") or place.get("phone") or ""
+            
+            # 4. WEBSITE
+            lead["website"] = place.get("website") or place.get("site") or place.get("link") or ""
+            
+            # 5. RATING
             lead["rating"] = str(place.get("rating", ""))
-            lead["reviews"] = str(place.get("reviews", place.get("reviewsCount", "")))
-            lead["category"] = place.get("category", query.split()[0].title())
-            lead["google_maps_url"] = place.get("cid", "")
-            lead["description"] = place.get("address", "")[:300]
+            
+            # 6. REVIEWS
+            lead["reviews"] = str(place.get("reviews") or place.get("reviewsCount") or place.get("userRatingCount") or "")
+            
+            # 7. CATEGORY
+            lead["category"] = place.get("category") or place.get("type") or place.get("businessType") or query.split()[0].title()
+            
+            # 8. GOOGLE MAPS
+            lead["google_maps_url"] = place.get("google_maps_url") or place.get("cid") or place.get("maps_link") or ""
+            
+            # 9. DESCRIPTION
+            desc = place.get("description") or place.get("snippet") or lead["address"]
+            lead["description"] = desc[:300] if desc else ""
+            
+            # 10. HOURS
+            lead["hours"] = str(place.get("hours") or place.get("openingHours") or "")
+            
             lead["sub_region"] = query
             lead["lead_id"] = hashlib.md5(name.lower().encode()).hexdigest()
             leads.append(lead)
@@ -365,16 +388,91 @@ def enrich_leads(leads: list) -> list:
     return leads
 
 def process_single_lead(lead, use_ai=False, deep_enrich=False):
-    """Lightweight Fast Mode lead enrichment."""
-    # Fast Mode: NEVER fetch websites to save memory
-    lead["social_media"] = ""
-    lead["additional_data"] = ""
+    """Lightweight Fast Mode lead enrichment with Optional Deep Enrichment."""
     
-    # Missing data safety
+    # Missing data safety default to empty string
     if not lead.get("email"):
         lead["email"] = ""
     if not lead.get("website"):
         lead["website"] = ""
+    if not lead.get("social_media"):
+        lead["social_media"] = ""
+    if not lead.get("additional_data"):
+        lead["additional_data"] = ""
+    if not lead.get("hours"):
+        lead["hours"] = ""
+        
+    # Optional Deep Enrichment Mode
+    if deep_enrich and lead["website"] and str(lead["website"]).startswith("http"):
+        needs_enrich = not lead["email"] or not lead["social_media"] or not lead["hours"] or not lead["additional_data"]
+        if needs_enrich:
+            print(f"LOG:[SYS] Deep Enrichment enabled for missing fields", flush=True)
+            try:
+                # 2 seconds timeout, only read 20KB HTML, requests only
+                resp = requests.get(lead["website"], timeout=2, headers=HEADERS, stream=True)
+                html = ""
+                for chunk in resp.iter_content(chunk_size=2048):
+                    html += chunk.decode('utf-8', errors='ignore')
+                    if len(html) > 20480:  # Stop at 20KB
+                        break
+                resp.close()
+                
+                if html:
+                    # Email Extraction
+                    if not lead["email"]:
+                        mailto_match = re.search(r'href=[\'"]mailto:([^\'"?]+)', html, re.IGNORECASE)
+                        if mailto_match:
+                            try:
+                                validate_email(mailto_match.group(1))
+                                lead["email"] = mailto_match.group(1).strip()
+                                print("LOG:[SYS] Email found from website", flush=True)
+                            except: pass
+                            
+                        if not lead["email"]:
+                            emails = re.findall(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}', html)
+                            for e in emails:
+                                if not any(x in e.lower() for x in ['png','jpg','gif','svg','css','js','example']):
+                                    try:
+                                        validate_email(e)
+                                        lead["email"] = e
+                                        print("LOG:[SYS] Email found from website", flush=True)
+                                        break
+                                    except: pass
+                                    
+                    # Social Media Extraction
+                    if not lead["social_media"]:
+                        social = {}
+                        patterns = {
+                            "facebook": r'facebook\.com/[^\s\'"<>\)]{3,50}',
+                            "instagram": r'instagram\.com/[^\s\'"<>\)]{3,50}',
+                            "linkedin": r'linkedin\.com/(?:company|in)/[^\s\'"<>\)]{3,50}',
+                            "twitter": r'(?:twitter|x)\.com/[^\s\'"<>\)]{3,50}',
+                            "youtube": r'youtube\.com/[^\s\'"<>\)]{3,50}'
+                        }
+                        for platform, pattern in patterns.items():
+                            matches = re.findall(pattern, html, re.IGNORECASE)
+                            if matches:
+                                clean = matches[0].rstrip('/"\'').strip()
+                                if len(clean) > 10:
+                                    social[platform] = "https://" + clean
+                        if social:
+                            lead["social_media"] = json.dumps(social)
+                            
+                    # Additional Data (Tech Stack / description)
+                    if not lead["additional_data"]:
+                        tech = []
+                        if any(s in html for s in ["wp-content", "wp-includes"]): tech.append("WordPress")
+                        if any(s in html for s in ["shopify.com", "cdn.shopify"]): tech.append("Shopify")
+                        if any(s in html for s in ["gtag(", "google-analytics"]): tech.append("Google Analytics")
+                        if tech:
+                            lead["additional_data"] = json.dumps(tech)
+                            
+                # Release memory
+                del html
+            except Exception as e:
+                print("LOG:[SYS] Website unavailable, continuing", flush=True)
+    else:
+        print("LOG:[SYS] Fast Mode: using Serper data", flush=True)
 
     # ONLY rule-based AI scoring to avoid Gemini memory spikes
     try:
@@ -440,6 +538,7 @@ def main():
     query = sys.argv[1]
     limit = min(int(sys.argv[2]) if len(sys.argv) > 2 else 10, 100)
     use_ai = sys.argv[3] == "1" if len(sys.argv) > 3 else False
+    deep_enrich = sys.argv[4] == "1" if len(sys.argv) > 4 else False
 
     print(f"LOG:🚀 LeadPulse Fast Mode | Target: {limit}", flush=True)
     print(f"LOG:Query: {query}", flush=True)
@@ -456,7 +555,7 @@ def main():
     for i, lead in enumerate(leads):
         print(f"LOG:Processing {i+1}/{len(leads)}: {lead.get('name','')[:30]}", flush=True)
         try:
-            enriched = process_single_lead(lead, use_ai)
+            enriched = process_single_lead(lead, use_ai, deep_enrich)
             print(f"DATA:{json.dumps(enriched)}", flush=True)
             # Clear from memory immediately after printing
             del enriched
