@@ -1690,7 +1690,6 @@ def generation_ui(label_suffix=""):
                                 if st.session_state.collected_leads >= st.session_state.target_leads:
                                     process.terminate()
                                     break
-                    except: pass
 
                         valid_count = len([x for x in st.session_state.session_leads if x.get("validation_status") == "Valid"])
                         m1_metric.metric("Total Scraped", st.session_state.collected_leads)
