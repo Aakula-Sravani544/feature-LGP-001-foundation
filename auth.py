@@ -20,7 +20,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Auth config file path
-AUTH_CONFIG_FILE = "auth_config.yaml"
+AUTH_CONFIG_FILE = "data/auth_config.yaml"
 
 # Default users — admin and user
 DEFAULT_USERS = {
@@ -45,13 +45,18 @@ DEFAULT_USERS = {
 
 def load_auth_config() -> dict:
     """Load auth config from YAML file. Creates default if not exists."""
+    os.makedirs(os.path.dirname(AUTH_CONFIG_FILE), exist_ok=True)
     if os.path.exists(AUTH_CONFIG_FILE):
         try:
             with open(AUTH_CONFIG_FILE, "r") as f:
                 return yaml.safe_load(f) or {"users": DEFAULT_USERS}
         except Exception as e:
             logger.error(f"Failed to load auth config: {e}")
-    return {"users": DEFAULT_USERS}
+            
+    # If it doesn't exist or failed to load, create it with default users
+    default_config = {"users": DEFAULT_USERS}
+    save_auth_config(default_config)
+    return default_config
 
 
 def save_auth_config(config: dict) -> bool:
