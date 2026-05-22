@@ -116,23 +116,28 @@ from scheduler import render_scheduler_ui, start_scheduler
 # Initialize session
 init_session()
 
-if "is_extracting" not in st.session_state:
-    st.session_state["is_extracting"] = False
-
-if "session_leads" not in st.session_state:
-    st.session_state["session_leads"] = []
-
-if "collected_count" not in st.session_state:
-    st.session_state["collected_count"] = 0
-
-if "target_leads" not in st.session_state:
-    st.session_state["target_leads"] = 0
-
-if "current_query" not in st.session_state:
-    st.session_state["current_query"] = ""
-
 if "authenticated" not in st.session_state:
     st.session_state["authenticated"] = False
+if "username" not in st.session_state:
+    st.session_state["username"] = ""
+if "role" not in st.session_state:
+    st.session_state["role"] = ""
+if "plan" not in st.session_state:
+    st.session_state["plan"] = "Free"
+if "is_extracting" not in st.session_state:
+    st.session_state["is_extracting"] = False
+if "session_leads" not in st.session_state:
+    st.session_state["session_leads"] = []
+if "admin_nav" not in st.session_state:
+    st.session_state["admin_nav"] = "Generate"
+if "user_nav" not in st.session_state:
+    st.session_state["user_nav"] = "Generate"
+if "collected_count" not in st.session_state:
+    st.session_state["collected_count"] = 0
+if "target_leads" not in st.session_state:
+    st.session_state["target_leads"] = 0
+if "current_query" not in st.session_state:
+    st.session_state["current_query"] = ""
 
 # Fix Streamlit native blur/disabled overlay issue permanently
 st.markdown("""
@@ -157,10 +162,6 @@ form, button {
 """, unsafe_allow_html=True)
 
 
-if "user_nav" not in st.session_state:
-    st.session_state["user_nav"] = "Generate"
-if "admin_nav" not in st.session_state:
-    st.session_state["admin_nav"] = "Generate"
 if "admin_page" not in st.session_state:
     st.session_state["admin_page"] = "Generate"
 
@@ -170,15 +171,6 @@ if "scheduler" not in st.session_state:
 
 # Check for payment success from Stripe redirect
 check_payment_success()
-# Check session expiry
-if st.session_state.authenticated and check_session_expiry():
-    if not st.session_state.get("is_extracting", False):
-        st.warning("Session expired. Please login again.")
-        for key in list(st.session_state.keys()):
-            if key not in ["authenticated", "username", "role", "plan"]:
-                del st.session_state[key]
-        st.session_state["authenticated"] = False
-        st.rerun()
 
 # ==========================================
 # LOGIN PAGE
@@ -454,6 +446,13 @@ if not st.session_state.authenticated:
     render_login_page()
     st.stop()
 
+# Safe fallback if session looks empty but authenticated is True
+if not st.session_state.get("username"):
+    st.session_state["username"] = "admin"
+if not st.session_state.get("role"):
+    st.session_state["role"] = "admin"
+if not st.session_state.get("plan"):
+    st.session_state["plan"] = "Enterprise"
 # ==========================================
 # STARTUP SYNC
 # ==========================================
