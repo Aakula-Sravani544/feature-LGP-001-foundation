@@ -180,59 +180,15 @@ def render_login_page():
     import streamlit.components.v1 as components
     from datetime import datetime
 
-    # Initialize session state
-    if "login_username" not in st.session_state:
-        st.session_state.login_username = ""
-    if "login_password" not in st.session_state:
-        st.session_state.login_password = ""
-    if "login_portal" not in st.session_state:
-        st.session_state.login_portal = ""
-    if "login_submitted" not in st.session_state:
-        st.session_state.login_submitted = False
+    # Session state init
+    if "authenticated" not in st.session_state:
+        st.session_state.authenticated = False
+    if "role" not in st.session_state:
+        st.session_state.role = ""
 
-    # Check if form was submitted via query params
-    params = st.query_params
-    if "username" in params and "password" in params:
-        st.session_state.login_username = params["username"]
-        st.session_state.login_password = params["password"]
-        st.session_state.login_portal = params.get("portal", "admin")
-        st.session_state.login_submitted = True
-
-    # If submitted, run your auth logic
-    if st.session_state.login_submitted:
-        username = st.session_state.login_username
-        password = st.session_state.login_password
-        portal = st.session_state.login_portal
-        
-        # Reset state so it doesn't loop
-        st.session_state.login_submitted = False
-        st.query_params.clear()
-
-        success, role, plan = login(username, password)
-        if portal == "admin":
-            if success and role == "admin":
-                st.session_state.authenticated = True
-                st.session_state.username = username
-                st.session_state.role = role
-                st.session_state.plan = plan
-                st.session_state.login_time = datetime.now()
-                st.session_state.login_mode = None
-                st.rerun()
-            elif success and role != "admin":
-                st.error("This account does not have admin access")
-            else:
-                st.error("Invalid admin credentials")
-        else:
-            if success:
-                st.session_state.authenticated = True
-                st.session_state.username = username
-                st.session_state.role = role
-                st.session_state.plan = plan
-                st.session_state.login_time = datetime.now()
-                st.session_state.login_mode = None
-                st.rerun()
-            else:
-                st.error("Invalid credentials")
+    # If already logged in skip this page
+    if st.session_state.authenticated:
+        st.rerun()
 
     # Hide all streamlit UI
     st.markdown('''
@@ -240,15 +196,77 @@ def render_login_page():
 #MainMenu,footer,header{visibility:hidden !important;}
 [data-testid="collapsedControl"]{display:none !important;}
 [data-testid="stSidebar"]{display:none !important;}
-.main .block-container{
-    padding:0 !important;
-    max-width:100% !important;
+.main .block-container {
+    padding: 0 !important;
+    overflow: hidden !important;
+    max-height: 100vh !important;
 }
-.stApp{
+.stApp {
+    overflow: hidden !important;
+    height: 100vh !important;
     background:#0a0520 !important;
 }
+iframe {
+    display: block !important;
+    border: none !important;
+    position: absolute !important;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0 !important;
+}
+[data-testid="stHorizontalBlock"] {
+    position: relative;
+    z-index: 10;
+}
+.stTextInput input {
+    background: white !important;
+    border: 1.5px solid #e5e7eb !important;
+    border-radius: 10px !important;
+    height: 48px !important;
+    font-size: 14px !important;
+    color: #111827 !important;
+}
+.stTextInput label {
+    color: #111827 !important;
+    font-weight: 600 !important;
+    font-size: 14px !important;
+}
+.stButton > button {
+    background: #5b21b6 !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 12px !important;
+    height: 50px !important;
+    font-size: 15px !important;
+    font-weight: 600 !important;
+    width: 100% !important;
+}
+.stButton > button:hover {
+    background: #4c1d95 !important;
+}
+div[role="radiogroup"] {
+    background: #f3f4f6;
+    border-radius: 12px;
+    padding: 4px;
+    display: flex;
+    margin-bottom: 16px;
+}
+div[role="radiogroup"] label {
+    flex: 1;
+    text-align: center;
+    background: transparent;
+    padding: 10px;
+    border-radius: 10px;
+    cursor: pointer;
+}
+div[role="radiogroup"] label[data-checked="true"] {
+    background: white;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+}
 </style>
-''', unsafe_allow_html=True)
+    ''', unsafe_allow_html=True)
 
     # Render the full login page as HTML component
     components.html('''
@@ -263,6 +281,13 @@ def render_login_page():
       font-family: -apple-system, BlinkMacSystemFont, 
       'Segoe UI', sans-serif; }
 
+  html, body {
+      height: 100%;
+      overflow: hidden !important;
+      margin: 0 !important;
+      padding: 0 !important;
+  }
+  
   body {
     background: linear-gradient(135deg, 
       #0a0520 0%, #1a0a4a 50%, #0f0635 100%);
@@ -275,6 +300,8 @@ def render_login_page():
     display: flex;
     flex: 1;
     min-height: 100vh;
+    height: 100vh;
+    overflow: hidden;
   }
 
   /* ── LEFT PANEL ── */
@@ -284,6 +311,7 @@ def render_login_page():
     display: flex;
     flex-direction: column;
     justify-content: center;
+    overflow: hidden;
   }
 
   .logo {
@@ -380,6 +408,7 @@ def render_login_page():
     align-items: center;
     justify-content: center;
     padding: 40px 32px;
+    overflow: hidden;
   }
 
   .card {
@@ -388,6 +417,7 @@ def render_login_page():
     padding: 40px 36px;
     width: 100%;
     max-width: 460px;
+    height: 520px;
     box-shadow: 0 24px 64px rgba(0,0,0,0.4);
   }
 
@@ -406,162 +436,6 @@ def render_login_page():
   .card-sub {
     font-size: 14px;
     color: #6b7280;
-  }
-
-  /* Portal tabs */
-  .portal-tabs {
-    display: flex;
-    background: #f3f4f6;
-    border-radius: 12px;
-    padding: 4px;
-    margin-bottom: 24px;
-    gap: 4px;
-  }
-
-  .portal-tab {
-    flex: 1;
-    padding: 10px;
-    text-align: center;
-    border-radius: 10px;
-    cursor: pointer;
-    font-size: 14px;
-    font-weight: 500;
-    color: #6b7280;
-    border: none;
-    background: transparent;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    transition: all 0.2s;
-  }
-
-  .portal-tab.active {
-    background: white;
-    color: #5b21b6;
-    font-weight: 700;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.12);
-  }
-
-  /* Form */
-  .form-group {
-    margin-bottom: 18px;
-  }
-
-  .form-label {
-    display: block;
-    font-size: 14px;
-    font-weight: 600;
-    color: #111827;
-    margin-bottom: 6px;
-  }
-
-  .form-input {
-    width: 100%;
-    padding: 13px 16px;
-    border: 1.5px solid #e5e7eb;
-    border-radius: 10px;
-    font-size: 14px;
-    color: #111827;
-    outline: none;
-    transition: border-color 0.2s;
-  }
-
-  .form-input:focus {
-    border-color: #6d28d9;
-    box-shadow: 0 0 0 3px rgba(109,40,217,0.1);
-  }
-
-  .form-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 20px;
-  }
-
-  .remember {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 14px;
-    color: #374151;
-    cursor: pointer;
-  }
-
-  .remember input[type="checkbox"] {
-    width: 16px; height: 16px;
-    border-radius: 4px;
-    accent-color: #5b21b6;
-    cursor: pointer;
-  }
-
-  .forgot {
-    color: #5b21b6;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-    text-decoration: none;
-  }
-
-  .login-btn {
-    width: 100%;
-    padding: 14px;
-    background: #5b21b6;
-    color: white;
-    border: none;
-    border-radius: 12px;
-    font-size: 16px;
-    font-weight: 600;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    transition: background 0.2s, transform 0.1s;
-    margin-bottom: 16px;
-  }
-
-  .login-btn:hover { background: #4c1d95; }
-  .login-btn:active { transform: scale(0.99); }
-
-  .divider {
-    text-align: center;
-    color: #9ca3af;
-    font-size: 14px;
-    margin-bottom: 16px;
-    position: relative;
-  }
-
-  .register-text {
-    text-align: center;
-    font-size: 14px;
-    color: #374151;
-  }
-
-  .register-text a {
-    color: #5b21b6;
-    font-weight: 600;
-    text-decoration: none;
-  }
-
-  /* Error */
-  .error-msg {
-    background: #fef2f2;
-    border: 1px solid #fecaca;
-    color: #dc2626;
-    padding: 10px 14px;
-    border-radius: 8px;
-    font-size: 13px;
-    margin-bottom: 14px;
-    display: none;
-  }
-
-  /* Footer */
-  footer {
-    text-align: center;
-    padding: 16px;
-    color: rgba(255,255,255,0.25);
-    font-size: 12px;
   }
 </style>
 </head>
@@ -642,113 +516,88 @@ def render_login_page():
         <div class="card-sub">
           Sign in to access your account</div>
       </div>
-
-      <!-- Portal Tabs -->
-      <div class="portal-tabs">
-        <button class="portal-tab active" 
-                id="adminTab"
-                onclick="switchTab('admin')">
-          🛡️ Admin Portal
-        </button>
-        <button class="portal-tab" 
-                id="userTab"
-                onclick="switchTab('user')">
-          👤 User Workspace
-        </button>
-      </div>
-
-      <!-- Error message -->
-      <div class="error-msg" id="errorMsg">
-        Invalid username or password.
-      </div>
-
-      <!-- Form -->
-      <form onsubmit="handleLogin(event)">
-        <input type="hidden" id="portalInput" 
-               value="admin"/>
-        
-        <div class="form-group">
-          <label class="form-label">Username</label>
-          <input type="text" 
-                 class="form-input" 
-                 id="usernameInput"
-                 placeholder="Enter your username"
-                 required/>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label">Password</label>
-          <input type="password" 
-                 class="form-input" 
-                 id="passwordInput"
-                 placeholder="Enter your password"
-                 required/>
-        </div>
-
-        <div class="form-row">
-          <label class="remember">
-            <input type="checkbox"/> Remember me
-          </label>
-          <a href="#" class="forgot">Forgot Password?</a>
-        </div>
-
-        <button type="submit" class="login-btn">
-          ➜ Login
-        </button>
-      </form>
-
-      <div class="divider">or</div>
-      <div class="register-text">
-        Don't have an account? 
-        <a href="#">Register now</a>
-      </div>
     </div>
   </div>
 </div>
 
-<footer>© 2026 LeadPulse Pro. All rights reserved.</footer>
-
-<script>
-  function switchTab(portal) {
-    document.getElementById('portalInput').value = portal;
-    
-    const adminTab = document.getElementById('adminTab');
-    const userTab = document.getElementById('userTab');
-    
-    if (portal === 'admin') {
-      adminTab.classList.add('active');
-      userTab.classList.remove('active');
-    } else {
-      userTab.classList.add('active');
-      adminTab.classList.remove('active');
-    }
-    
-    document.getElementById('errorMsg').style.display 
-      = 'none';
-  }
-
-  function handleLogin(e) {
-    e.preventDefault();
-    
-    const username = document.getElementById(
-      'usernameInput').value;
-    const password = document.getElementById(
-      'passwordInput').value;
-    const portal = document.getElementById(
-      'portalInput').value;
-    
-    // Send to Streamlit via URL params
-    const url = new URL(window.parent.location.href);
-    url.searchParams.set('username', username);
-    url.searchParams.set('password', password);
-    url.searchParams.set('portal', portal);
-    window.parent.location.href = url.toString();
-  }
-</script>
-
 </body>
 </html>
-''', height=750, scrolling=False)
+''', height=900, scrolling=False)
+
+    # Streamlit form on top of iframe
+    _, right = st.columns([1.1, 0.9])
+
+    with right:
+        st.markdown('''
+        <div style="height: 310px;"></div>
+        ''', unsafe_allow_html=True)
+
+        # We wrap in a container so we can limit width
+        _, center, _ = st.columns([0.1, 0.8, 0.1])
+        with center:
+            portal = st.radio(
+                "Portal",
+                ["Admin Portal", "User Workspace"],
+                horizontal=True,
+                key="portal_select",
+                label_visibility="collapsed"
+            )
+
+            username = st.text_input(
+                "Username",
+                placeholder="Enter your username",
+                key="login_username",
+                label_visibility="collapsed"
+            )
+            password = st.text_input(
+                "Password",
+                placeholder="Enter your password",
+                type="password",
+                key="login_password",
+                label_visibility="collapsed"
+            )
+            
+            c1, c2 = st.columns(2)
+            with c1:
+                st.checkbox("Remember me")
+            with c2:
+                st.markdown('<div style="text-align:right; font-size:14px; color:#5b21b6; cursor:pointer;">Forgot Password?</div>', unsafe_allow_html=True)
+
+            login_btn = st.button(
+                "➜  Login",
+                key="login_btn",
+                use_container_width=True
+            )
+
+            if login_btn:
+                if not username or not password:
+                    st.error("Please enter username and password")
+                else:
+                    success, role, plan = login(username, password)
+                    if portal == "Admin Portal":
+                        if success and role == "admin":
+                            st.session_state.authenticated = True
+                            st.session_state.role = role
+                            st.session_state.username = username
+                            st.session_state.plan = plan
+                            st.session_state.login_time = datetime.now()
+                            st.session_state.login_mode = None
+                            st.rerun()
+                        elif success and role != "admin":
+                            st.error("This account does not have admin access")
+                        else:
+                            st.error("Invalid admin credentials")
+                    else:  # User Workspace
+                        if success:
+                            st.session_state.authenticated = True
+                            st.session_state.role = role
+                            st.session_state.username = username
+                            st.session_state.plan = plan
+                            st.session_state.login_time = datetime.now()
+                            st.session_state.login_mode = None
+                            st.rerun()
+                        else:
+                            st.error("Invalid credentials")
 # Show login if not authenticated
 if not st.session_state.authenticated:
     render_login_page()
