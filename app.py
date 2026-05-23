@@ -181,163 +181,188 @@ def render_login_page():
 
     st.markdown("""
     <style>
-    .stApp { background: #0F172A !important; }
-    [data-testid="stAppViewContainer"] { background: #0F172A !important; }
-    [data-testid="stSidebar"] { display: none !important; }
-    [data-testid="stHeader"] { background: transparent !important; }
-    .block-container {
-        max-width: 560px !important;
-        margin: 0 auto !important;
-        padding: 2rem 1rem !important;
+    /* Gradient Background */
+    .stApp {
+        background: linear-gradient(135deg, #1E1B4B 0%, #312E81 100%) !important;
     }
-    div.stButton > button {
-        border-radius: 8px !important;
-        font-weight: 500 !important;
+    [data-testid="stAppViewContainer"] { background: transparent !important; }
+    [data-testid="stSidebar"] { display: none !important; }
+    [data-testid="stHeader"] { display: none !important; }
+    
+    .block-container {
+        max-width: 1000px !important;
+        padding-top: 5rem !important;
+    }
+
+    /* Target the second column for the white card */
+    div[data-testid="column"]:nth-of-type(2) {
+        background: #FFFFFF;
+        border-radius: 24px;
+        padding: 40px 32px;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    }
+    
+    /* Branding typography (Left Column) */
+    .brand-title {
+        color: white;
+        font-size: 3.5rem;
+        font-weight: 800;
+        line-height: 1.1;
+        margin-bottom: 0.5rem;
+    }
+    .brand-subtitle {
+        color: #A5B4FC;
+        font-size: 1.5rem;
+        font-weight: 500;
+        margin-bottom: 1.5rem;
+    }
+    .feature-point {
+        display: flex;
+        align-items: center;
+        color: #E0E7FF;
+        margin-bottom: 1.25rem;
+        font-size: 1.1rem;
+        font-weight: 500;
+    }
+    .feature-icon {
+        background: rgba(255,255,255,0.1);
+        border-radius: 50%;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 12px;
+    }
+    
+    /* Inputs Styling inside the White Card */
+    div[data-testid="column"]:nth-of-type(2) .stTextInput > div > div > input {
+        background: #F8FAFC !important;
+        border: 1px solid #E2E8F0 !important;
+        color: #0F172A !important;
+        border-radius: 10px !important;
+        padding: 12px 16px !important;
+        font-size: 14px !important;
+    }
+    div[data-testid="column"]:nth-of-type(2) .stTextInput > div > div > input::placeholder {
+        color: #94A3B8 !important;
+    }
+    div[data-testid="column"]:nth-of-type(2) .stTextInput label {
+        color: #475569 !important;
+        font-weight: 600 !important;
         font-size: 13px !important;
+        text-transform: none !important;
+        letter-spacing: normal !important;
+    }
+    
+    /* Button Styling */
+    div[data-testid="column"]:nth-of-type(2) div.stButton > button {
+        background: #4F46E5 !important;
+        color: white !important;
+        border-radius: 10px !important;
+        padding: 0.75rem 1rem !important;
+        font-weight: 600 !important;
+        font-size: 15px !important;
         border: none !important;
         width: 100% !important;
+        transition: all 0.2s !important;
+        margin-top: 0.5rem !important;
     }
-    .stTextInput > div > div > input {
-        background: #ffffff !important;
-        border: 1px solid #cbd5e1 !important;
-        color: #000000 !important;
-        border-radius: 8px !important;
-        font-size: 13px !important;
+    div[data-testid="column"]:nth-of-type(2) div.stButton > button:hover {
+        background: #4338CA !important;
     }
-    .stTextInput > div > div > input::placeholder {
-        color: #94a3b8 !important;
-    }
-    .stTextInput label {
-        color: rgba(255,255,255,0.4) !important;
-        font-size: 11px !important;
-        text-transform: uppercase !important;
-        letter-spacing: 0.07em !important;
-        font-weight: 500 !important;
-    }
-    .stAlert {
-        border-radius: 8px !important;
-        font-size: 12px !important;
-    }
-    /* Expander styling using high-specificity selectors to force white text */
-    [data-testid="stExpander"] {
-        border: none !important;
+    
+    /* Streamlit Tabs inside the white card */
+    div[data-testid="column"]:nth-of-type(2) button[role="tab"] {
+        color: #64748B !important;
+        font-weight: 600 !important;
         background: transparent !important;
-        box-shadow: none !important;
     }
-    [data-testid="stExpander"] summary {
-        background: rgba(255,255,255,0.04) !important;
-        border: 0.5px solid rgba(255,255,255,0.08) !important;
-        border-radius: 8px !important;
-        padding: 10px 14px !important;
+    div[data-testid="column"]:nth-of-type(2) button[role="tab"][aria-selected="true"] {
+        color: #4F46E5 !important;
+        border-bottom-color: #4F46E5 !important;
     }
-    [data-testid="stExpander"] summary * {
-        color: #ffffff !important;
-        font-weight: 500 !important;
-        font-size: 13px !important;
+    
+    /* Expander in the white card */
+    div[data-testid="column"]:nth-of-type(2) [data-testid="stExpander"] {
+        background: #F8FAFC !important;
+        border: 1px solid #E2E8F0 !important;
+        border-radius: 10px !important;
+        margin-top: 1rem;
     }
-    [data-testid="stExpander"] summary svg {
-        fill: #ffffff !important;
-        color: #ffffff !important;
+    div[data-testid="column"]:nth-of-type(2) [data-testid="stExpander"] summary {
+        color: #475569 !important;
+        font-weight: 600 !important;
+        background: transparent !important;
+        border: none !important;
     }
-    [data-testid="stExpander"] div[role="region"] {
-        background: rgba(255,255,255,0.02) !important;
-        border: 0.5px solid rgba(255,255,255,0.08) !important;
-        border-top: none !important;
-        border-radius: 0 0 8px 8px !important;
-        padding: 16px !important;
+    div[data-testid="column"]:nth-of-type(2) [data-testid="stExpander"] div[role="region"] {
+        background: transparent !important;
+        border: none !important;
+    }
+    
+    /* Trust row */
+    .trust-row {
+        display: flex;
+        justify-content: center;
+        gap: 3rem;
+        margin-top: 6rem;
+        color: #A5B4FC;
+        font-size: 1rem;
+        font-weight: 500;
+    }
+    .trust-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
     }
     </style>
     """, unsafe_allow_html=True)
 
-    # Logo
-    st.markdown("""
-        <div style="text-align:center; padding:2rem 0 1.5rem;">
-            <div style="font-size:24px; font-weight:500; color:#fff; letter-spacing:-0.4px; margin-bottom:6px;">
-                🚀 LeadPulse Pro
-            </div>
-            <div style="font-size:12px; color:rgba(255,255,255,0.3);">
-                Production Grade Lead Extraction Engine
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
-
-    # Two clickable cards
-    col1, col2 = st.columns(2, gap="medium")
+    # Layout Columns
+    col1, col2 = st.columns(2, gap="large")
 
     with col1:
         st.markdown("""
-            <div style="background:#1E293B; border:0.5px solid rgba(255,255,255,0.08);
-                border-top:2px solid #F59E0B; border-radius:14px; padding:18px 16px;
-                text-align:center; cursor:pointer; margin-bottom:10px;">
-                <div style="font-size:10px; font-weight:500; padding:2px 10px;
-                    background:rgba(245,158,11,0.15); color:#F59E0B; border-radius:20px;
-                    display:inline-block; margin-bottom:10px; letter-spacing:0.05em;">
-                    ADMIN
-                </div>
-                <div style="font-size:36px; margin-bottom:8px;">🛡️</div>
-                <div style="font-size:14px; font-weight:500; color:#fff; margin-bottom:4px;">
-                    Admin Console
-                </div>
-                <div style="font-size:11px; color:rgba(255,255,255,0.3); line-height:1.5;">
-                    Platform management, users and system control
-                </div>
+        <div style="padding-top: 2rem;">
+            <div class="brand-title">LeadPulse Pro</div>
+            <div class="brand-subtitle">AI-Powered Lead Generation Platform</div>
+            <p style="color: #E0E7FF; font-size: 1.15rem; margin-bottom: 3rem; line-height: 1.6;">
+                Generate verified leads faster with AI-powered enrichment
+            </p>
+            
+            <div class="feature-point">
+                <div class="feature-icon">🔍</div>
+                Smart Lead Discovery
             </div>
+            <div class="feature-point">
+                <div class="feature-icon">✨</div>
+                AI Enrichment
+            </div>
+            <div class="feature-point">
+                <div class="feature-icon">✓</div>
+                Data Verification
+            </div>
+            <div class="feature-point">
+                <div class="feature-icon">🔒</div>
+                Secure & Reliable
+            </div>
+        </div>
         """, unsafe_allow_html=True)
 
     with col2:
         st.markdown("""
-            <div style="background:#1E293B; border:0.5px solid rgba(255,255,255,0.08);
-                border-top:2px solid #2563EB; border-radius:14px; padding:18px 16px;
-                text-align:center; cursor:pointer; margin-bottom:10px;">
-                <div style="font-size:10px; font-weight:500; padding:2px 10px;
-                    background:rgba(37,99,235,0.15); color:#60A5FA; border-radius:20px;
-                    display:inline-block; margin-bottom:10px; letter-spacing:0.05em;">
-                    USER
-                </div>
-                <div style="font-size:36px; margin-bottom:8px;">👤</div>
-                <div style="font-size:14px; font-weight:500; color:#fff; margin-bottom:4px;">
-                    User Workspace
-                </div>
-                <div style="font-size:11px; color:rgba(255,255,255,0.3); line-height:1.5;">
-                    Generate leads, export data and manage plan
-                </div>
-            </div>
+            <h2 style="color: #0F172A; margin-top: 0; margin-bottom: 0.5rem; font-weight: 800; font-size: 32px;">Welcome Back!</h2>
+            <p style="color: #64748B; font-size: 15px; margin-bottom: 1.5rem;">Sign in to access your account</p>
         """, unsafe_allow_html=True)
-
-    # Login mode selector
-    login_mode = st.session_state.get("login_mode", None)
-
-    col3, col4 = st.columns(2, gap="medium")
-    with col3:
-        if st.button("🛡️ Login as Admin", key="select_admin", use_container_width=True):
-            st.session_state.login_mode = "admin"
-            st.rerun()
-    with col4:
-        if st.button("👤 Login as User", key="select_user", use_container_width=True):
-            st.session_state.login_mode = "user"
-            st.rerun()
-
-    # Show credentials form based on selection
-    if login_mode == "admin":
-        st.markdown("""
-            <div style="background:#1E293B; border:0.5px solid rgba(255,255,255,0.08);
-                border-top:2px solid #F59E0B; border-radius:14px;
-                padding:20px 20px 8px; margin-top:4px;">
-                <div style="display:flex; align-items:center; gap:8px; margin-bottom:14px;">
-                    <span style="font-size:18px;">🛡️</span>
-                    <span style="font-size:14px; font-weight:500; color:#fff;">
-                        Admin credentials
-                    </span>
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
-
-        admin_user = st.text_input("Username", placeholder="admin", key="admin_u")
-        admin_pass = st.text_input("Password", type="password", placeholder="••••••••", key="admin_p")
-
-        col5, col6 = st.columns([3, 1])
-        with col5:
-            if st.button("→ Enter Admin Console", key="admin_submit", use_container_width=True):
+        
+        tab_admin, tab_user = st.tabs(["Admin Portal", "User Workspace"])
+        
+        with tab_admin:
+            st.markdown("<br>", unsafe_allow_html=True)
+            admin_user = st.text_input("Username", placeholder="admin", key="admin_u")
+            admin_pass = st.text_input("Password", type="password", placeholder="••••••••", key="admin_p")
+            if st.button("Login", key="admin_submit"):
                 if not admin_user or not admin_pass:
                     st.error("Enter username and password")
                 else:
@@ -354,31 +379,12 @@ def render_login_page():
                         st.error("This account does not have admin access")
                     else:
                         st.error("Invalid admin credentials")
-        with col6:
-            if st.button("✕ Cancel", key="cancel_admin", use_container_width=True):
-                st.session_state.login_mode = None
-                st.rerun()
-
-    elif login_mode == "user":
-        st.markdown("""
-            <div style="background:#1E293B; border:0.5px solid rgba(255,255,255,0.08);
-                border-top:2px solid #2563EB; border-radius:14px;
-                padding:20px 20px 8px; margin-top:4px;">
-                <div style="display:flex; align-items:center; gap:8px; margin-bottom:14px;">
-                    <span style="font-size:18px;">👤</span>
-                    <span style="font-size:14px; font-weight:500; color:#fff;">
-                        User credentials
-                    </span>
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
-
-        user_user = st.text_input("Username", placeholder="your username", key="user_u")
-        user_pass = st.text_input("Password", type="password", placeholder="••••••••", key="user_p")
-
-        col7, col8 = st.columns([3, 1])
-        with col7:
-            if st.button("→ Enter Workspace", key="user_submit", use_container_width=True):
+                        
+        with tab_user:
+            st.markdown("<br>", unsafe_allow_html=True)
+            user_user = st.text_input("Username", placeholder="your username", key="user_u")
+            user_pass = st.text_input("Password", type="password", placeholder="••••••••", key="user_p")
+            if st.button("Login", key="user_submit"):
                 if not user_user or not user_pass:
                     st.error("Enter username and password")
                 else:
@@ -393,52 +399,35 @@ def render_login_page():
                         st.rerun()
                     else:
                         st.error("Invalid username or password")
-        with col8:
-            if st.button("✕ Cancel", key="cancel_user", use_container_width=True):
-                st.session_state.login_mode = None
-                st.rerun()
+        
+        # Registration section
+        st.markdown("<hr style='margin: 1.5rem 0; border-color: #E2E8F0; border-width: 1px 0 0 0;'>", unsafe_allow_html=True)
+        with st.expander("Register new account"):
+            reg_user = st.text_input("Username", placeholder="min 3 characters", key="reg_user")
+            reg_pass = st.text_input("Password", type="password", placeholder="min 6 characters", key="reg_pass")
+            reg_name = st.text_input("Full name", placeholder="Your name", key="reg_name")
+            reg_email = st.text_input("Email", placeholder="your@email.com", key="reg_email")
+            if st.button("Create account", key="reg_btn", use_container_width=True):
+                if not reg_user or not reg_pass:
+                    st.error("Username and password required")
+                else:
+                    success, msg = register_user(
+                        reg_user, reg_pass,
+                        role="user", plan="Free",
+                        name=reg_name, email=reg_email
+                    )
+                    if success:
+                        st.success(msg + " — Login using User Workspace tab")
+                    else:
+                        st.error(msg)
 
-    st.markdown("<br>", unsafe_allow_html=True)
-
-    # Register section
+    # Bottom trust row
     st.markdown("""
-        <div style="background:#1E293B; border:0.5px solid rgba(255,255,255,0.07);
-            border-radius:10px; padding:12px 16px;
-            display:flex; align-items:center; justify-content:space-between;
-            margin-bottom:10px;">
-            <div>
-                <div style="font-size:12px; font-weight:500; color:#fff; margin-bottom:2px;">
-                    New to LeadPulse Pro?
-                </div>
-                <div style="font-size:11px; color:rgba(255,255,255,0.3);">
-                    50 leads/session free — no credit card needed
-                </div>
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
-
-    with st.expander("Create free account"):
-        reg_user = st.text_input("Username", placeholder="min 3 characters", key="reg_user")
-        reg_pass = st.text_input("Password", type="password", placeholder="min 6 characters", key="reg_pass")
-        reg_name = st.text_input("Full name", placeholder="Your name", key="reg_name")
-        reg_email = st.text_input("Email", placeholder="your@email.com", key="reg_email")
-        if st.button("Create account", key="reg_btn", use_container_width=True):
-            if not reg_user or not reg_pass:
-                st.error("Username and password required")
-            else:
-                success, msg = register_user(
-                    reg_user, reg_pass,
-                    role="user", plan="Free",
-                    name=reg_name, email=reg_email
-                )
-                st.success(msg + " — Login using User card above") if success else st.error(msg)
-
-    # Privacy bar
-    st.markdown("""
-        <div style="text-align:center; font-size:11px;
-            color:rgba(255,255,255,0.2); margin-top:12px; padding:10px;">
-            🔒 Your data is encrypted and never shared — secured by LeadPulse Pro
-        </div>
+    <div class="trust-row">
+        <div class="trust-item">🔒 Secure Access</div>
+        <div class="trust-item">🛡️ Encrypted Data</div>
+        <div class="trust-item">⚡ 99.9% Uptime</div>
+    </div>
     """, unsafe_allow_html=True)
 
 # Show login if not authenticated
