@@ -179,353 +179,289 @@ def render_login_page():
     from auth import login
     from datetime import datetime
 
-    st.markdown("""
+    # ── GLOBAL CSS ──────────────────────────
+    st.markdown('''
 <style>
-#MainMenu {visibility: hidden !important;}
-footer {visibility: hidden !important;}
-header {visibility: hidden !important;}
+#MainMenu, footer, header {visibility:hidden !important;}
 [data-testid="collapsedControl"] {display:none !important;}
 [data-testid="stSidebar"] {display:none !important;}
 
-/* Remove ALL streamlit default padding */
 .main .block-container {
     padding: 0 !important;
-    margin: 0 !important;
     max-width: 100% !important;
 }
-.appview-container {
-    padding: 0 !important;
-}
-
-/* Full page background */
 .stApp {
-    background: linear-gradient(
-        135deg, 
-        #0a0520 0%, 
-        #1a0a4a 50%, 
-        #0f0635 100%
-    ) !important;
-    min-height: 100vh !important;
+    background: linear-gradient(135deg,
+        #0a0520 0%, #1a0a4a 50%, #0f0635 100%) !important;
 }
-
-/* Remove column gaps and padding */
 [data-testid="column"] {
     padding: 0 !important;
 }
-
-/* Input styling */
-.stTextInput > div > div > input {
+.stTextInput input {
     background: white !important;
     border: 1.5px solid #e5e7eb !important;
     border-radius: 10px !important;
+    height: 48px !important;
     font-size: 14px !important;
     color: #111827 !important;
-    height: 48px !important;
-    padding: 0 14px !important;
-}
-.stTextInput > div > div > input:focus {
-    border-color: #6d28d9 !important;
-    box-shadow: 0 0 0 3px rgba(109,40,217,0.15) !important;
 }
 .stTextInput label {
     color: #111827 !important;
-    font-size: 14px !important;
     font-weight: 600 !important;
+    font-size: 14px !important;
 }
-
-/* Primary login button */
-div[data-testid="stButton"] > button {
-    background: linear-gradient(
-        135deg, #5b21b6, #6d28d9
-    ) !important;
+.stButton > button {
+    background: #5b21b6 !important;
     color: white !important;
     border: none !important;
     border-radius: 12px !important;
+    height: 50px !important;
     font-size: 15px !important;
     font-weight: 600 !important;
     width: 100% !important;
-    height: 50px !important;
-    letter-spacing: 0.3px !important;
 }
-div[data-testid="stButton"] > button:hover {
+.stButton > button:hover {
     background: #4c1d95 !important;
-    transform: translateY(-1px) !important;
 }
-
-/* Tab pills styling */
 .stTabs [data-baseweb="tab-list"] {
     background: #f3f4f6 !important;
     border-radius: 12px !important;
     padding: 4px !important;
     border: none !important;
-    gap: 4px !important;
-    width: 100% !important;
 }
 .stTabs [data-baseweb="tab"] {
     border-radius: 10px !important;
-    padding: 10px 0 !important;
+    padding: 10px 16px !important;
     font-size: 13px !important;
     font-weight: 500 !important;
     color: #6b7280 !important;
     border: none !important;
     background: transparent !important;
-    flex: 1 !important;
-    text-align: center !important;
-    white-space: nowrap !important;
 }
 .stTabs [aria-selected="true"] {
     background: white !important;
     color: #5b21b6 !important;
     font-weight: 700 !important;
     border-bottom: none !important;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.12) !important;
 }
 .stTabs [data-baseweb="tab-panel"] {
     padding: 0 !important;
     background: transparent !important;
 }
-
-/* Checkbox */
 .stCheckbox label p {
     color: #374151 !important;
     font-size: 13px !important;
 }
-
-/* Error messages */
-.stAlert {
-    border-radius: 10px !important;
-    font-size: 13px !important;
-}
 </style>
-""", unsafe_allow_html=True)
+''', unsafe_allow_html=True)
 
-    # Use columns for two-panel layout
+    # ── TWO COLUMN LAYOUT ───────────────────
     left_col, right_col = st.columns([1.2, 0.9])
 
-    # ── LEFT PANEL (branding) ──────────────
+    # ── LEFT COLUMN ─────────────────────────
     with left_col:
-        st.markdown("""
-    <div style="
-        min-height: 100vh;
-        padding: 48px 48px 48px 56px;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-    ">
-        <div style="
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 44px;
-        ">
-            <div style="
-                width: 44px; height: 44px;
-                background: #5b21b6;
-                border-radius: 12px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                font-size: 20px;
-            ">📊</div>
-            <span style="
-                font-size: 22px;
-                font-weight: 700;
-                color: white;
-            ">LeadPulse <span style="color:#a78bfa;">Pro</span></span>
-        </div>
+        st.markdown(
+            '<div style="padding:48px 40px 48px 56px;">',
+            unsafe_allow_html=True
+        )
 
-        <div style="
-            font-size: 42px;
-            font-weight: 800;
-            color: white;
-            line-height: 1.2;
-            margin-bottom: 18px;
-        ">
-            AI-Powered<br>
-            Lead Generation<br>
-            Platform
-        </div>
+        # Logo
+        st.markdown('''
+<div style="display:flex;align-items:center;gap:12px;
+            margin-bottom:40px;">
+  <div style="width:44px;height:44px;background:#5b21b6;
+              border-radius:12px;display:flex;
+              align-items:center;justify-content:center;
+              font-size:20px;">📊</div>
+  <span style="font-size:22px;font-weight:700;color:white;">
+    LeadPulse <span style="color:#a78bfa;">Pro</span>
+  </span>
+</div>
+''', unsafe_allow_html=True)
 
-        <div style="
-            font-size: 16px;
-            color: rgba(255,255,255,0.55);
-            margin-bottom: 44px;
-            line-height: 1.7;
-        ">
-            Generate verified leads faster with<br>
-            AI-powered enrichment.
-        </div>
+        # Headline
+        st.markdown('''
+<div style="font-size:40px;font-weight:800;color:white;
+            line-height:1.2;margin-bottom:16px;">
+  AI-Powered<br>Lead Generation<br>Platform
+</div>
+''', unsafe_allow_html=True)
 
-        <div style="display:flex; flex-direction:column; gap:18px;">
-            <div style="display:flex; align-items:center; gap:14px;">
-                <div style="
-                    width:40px; height:40px; flex-shrink:0;
-                    background:rgba(91,33,182,0.45);
-                    border-radius:10px;
-                    display:flex; align-items:center;
-                    justify-content:center; font-size:18px;
-                ">👥</div>
-                <div>
-                    <div style="color:white;font-weight:600;
-                                font-size:14px;">
-                        Smart Lead Discovery</div>
-                    <div style="color:rgba(255,255,255,0.45);
-                                font-size:12px;margin-top:1px;">
-                        Find high-quality leads in seconds</div>
-                </div>
-            </div>
-            <div style="display:flex; align-items:center; gap:14px;">
-                <div style="
-                    width:40px; height:40px; flex-shrink:0;
-                    background:rgba(91,33,182,0.45);
-                    border-radius:10px;
-                    display:flex; align-items:center;
-                    justify-content:center; font-size:18px;
-                ">📈</div>
-                <div>
-                    <div style="color:white;font-weight:600;
-                                font-size:14px;">
-                        AI Enrichment</div>
-                    <div style="color:rgba(255,255,255,0.45);
-                                font-size:12px;margin-top:1px;">
-                        Get enriched data & insights automatically
-                    </div>
-                </div>
-            </div>
-            <div style="display:flex; align-items:center; gap:14px;">
-                <div style="
-                    width:40px; height:40px; flex-shrink:0;
-                    background:rgba(91,33,182,0.45);
-                    border-radius:10px;
-                    display:flex; align-items:center;
-                    justify-content:center; font-size:18px;
-                ">🛡️</div>
-                <div>
-                    <div style="color:white;font-weight:600;
-                                font-size:14px;">
-                        Data Verification</div>
-                    <div style="color:rgba(255,255,255,0.45);
-                                font-size:12px;margin-top:1px;">
-                        Ensure accuracy and reliability</div>
-                </div>
-            </div>
-            <div style="display:flex; align-items:center; gap:14px;">
-                <div style="
-                    width:40px; height:40px; flex-shrink:0;
-                    background:rgba(91,33,182,0.45);
-                    border-radius:10px;
-                    display:flex; align-items:center;
-                    justify-content:center; font-size:18px;
-                ">🔒</div>
-                <div>
-                    <div style="color:white;font-weight:600;
-                                font-size:14px;">
-                        Secure & Reliable</div>
-                    <div style="color:rgba(255,255,255,0.45);
-                                font-size:12px;margin-top:1px;">
-                        Enterprise-grade security for your data
-                    </div>
-                </div>
-            </div>
-        </div>
+        # Subtext
+        st.markdown('''
+<div style="font-size:15px;color:rgba(255,255,255,0.55);
+            margin-bottom:40px;line-height:1.7;">
+  Generate verified leads faster with<br>
+  AI-powered enrichment.
+</div>
+''', unsafe_allow_html=True)
 
-        <div style="
-            display:flex; gap:28px;
-            margin-top:56px; padding-top:20px;
-            border-top:1px solid rgba(255,255,255,0.08);
-        ">
-            <span style="color:rgba(255,255,255,0.4);
-                         font-size:12px;">🛡️ Secure Access</span>
-            <span style="color:rgba(255,255,255,0.4);
-                         font-size:12px;">🔒 Encrypted Data</span>
-            <span style="color:rgba(255,255,255,0.4);
-                         font-size:12px;">☁️ 99.9% Uptime</span>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+        # Feature 1
+        st.markdown('''
+<div style="display:flex;align-items:center;gap:14px;
+            margin-bottom:18px;">
+  <div style="width:40px;height:40px;flex-shrink:0;
+              background:rgba(91,33,182,0.45);
+              border-radius:10px;display:flex;
+              align-items:center;justify-content:center;
+              font-size:18px;">👥</div>
+  <div>
+    <div style="color:white;font-weight:600;font-size:14px;">
+      Smart Lead Discovery</div>
+    <div style="color:rgba(255,255,255,0.45);font-size:12px;">
+      Find high-quality leads in seconds</div>
+  </div>
+</div>
+''', unsafe_allow_html=True)
 
-    # ── RIGHT PANEL (login card) ───────────
+        # Feature 2
+        st.markdown('''
+<div style="display:flex;align-items:center;gap:14px;
+            margin-bottom:18px;">
+  <div style="width:40px;height:40px;flex-shrink:0;
+              background:rgba(91,33,182,0.45);
+              border-radius:10px;display:flex;
+              align-items:center;justify-content:center;
+              font-size:18px;">📈</div>
+  <div>
+    <div style="color:white;font-weight:600;font-size:14px;">
+      AI Enrichment</div>
+    <div style="color:rgba(255,255,255,0.45);font-size:12px;">
+      Get enriched data and insights automatically</div>
+  </div>
+</div>
+''', unsafe_allow_html=True)
+
+        # Feature 3
+        st.markdown('''
+<div style="display:flex;align-items:center;gap:14px;
+            margin-bottom:18px;">
+  <div style="width:40px;height:40px;flex-shrink:0;
+              background:rgba(91,33,182,0.45);
+              border-radius:10px;display:flex;
+              align-items:center;justify-content:center;
+              font-size:18px;">🛡️</div>
+  <div>
+    <div style="color:white;font-weight:600;font-size:14px;">
+      Data Verification</div>
+    <div style="color:rgba(255,255,255,0.45);font-size:12px;">
+      Ensure accuracy and reliability</div>
+  </div>
+</div>
+''', unsafe_allow_html=True)
+
+        # Feature 4
+        st.markdown('''
+<div style="display:flex;align-items:center;gap:14px;
+            margin-bottom:40px;">
+  <div style="width:40px;height:40px;flex-shrink:0;
+              background:rgba(91,33,182,0.45);
+              border-radius:10px;display:flex;
+              align-items:center;justify-content:center;
+              font-size:18px;">🔒</div>
+  <div>
+    <div style="color:white;font-weight:600;font-size:14px;">
+      Secure and Reliable</div>
+    <div style="color:rgba(255,255,255,0.45);font-size:12px;">
+      Enterprise-grade security for your data</div>
+  </div>
+</div>
+''', unsafe_allow_html=True)
+
+        # Trust bar
+        st.markdown('''
+<div style="display:flex;gap:24px;padding-top:20px;
+            border-top:1px solid rgba(255,255,255,0.08);">
+  <span style="color:rgba(255,255,255,0.35);font-size:12px;">
+    🛡️ Secure Access</span>
+  <span style="color:rgba(255,255,255,0.35);font-size:12px;">
+    🔒 Encrypted Data</span>
+  <span style="color:rgba(255,255,255,0.35);font-size:12px;">
+    ☁️ 99.9% Uptime</span>
+</div>
+''', unsafe_allow_html=True)
+
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    # ── RIGHT COLUMN ─────────────────────────
     with right_col:
-        st.markdown("""
-    <div style="
-        min-height: 100vh;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 40px 32px;
-    ">
-    <div style="
-        background: white;
-        border-radius: 20px;
-        padding: 36px 32px;
-        width: 100%;
-        max-width: 420px;
-        box-shadow: 0 24px 64px rgba(0,0,0,0.35);
-    ">
-        <div style="text-align:center; margin-bottom:24px;">
-            <div style="font-size:24px; font-weight:800;
-                        color:#111827; margin-bottom:6px;
-                        white-space:nowrap;">
-                Welcome Back!</div>
-            <div style="font-size:13px; color:#6b7280;">
-                Sign in to access your account</div>
-        </div>
-    """, unsafe_allow_html=True)
+        st.markdown('''
+<div style="min-height:100vh;display:flex;
+            align-items:center;justify-content:center;
+            padding:40px 32px;">
+  <div style="background:white;border-radius:20px;
+              padding:36px 32px;width:100%;max-width:420px;
+              box-shadow:0 24px 64px rgba(0,0,0,0.35);">
+    <div style="text-align:center;margin-bottom:24px;">
+      <div style="font-size:24px;font-weight:800;
+                  color:#111827;margin-bottom:6px;">
+        Welcome Back!</div>
+      <div style="font-size:13px;color:#6b7280;">
+        Sign in to access your account</div>
+    </div>
+  </div>
+</div>
+''', unsafe_allow_html=True)
 
-        # Portal tabs
+        # Spacer to push card down
+        st.markdown(
+            '<div style="height:15vh;"></div>',
+            unsafe_allow_html=True
+        )
+
+        # Tabs inside right column
         admin_tab, user_tab = st.tabs([
             "🛡️ Admin Portal",
             "👤 User Workspace"
         ])
 
-        # ── ADMIN TAB ──
         with admin_tab:
             st.markdown(
-                "<div style='height:12px'></div>",
+                '<div style="height:10px"></div>',
                 unsafe_allow_html=True
             )
             admin_user = st.text_input(
                 "Username",
                 placeholder="Enter your username",
-                key="admin_user"
+                key="a_user"
             )
             admin_pass = st.text_input(
                 "Password",
                 placeholder="Enter your password",
                 type="password",
-                key="admin_pass"
+                key="a_pass"
             )
             c1, c2 = st.columns(2)
             with c1:
                 st.checkbox("Remember me", key="a_rem")
             with c2:
-                st.markdown("""
-            <div style="text-align:right;padding-top:6px;">
-            <span style="color:#5b21b6;font-size:12px;
-                         font-weight:500;cursor:pointer;">
-                Forgot Password?</span></div>
-            """, unsafe_allow_html=True)
+                st.markdown('''
+<div style="text-align:right;padding-top:6px;">
+  <span style="color:#5b21b6;font-size:12px;
+               font-weight:500;cursor:pointer;">
+    Forgot Password?</span>
+</div>
+''', unsafe_allow_html=True)
 
             st.markdown(
-                "<div style='height:6px'></div>",
+                '<div style="height:6px"></div>',
                 unsafe_allow_html=True
             )
             admin_btn = st.button(
                 "→  Login",
-                key="admin_btn",
+                key="a_btn",
                 use_container_width=True
             )
-            st.markdown("""
-        <div style="text-align:center;margin-top:16px;
-                    font-size:13px;color:#6b7280;">
-            or</div>
-        <div style="text-align:center;margin-top:10px;
-                    font-size:13px;color:#374151;">
-            Don't have an account?
-            <span style="color:#5b21b6;font-weight:600;">
-                Register now</span>
-        </div>
-        """, unsafe_allow_html=True)
+            st.markdown('''
+<div style="text-align:center;margin-top:14px;
+            font-size:13px;color:#6b7280;">or</div>
+<div style="text-align:center;margin-top:10px;
+            font-size:13px;color:#374151;">
+  Don't have an account?
+  <span style="color:#5b21b6;font-weight:600;">
+    Register now</span>
+</div>
+''', unsafe_allow_html=True)
 
             if admin_btn:
                 if admin_user and admin_pass:
@@ -545,54 +481,53 @@ div[data-testid="stButton"] > button:hover {
                 else:
                     st.error("Please enter username and password")
 
-        # ── USER TAB ──
         with user_tab:
             st.markdown(
-                "<div style='height:12px'></div>",
+                '<div style="height:10px"></div>',
                 unsafe_allow_html=True
             )
             user_user = st.text_input(
                 "Username",
                 placeholder="Enter your username",
-                key="user_user"
+                key="u_user"
             )
             user_pass = st.text_input(
                 "Password",
                 placeholder="Enter your password",
                 type="password",
-                key="user_pass"
+                key="u_pass"
             )
             c3, c4 = st.columns(2)
             with c3:
                 st.checkbox("Remember me", key="u_rem")
             with c4:
-                st.markdown("""
-            <div style="text-align:right;padding-top:6px;">
-            <span style="color:#5b21b6;font-size:12px;
-                         font-weight:500;cursor:pointer;">
-                Forgot Password?</span></div>
-            """, unsafe_allow_html=True)
+                st.markdown('''
+<div style="text-align:right;padding-top:6px;">
+  <span style="color:#5b21b6;font-size:12px;
+               font-weight:500;cursor:pointer;">
+    Forgot Password?</span>
+</div>
+''', unsafe_allow_html=True)
 
             st.markdown(
-                "<div style='height:6px'></div>",
+                '<div style="height:6px"></div>',
                 unsafe_allow_html=True
             )
             user_btn = st.button(
                 "→  Login",
-                key="user_btn",
+                key="u_btn",
                 use_container_width=True
             )
-            st.markdown("""
-        <div style="text-align:center;margin-top:16px;
-                    font-size:13px;color:#6b7280;">
-            or</div>
-        <div style="text-align:center;margin-top:10px;
-                    font-size:13px;color:#374151;">
-            Don't have an account?
-            <span style="color:#5b21b6;font-weight:600;">
-                Register now</span>
-        </div>
-        """, unsafe_allow_html=True)
+            st.markdown('''
+<div style="text-align:center;margin-top:14px;
+            font-size:13px;color:#6b7280;">or</div>
+<div style="text-align:center;margin-top:10px;
+            font-size:13px;color:#374151;">
+  Don't have an account?
+  <span style="color:#5b21b6;font-weight:600;">
+    Register now</span>
+</div>
+''', unsafe_allow_html=True)
 
             if user_btn:
                 if user_user and user_pass:
@@ -610,21 +545,13 @@ div[data-testid="stButton"] > button:hover {
                 else:
                     st.error("Please enter username and password")
 
-        st.markdown("</div></div>", unsafe_allow_html=True)
-
-    st.markdown("""
-<div style="
-    position: fixed;
-    bottom: 0; left: 0; right: 0;
-    text-align: center;
-    padding: 12px;
-    color: rgba(255,255,255,0.25);
-    font-size: 12px;
-    background: transparent;
-">
-    © 2026 LeadPulse Pro. All rights reserved.
+    # ── FOOTER ──────────────────────────────
+    st.markdown('''
+<div style="text-align:center;padding:16px;
+            color:rgba(255,255,255,0.25);font-size:12px;">
+  © 2026 LeadPulse Pro. All rights reserved.
 </div>
-""", unsafe_allow_html=True)
+''', unsafe_allow_html=True)
 
 # Show login if not authenticated
 if not st.session_state.authenticated:
