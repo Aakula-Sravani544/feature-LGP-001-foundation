@@ -206,7 +206,9 @@ def render_login_page():
 }
 
 /* Force the exact right column to be a white card */
-[data-testid="column"]:last-of-type {
+/* Targets the inner wrapper of the second column where the actual background belongs */
+[data-testid="column"]:last-of-type > div,
+div[data-testid="stVerticalBlock"]:has(.white-card-target) {
     background-color: #FFFFFF !important;
     border-radius: 24px !important;
     padding: 3rem 2.5rem !important;
@@ -328,69 +330,70 @@ def render_login_page():
     with col1:
         st.markdown("""
 <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 2rem;">
-    <div style="background: linear-gradient(135deg, #4F46E5, #7C3AED); padding: 8px; border-radius: 12px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">
-        <span style="font-size: 28px; line-height: 1;">📈</span>
-    </div>
-    <span style="font-size: 32px; font-weight: 800; color: white; letter-spacing: -0.5px;">LeadPulse <span style="color: #A5B4FC;">Pro</span></span>
+<div style="background: linear-gradient(135deg, #4F46E5, #7C3AED); padding: 8px; border-radius: 12px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">
+<span style="font-size: 28px; line-height: 1;">📈</span>
+</div>
+<span style="font-size: 32px; font-weight: 800; color: white; letter-spacing: -0.5px;">LeadPulse <span style="color: #A5B4FC;">Pro</span></span>
 </div>
 
 <h1 style="color: white; font-size: 3.5rem; font-weight: 800; line-height: 1.15; margin-bottom: 1.5rem; margin-top: 0; letter-spacing: -1px;">
-    AI-Powered<br>Lead Generation<br>Platform
+AI-Powered<br>Lead Generation<br>Platform
 </h1>
 
 <p style="color: #E0E7FF; font-size: 1.25rem; margin-bottom: 3.5rem; line-height: 1.6;">
-    Generate verified leads faster with<br>AI-powered enrichment.
+Generate verified leads faster with<br>AI-powered enrichment.
 </p>
 
 <!-- Features -->
 <div style="display: flex; flex-direction: column; gap: 1.8rem;">
-    <div style="display: flex; align-items: flex-start; gap: 16px;">
-        <div style="background: rgba(255,255,255,0.06); padding: 12px; border-radius: 12px; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;">
-            <span style="font-size: 22px;">👥</span>
-        </div>
-        <div>
-            <div style="color: white; font-weight: 600; font-size: 1.15rem; margin-bottom: 4px;">Smart Lead Discovery</div>
-            <div style="color: rgba(255,255,255,0.6); font-size: 0.95rem;">Find high-quality leads in seconds</div>
-        </div>
-    </div>
-    
-    <div style="display: flex; align-items: flex-start; gap: 16px;">
-        <div style="background: rgba(255,255,255,0.06); padding: 12px; border-radius: 12px; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;">
-            <span style="font-size: 22px;">📊</span>
-        </div>
-        <div>
-            <div style="color: white; font-weight: 600; font-size: 1.15rem; margin-bottom: 4px;">AI Enrichment</div>
-            <div style="color: rgba(255,255,255,0.6); font-size: 0.95rem;">Get enriched data & insights automatically</div>
-        </div>
-    </div>
-    
-    <div style="display: flex; align-items: flex-start; gap: 16px;">
-        <div style="background: rgba(255,255,255,0.06); padding: 12px; border-radius: 12px; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;">
-            <span style="font-size: 22px;">🛡️</span>
-        </div>
-        <div>
-            <div style="color: white; font-weight: 600; font-size: 1.15rem; margin-bottom: 4px;">Data Verification</div>
-            <div style="color: rgba(255,255,255,0.6); font-size: 0.95rem;">Ensure accuracy and reliability</div>
-        </div>
-    </div>
-    
-    <div style="display: flex; align-items: flex-start; gap: 16px;">
-        <div style="background: rgba(255,255,255,0.06); padding: 12px; border-radius: 12px; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;">
-            <span style="font-size: 22px;">🔒</span>
-        </div>
-        <div>
-            <div style="color: white; font-weight: 600; font-size: 1.15rem; margin-bottom: 4px;">Secure & Reliable</div>
-            <div style="color: rgba(255,255,255,0.6); font-size: 0.95rem;">Enterprise-grade security for your data</div>
-        </div>
-    </div>
+<div style="display: flex; align-items: flex-start; gap: 16px;">
+<div style="background: rgba(255,255,255,0.06); padding: 12px; border-radius: 12px; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;">
+<span style="font-size: 22px;">👥</span>
+</div>
+<div>
+<div style="color: white; font-weight: 600; font-size: 1.15rem; margin-bottom: 4px;">Smart Lead Discovery</div>
+<div style="color: rgba(255,255,255,0.6); font-size: 0.95rem;">Find high-quality leads in seconds</div>
+</div>
+</div>
+
+<div style="display: flex; align-items: flex-start; gap: 16px;">
+<div style="background: rgba(255,255,255,0.06); padding: 12px; border-radius: 12px; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;">
+<span style="font-size: 22px;">📊</span>
+</div>
+<div>
+<div style="color: white; font-weight: 600; font-size: 1.15rem; margin-bottom: 4px;">AI Enrichment</div>
+<div style="color: rgba(255,255,255,0.6); font-size: 0.95rem;">Get enriched data & insights automatically</div>
+</div>
+</div>
+
+<div style="display: flex; align-items: flex-start; gap: 16px;">
+<div style="background: rgba(255,255,255,0.06); padding: 12px; border-radius: 12px; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;">
+<span style="font-size: 22px;">🛡️</span>
+</div>
+<div>
+<div style="color: white; font-weight: 600; font-size: 1.15rem; margin-bottom: 4px;">Data Verification</div>
+<div style="color: rgba(255,255,255,0.6); font-size: 0.95rem;">Ensure accuracy and reliability</div>
+</div>
+</div>
+
+<div style="display: flex; align-items: flex-start; gap: 16px;">
+<div style="background: rgba(255,255,255,0.06); padding: 12px; border-radius: 12px; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;">
+<span style="font-size: 22px;">🔒</span>
+</div>
+<div>
+<div style="color: white; font-weight: 600; font-size: 1.15rem; margin-bottom: 4px;">Secure & Reliable</div>
+<div style="color: rgba(255,255,255,0.6); font-size: 0.95rem;">Enterprise-grade security for your data</div>
+</div>
+</div>
 </div>
 """, unsafe_allow_html=True)
 
     with col2:
         st.markdown("""
+<span class="white-card-target"></span>
 <div style="text-align: center; margin-bottom: 2rem;">
-    <h2 style="color: #111827; margin: 0; font-weight: 800; font-size: 28px;">Welcome Back!</h2>
-    <p style="color: #6B7280; font-size: 15px; margin-top: 8px;">Sign in to access your account</p>
+<h2 style="color: #111827; margin: 0; font-weight: 800; font-size: 28px;">Welcome Back!</h2>
+<p style="color: #6B7280; font-size: 15px; margin-top: 8px;">Sign in to access your account</p>
 </div>
 """, unsafe_allow_html=True)
         
@@ -441,12 +444,12 @@ def render_login_page():
         # Registration section
         st.markdown("""
 <div style="display: flex; align-items: center; justify-content: center; margin: 1.5rem 0;">
-    <div style="flex: 1; height: 1px; background-color: #E5E7EB;"></div>
-    <div style="padding: 0 1rem; color: #9CA3AF; font-size: 13px;">or</div>
-    <div style="flex: 1; height: 1px; background-color: #E5E7EB;"></div>
+<div style="flex: 1; height: 1px; background-color: #E5E7EB;"></div>
+<div style="padding: 0 1rem; color: #9CA3AF; font-size: 13px;">or</div>
+<div style="flex: 1; height: 1px; background-color: #E5E7EB;"></div>
 </div>
 <div style="text-align: center; color: #6B7280; font-size: 14px; margin-bottom: 1rem;">
-    Don't have an account? 
+Don't have an account? 
 </div>
 """, unsafe_allow_html=True)
         with st.expander("Register now"):
@@ -471,9 +474,9 @@ def render_login_page():
     # Bottom trust row
     st.markdown("""
 <div class="trust-row">
-    <div style="display: flex; align-items: center; gap: 8px;">🛡️ Secure Access</div>
-    <div style="display: flex; align-items: center; gap: 8px;">🔒 Encrypted Data</div>
-    <div style="display: flex; align-items: center; gap: 8px;">☁️ 99.9% Uptime</div>
+<div style="display: flex; align-items: center; gap: 8px;">🛡️ Secure Access</div>
+<div style="display: flex; align-items: center; gap: 8px;">🔒 Encrypted Data</div>
+<div style="display: flex; align-items: center; gap: 8px;">☁️ 99.9% Uptime</div>
 </div>
 """, unsafe_allow_html=True)
 
