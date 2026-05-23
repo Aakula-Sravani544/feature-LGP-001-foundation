@@ -4,7 +4,7 @@ st.set_page_config(
     page_title="LeadPulse Pro",
     page_icon="🚀",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
 # Force sidebar to always stay open using specific CSS styles (STEP 2)
@@ -176,237 +176,359 @@ check_payment_success()
 # LOGIN PAGE
 # ==========================================
 def render_login_page():
-    """Premium login page — click Admin or User card to reveal credentials."""
-    from auth import login, register_user
+    from auth import login
+    from datetime import datetime
 
     st.markdown("""
 <style>
-/* Gradient Background & No Scroll */
+#MainMenu {visibility: hidden !important;}
+footer {visibility: hidden !important;}
+header {visibility: hidden !important;}
+[data-testid="collapsedControl"] {display:none !important;}
+[data-testid="stSidebar"] {display:none !important;}
+
+/* Remove ALL streamlit default padding */
+.main .block-container {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+}
+.appview-container {
+    padding: 0 !important;
+}
+
+/* Full page background */
 .stApp {
-    background: linear-gradient(135deg, #110B29 0%, #2A1B54 50%, #1E1B4B 100%) !important;
-    font-family: 'Inter', sans-serif !important;
-}
-[data-testid="stAppViewContainer"] {
-    background: transparent !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
+    background: linear-gradient(
+        135deg, 
+        #0a0520 0%, 
+        #1a0a4a 50%, 
+        #0f0635 100%
+    ) !important;
     min-height: 100vh !important;
-    overflow: hidden !important;
-}
-[data-testid="stSidebar"] { display: none !important; }
-[data-testid="stHeader"] { display: none !important; }
-
-/* Main Container centered without scrolling */
-.block-container {
-    max-width: 1200px !important;
-    padding: 0 2rem !important;
-    width: 100% !important;
-    margin-top: -3rem !important;
 }
 
-/* Force the exact right column to be a white card */
-/* Targets the inner wrapper of the second column where the actual background belongs */
-[data-testid="column"]:last-of-type > div,
-div[data-testid="stVerticalBlock"]:has(.white-card-target) {
-    background-color: #FFFFFF !important;
-    border-radius: 24px !important;
-    padding: 3rem 2.5rem !important;
-    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.25) !important;
-    max-width: 520px !important;
-    margin: 0 auto !important;
+/* Remove column gaps and padding */
+[data-testid="column"] {
+    padding: 0 !important;
 }
 
-/* Force dark text color inside the white card */
-[data-testid="column"]:last-of-type p,
-[data-testid="column"]:last-of-type span,
-[data-testid="column"]:last-of-type h1,
-[data-testid="column"]:last-of-type h2,
-[data-testid="column"]:last-of-type h3,
-[data-testid="column"]:last-of-type div {
-    color: #111827 !important;
-}
-
-/* Exemptions for button text to keep it white */
-[data-testid="column"]:last-of-type .stButton > button p,
-[data-testid="column"]:last-of-type .stButton > button span {
-    color: #FFFFFF !important;
-}
-
-/* Inputs Styling inside the White Card */
-[data-testid="column"]:last-of-type .stTextInput label p {
-    font-weight: 600 !important;
-    font-size: 14px !important;
-    color: #374151 !important;
-}
-[data-testid="column"]:last-of-type .stTextInput > div > div > input {
-    background: #F9FAFB !important;
-    border: 1px solid #E5E7EB !important;
-    color: #111827 !important;
-    border-radius: 12px !important;
-    padding: 14px 16px !important;
-    font-size: 14px !important;
-}
-[data-testid="column"]:last-of-type .stTextInput > div > div > input::placeholder {
-    color: #9CA3AF !important;
-}
-
-/* Button Styling */
-[data-testid="column"]:last-of-type div.stButton > button {
-    background: linear-gradient(135deg, #4F46E5 0%, #6366F1 100%) !important;
-    border-radius: 12px !important;
-    padding: 0.75rem 1rem !important;
-    border: none !important;
-    width: 100% !important;
-    transition: all 0.2s !important;
-    margin-top: 1rem !important;
-    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3) !important;
-}
-[data-testid="column"]:last-of-type div.stButton > button:hover {
-    background: linear-gradient(135deg, #4338CA 0%, #4F46E5 100%) !important;
-}
-
-/* Streamlit Tabs styling */
-[data-testid="column"]:last-of-type div[data-testid="stTabs"] {
-    margin-bottom: 2rem !important;
-}
-[data-testid="column"]:last-of-type div[data-testid="stTabs"] button[role="tab"] {
-    background-color: transparent !important;
-    border: 1px solid #E5E7EB !important;
+/* Input styling */
+.stTextInput > div > div > input {
+    background: white !important;
+    border: 1.5px solid #e5e7eb !important;
     border-radius: 10px !important;
-    margin: 0 4px !important;
-    padding: 8px 16px !important;
-    flex: 1 !important;
-    justify-content: center !important;
+    font-size: 14px !important;
+    color: #111827 !important;
+    height: 48px !important;
+    padding: 0 14px !important;
 }
-[data-testid="column"]:last-of-type div[data-testid="stTabs"] button[role="tab"] p {
-    color: #6B7280 !important;
+.stTextInput > div > div > input:focus {
+    border-color: #6d28d9 !important;
+    box-shadow: 0 0 0 3px rgba(109,40,217,0.15) !important;
+}
+.stTextInput label {
+    color: #111827 !important;
+    font-size: 14px !important;
     font-weight: 600 !important;
 }
-[data-testid="column"]:last-of-type div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] {
-    background-color: #EEF2FF !important;
-    border-color: #6366F1 !important;
-    border-bottom-color: #6366F1 !important;
-}
-[data-testid="column"]:last-of-type div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] p {
-    color: #4F46E5 !important;
-}
 
-/* Expander in the white card */
-[data-testid="column"]:last-of-type [data-testid="stExpander"] {
-    background-color: #F9FAFB !important;
-    border: 1px solid #E5E7EB !important;
-    border-radius: 12px !important;
-    margin-top: 1rem;
-}
-[data-testid="column"]:last-of-type [data-testid="stExpander"] summary {
-    background-color: transparent !important;
+/* Primary login button */
+div[data-testid="stButton"] > button {
+    background: linear-gradient(
+        135deg, #5b21b6, #6d28d9
+    ) !important;
+    color: white !important;
     border: none !important;
-}
-[data-testid="column"]:last-of-type [data-testid="stExpander"] summary p {
-    color: #4F46E5 !important;
+    border-radius: 12px !important;
+    font-size: 15px !important;
     font-weight: 600 !important;
+    width: 100% !important;
+    height: 50px !important;
+    letter-spacing: 0.3px !important;
+}
+div[data-testid="stButton"] > button:hover {
+    background: #4c1d95 !important;
+    transform: translateY(-1px) !important;
 }
 
-/* Trust row absolute position at bottom */
-.trust-row {
-    position: absolute;
-    bottom: 2rem;
-    left: 0;
-    width: 100%;
-    display: flex;
-    justify-content: center;
-    gap: 3rem;
-    color: rgba(255,255,255,0.6);
-    font-size: 0.9rem;
-    font-weight: 500;
+/* Tab pills styling */
+.stTabs [data-baseweb="tab-list"] {
+    background: #f3f4f6 !important;
+    border-radius: 12px !important;
+    padding: 4px !important;
+    border: none !important;
+    gap: 4px !important;
+    width: 100% !important;
+}
+.stTabs [data-baseweb="tab"] {
+    border-radius: 10px !important;
+    padding: 10px 0 !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    color: #6b7280 !important;
+    border: none !important;
+    background: transparent !important;
+    flex: 1 !important;
+    text-align: center !important;
+    white-space: nowrap !important;
+}
+.stTabs [aria-selected="true"] {
+    background: white !important;
+    color: #5b21b6 !important;
+    font-weight: 700 !important;
+    border-bottom: none !important;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.12) !important;
+}
+.stTabs [data-baseweb="tab-panel"] {
+    padding: 0 !important;
+    background: transparent !important;
+}
+
+/* Checkbox */
+.stCheckbox label p {
+    color: #374151 !important;
+    font-size: 13px !important;
+}
+
+/* Error messages */
+.stAlert {
+    border-radius: 10px !important;
+    font-size: 13px !important;
 }
 </style>
 """, unsafe_allow_html=True)
 
-    # Layout Columns
-    col1, col2 = st.columns([1.1, 1], gap="large")
+    # Use columns for two-panel layout
+    left_col, right_col = st.columns([1.2, 0.9])
 
-    with col1:
+    # ── LEFT PANEL (branding) ──────────────
+    with left_col:
         st.markdown("""
-<div style="display: flex; align-items: center; gap: 12px; margin-bottom: 2rem;">
-<div style="background: linear-gradient(135deg, #4F46E5, #7C3AED); padding: 8px; border-radius: 12px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">
-<span style="font-size: 28px; line-height: 1;">📈</span>
-</div>
-<span style="font-size: 32px; font-weight: 800; color: white; letter-spacing: -0.5px;">LeadPulse <span style="color: #A5B4FC;">Pro</span></span>
-</div>
+    <div style="
+        min-height: 100vh;
+        padding: 48px 48px 48px 56px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    ">
+        <div style="
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 44px;
+        ">
+            <div style="
+                width: 44px; height: 44px;
+                background: #5b21b6;
+                border-radius: 12px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 20px;
+            ">📊</div>
+            <span style="
+                font-size: 22px;
+                font-weight: 700;
+                color: white;
+            ">LeadPulse <span style="color:#a78bfa;">Pro</span></span>
+        </div>
 
-<h1 style="color: white; font-size: 3.5rem; font-weight: 800; line-height: 1.15; margin-bottom: 1.5rem; margin-top: 0; letter-spacing: -1px;">
-AI-Powered<br>Lead Generation<br>Platform
-</h1>
+        <div style="
+            font-size: 42px;
+            font-weight: 800;
+            color: white;
+            line-height: 1.2;
+            margin-bottom: 18px;
+        ">
+            AI-Powered<br>
+            Lead Generation<br>
+            Platform
+        </div>
 
-<p style="color: #E0E7FF; font-size: 1.25rem; margin-bottom: 3.5rem; line-height: 1.6;">
-Generate verified leads faster with<br>AI-powered enrichment.
-</p>
+        <div style="
+            font-size: 16px;
+            color: rgba(255,255,255,0.55);
+            margin-bottom: 44px;
+            line-height: 1.7;
+        ">
+            Generate verified leads faster with<br>
+            AI-powered enrichment.
+        </div>
 
-<!-- Features -->
-<div style="display: flex; flex-direction: column; gap: 1.8rem;">
-<div style="display: flex; align-items: flex-start; gap: 16px;">
-<div style="background: rgba(255,255,255,0.06); padding: 12px; border-radius: 12px; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;">
-<span style="font-size: 22px;">👥</span>
-</div>
-<div>
-<div style="color: white; font-weight: 600; font-size: 1.15rem; margin-bottom: 4px;">Smart Lead Discovery</div>
-<div style="color: rgba(255,255,255,0.6); font-size: 0.95rem;">Find high-quality leads in seconds</div>
-</div>
-</div>
+        <div style="display:flex; flex-direction:column; gap:18px;">
+            <div style="display:flex; align-items:center; gap:14px;">
+                <div style="
+                    width:40px; height:40px; flex-shrink:0;
+                    background:rgba(91,33,182,0.45);
+                    border-radius:10px;
+                    display:flex; align-items:center;
+                    justify-content:center; font-size:18px;
+                ">👥</div>
+                <div>
+                    <div style="color:white;font-weight:600;
+                                font-size:14px;">
+                        Smart Lead Discovery</div>
+                    <div style="color:rgba(255,255,255,0.45);
+                                font-size:12px;margin-top:1px;">
+                        Find high-quality leads in seconds</div>
+                </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:14px;">
+                <div style="
+                    width:40px; height:40px; flex-shrink:0;
+                    background:rgba(91,33,182,0.45);
+                    border-radius:10px;
+                    display:flex; align-items:center;
+                    justify-content:center; font-size:18px;
+                ">📈</div>
+                <div>
+                    <div style="color:white;font-weight:600;
+                                font-size:14px;">
+                        AI Enrichment</div>
+                    <div style="color:rgba(255,255,255,0.45);
+                                font-size:12px;margin-top:1px;">
+                        Get enriched data & insights automatically
+                    </div>
+                </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:14px;">
+                <div style="
+                    width:40px; height:40px; flex-shrink:0;
+                    background:rgba(91,33,182,0.45);
+                    border-radius:10px;
+                    display:flex; align-items:center;
+                    justify-content:center; font-size:18px;
+                ">🛡️</div>
+                <div>
+                    <div style="color:white;font-weight:600;
+                                font-size:14px;">
+                        Data Verification</div>
+                    <div style="color:rgba(255,255,255,0.45);
+                                font-size:12px;margin-top:1px;">
+                        Ensure accuracy and reliability</div>
+                </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:14px;">
+                <div style="
+                    width:40px; height:40px; flex-shrink:0;
+                    background:rgba(91,33,182,0.45);
+                    border-radius:10px;
+                    display:flex; align-items:center;
+                    justify-content:center; font-size:18px;
+                ">🔒</div>
+                <div>
+                    <div style="color:white;font-weight:600;
+                                font-size:14px;">
+                        Secure & Reliable</div>
+                    <div style="color:rgba(255,255,255,0.45);
+                                font-size:12px;margin-top:1px;">
+                        Enterprise-grade security for your data
+                    </div>
+                </div>
+            </div>
+        </div>
 
-<div style="display: flex; align-items: flex-start; gap: 16px;">
-<div style="background: rgba(255,255,255,0.06); padding: 12px; border-radius: 12px; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;">
-<span style="font-size: 22px;">📊</span>
-</div>
-<div>
-<div style="color: white; font-weight: 600; font-size: 1.15rem; margin-bottom: 4px;">AI Enrichment</div>
-<div style="color: rgba(255,255,255,0.6); font-size: 0.95rem;">Get enriched data & insights automatically</div>
-</div>
-</div>
+        <div style="
+            display:flex; gap:28px;
+            margin-top:56px; padding-top:20px;
+            border-top:1px solid rgba(255,255,255,0.08);
+        ">
+            <span style="color:rgba(255,255,255,0.4);
+                         font-size:12px;">🛡️ Secure Access</span>
+            <span style="color:rgba(255,255,255,0.4);
+                         font-size:12px;">🔒 Encrypted Data</span>
+            <span style="color:rgba(255,255,255,0.4);
+                         font-size:12px;">☁️ 99.9% Uptime</span>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
-<div style="display: flex; align-items: flex-start; gap: 16px;">
-<div style="background: rgba(255,255,255,0.06); padding: 12px; border-radius: 12px; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;">
-<span style="font-size: 22px;">🛡️</span>
-</div>
-<div>
-<div style="color: white; font-weight: 600; font-size: 1.15rem; margin-bottom: 4px;">Data Verification</div>
-<div style="color: rgba(255,255,255,0.6); font-size: 0.95rem;">Ensure accuracy and reliability</div>
-</div>
-</div>
-
-<div style="display: flex; align-items: flex-start; gap: 16px;">
-<div style="background: rgba(255,255,255,0.06); padding: 12px; border-radius: 12px; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;">
-<span style="font-size: 22px;">🔒</span>
-</div>
-<div>
-<div style="color: white; font-weight: 600; font-size: 1.15rem; margin-bottom: 4px;">Secure & Reliable</div>
-<div style="color: rgba(255,255,255,0.6); font-size: 0.95rem;">Enterprise-grade security for your data</div>
-</div>
-</div>
-</div>
-""", unsafe_allow_html=True)
-
-    with col2:
+    # ── RIGHT PANEL (login card) ───────────
+    with right_col:
         st.markdown("""
-<span class="white-card-target"></span>
-<div style="text-align: center; margin-bottom: 2rem;">
-<h2 style="color: #111827; margin: 0; font-weight: 800; font-size: 28px;">Welcome Back!</h2>
-<p style="color: #6B7280; font-size: 15px; margin-top: 8px;">Sign in to access your account</p>
-</div>
-""", unsafe_allow_html=True)
-        
-        tab_admin, tab_user = st.tabs(["🛡️ Admin Portal", "👤 User Workspace"])
-        
-        with tab_admin:
-            st.markdown("<br>", unsafe_allow_html=True)
-            admin_user = st.text_input("Username", placeholder="Enter your username", key="admin_u")
-            admin_pass = st.text_input("Password", type="password", placeholder="Enter your password", key="admin_p")
-            if st.button("Login", key="admin_submit"):
-                if not admin_user or not admin_pass:
-                    st.error("Enter username and password")
-                else:
+    <div style="
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 40px 32px;
+    ">
+    <div style="
+        background: white;
+        border-radius: 20px;
+        padding: 36px 32px;
+        width: 100%;
+        max-width: 420px;
+        box-shadow: 0 24px 64px rgba(0,0,0,0.35);
+    ">
+        <div style="text-align:center; margin-bottom:24px;">
+            <div style="font-size:24px; font-weight:800;
+                        color:#111827; margin-bottom:6px;
+                        white-space:nowrap;">
+                Welcome Back!</div>
+            <div style="font-size:13px; color:#6b7280;">
+                Sign in to access your account</div>
+        </div>
+    """, unsafe_allow_html=True)
+
+        # Portal tabs
+        admin_tab, user_tab = st.tabs([
+            "🛡️ Admin Portal",
+            "👤 User Workspace"
+        ])
+
+        # ── ADMIN TAB ──
+        with admin_tab:
+            st.markdown(
+                "<div style='height:12px'></div>",
+                unsafe_allow_html=True
+            )
+            admin_user = st.text_input(
+                "Username",
+                placeholder="Enter your username",
+                key="admin_user"
+            )
+            admin_pass = st.text_input(
+                "Password",
+                placeholder="Enter your password",
+                type="password",
+                key="admin_pass"
+            )
+            c1, c2 = st.columns(2)
+            with c1:
+                st.checkbox("Remember me", key="a_rem")
+            with c2:
+                st.markdown("""
+            <div style="text-align:right;padding-top:6px;">
+            <span style="color:#5b21b6;font-size:12px;
+                         font-weight:500;cursor:pointer;">
+                Forgot Password?</span></div>
+            """, unsafe_allow_html=True)
+
+            st.markdown(
+                "<div style='height:6px'></div>",
+                unsafe_allow_html=True
+            )
+            admin_btn = st.button(
+                "→  Login",
+                key="admin_btn",
+                use_container_width=True
+            )
+            st.markdown("""
+        <div style="text-align:center;margin-top:16px;
+                    font-size:13px;color:#6b7280;">
+            or</div>
+        <div style="text-align:center;margin-top:10px;
+                    font-size:13px;color:#374151;">
+            Don't have an account?
+            <span style="color:#5b21b6;font-weight:600;">
+                Register now</span>
+        </div>
+        """, unsafe_allow_html=True)
+
+            if admin_btn:
+                if admin_user and admin_pass:
                     success, role, plan = login(admin_user, admin_pass)
                     if success and role == "admin":
                         st.session_state.authenticated = True
@@ -420,15 +542,60 @@ Generate verified leads faster with<br>AI-powered enrichment.
                         st.error("This account does not have admin access")
                     else:
                         st.error("Invalid admin credentials")
-                        
-        with tab_user:
-            st.markdown("<br>", unsafe_allow_html=True)
-            user_user = st.text_input("Username", placeholder="Enter your username", key="user_u")
-            user_pass = st.text_input("Password", type="password", placeholder="Enter your password", key="user_p")
-            if st.button("Login", key="user_submit"):
-                if not user_user or not user_pass:
-                    st.error("Enter username and password")
                 else:
+                    st.error("Please enter username and password")
+
+        # ── USER TAB ──
+        with user_tab:
+            st.markdown(
+                "<div style='height:12px'></div>",
+                unsafe_allow_html=True
+            )
+            user_user = st.text_input(
+                "Username",
+                placeholder="Enter your username",
+                key="user_user"
+            )
+            user_pass = st.text_input(
+                "Password",
+                placeholder="Enter your password",
+                type="password",
+                key="user_pass"
+            )
+            c3, c4 = st.columns(2)
+            with c3:
+                st.checkbox("Remember me", key="u_rem")
+            with c4:
+                st.markdown("""
+            <div style="text-align:right;padding-top:6px;">
+            <span style="color:#5b21b6;font-size:12px;
+                         font-weight:500;cursor:pointer;">
+                Forgot Password?</span></div>
+            """, unsafe_allow_html=True)
+
+            st.markdown(
+                "<div style='height:6px'></div>",
+                unsafe_allow_html=True
+            )
+            user_btn = st.button(
+                "→  Login",
+                key="user_btn",
+                use_container_width=True
+            )
+            st.markdown("""
+        <div style="text-align:center;margin-top:16px;
+                    font-size:13px;color:#6b7280;">
+            or</div>
+        <div style="text-align:center;margin-top:10px;
+                    font-size:13px;color:#374151;">
+            Don't have an account?
+            <span style="color:#5b21b6;font-weight:600;">
+                Register now</span>
+        </div>
+        """, unsafe_allow_html=True)
+
+            if user_btn:
+                if user_user and user_pass:
                     success, role, plan = login(user_user, user_pass)
                     if success:
                         st.session_state.authenticated = True
@@ -440,43 +607,22 @@ Generate verified leads faster with<br>AI-powered enrichment.
                         st.rerun()
                     else:
                         st.error("Invalid username or password")
-        
-        # Registration section
-        st.markdown("""
-<div style="display: flex; align-items: center; justify-content: center; margin: 1.5rem 0;">
-<div style="flex: 1; height: 1px; background-color: #E5E7EB;"></div>
-<div style="padding: 0 1rem; color: #9CA3AF; font-size: 13px;">or</div>
-<div style="flex: 1; height: 1px; background-color: #E5E7EB;"></div>
-</div>
-<div style="text-align: center; color: #6B7280; font-size: 14px; margin-bottom: 1rem;">
-Don't have an account? 
-</div>
-""", unsafe_allow_html=True)
-        with st.expander("Register now"):
-            reg_user = st.text_input("Username", placeholder="min 3 characters", key="reg_user")
-            reg_pass = st.text_input("Password", type="password", placeholder="min 6 characters", key="reg_pass")
-            reg_name = st.text_input("Full name", placeholder="Your name", key="reg_name")
-            reg_email = st.text_input("Email", placeholder="your@email.com", key="reg_email")
-            if st.button("Create account", key="reg_btn", use_container_width=True):
-                if not reg_user or not reg_pass:
-                    st.error("Username and password required")
                 else:
-                    success, msg = register_user(
-                        reg_user, reg_pass,
-                        role="user", plan="Free",
-                        name=reg_name, email=reg_email
-                    )
-                    if success:
-                        st.success(msg + " — Login using User Workspace tab")
-                    else:
-                        st.error(msg)
+                    st.error("Please enter username and password")
 
-    # Bottom trust row
+        st.markdown("</div></div>", unsafe_allow_html=True)
+
     st.markdown("""
-<div class="trust-row">
-<div style="display: flex; align-items: center; gap: 8px;">🛡️ Secure Access</div>
-<div style="display: flex; align-items: center; gap: 8px;">🔒 Encrypted Data</div>
-<div style="display: flex; align-items: center; gap: 8px;">☁️ 99.9% Uptime</div>
+<div style="
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    text-align: center;
+    padding: 12px;
+    color: rgba(255,255,255,0.25);
+    font-size: 12px;
+    background: transparent;
+">
+    © 2026 LeadPulse Pro. All rights reserved.
 </div>
 """, unsafe_allow_html=True)
 
