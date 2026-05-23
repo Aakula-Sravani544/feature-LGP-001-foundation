@@ -141,35 +141,13 @@ if "target_leads" not in st.session_state:
 if "current_query" not in st.session_state:
     st.session_state["current_query"] = ""
 
-# Fix Streamlit native blur/disabled overlay issue permanently
-st.markdown("""
-<style>
-/* Remove Streamlit default blur/overlay during all interactions */
-[data-testid="stAppViewContainer"],
-[data-testid="stMainBlockContainer"],
-.stApp,
-[data-testid="stSidebar"],
-.main,
-.block-container,
-form, button {
-    opacity: 1 !important;
-    filter: blur(0px) !important;
-    pointer-events: auto !important;
-}
-/* Hide Streamlit running modal backdrop */
-[data-testid="stModalBackdrop"] {
-    display: none !important;
-}
-</style>
-""", unsafe_allow_html=True)
+
 
 
 if "admin_page" not in st.session_state:
     st.session_state["admin_page"] = "Generate"
 
-# Initialize scheduler once
-if "scheduler" not in st.session_state:
-    st.session_state.scheduler = start_scheduler()
+
 
 # Check for payment success from Stripe redirect
 check_payment_success()
@@ -488,22 +466,20 @@ if st.session_state.get('authenticated', False):
         st.session_state["authenticated"] = False
         st.rerun()
 # ==========================================
-# STARTUP SYNC
+# STARTUP SYNC & SCHEDULER
 # ==========================================
-if 'startup_sync_done' not in st.session_state:
-    st.session_state.startup_sync_done = True
-    # Pull leads from Google Sheets -> save to local DB on startup
-    try:
-        leads_from_sheets = google_sheets.load_from_google_sheets()
-        if leads_from_sheets:
-            database.save_to_db(leads_from_sheets)
-    except: pass
-
-# Startup sync complete
-
-# Initialize scheduler once
+# Initialize scheduler once after authentication
 if "scheduler" not in st.session_state:
     st.session_state.scheduler = start_scheduler()
+
+if 'startup_sync_done' not in st.session_state:
+    st.session_state.startup_sync_done = True
+    # Pull leads from Google Sheets -> save to local DB on startup (Optional: disable for faster load)
+    # try:
+    #     leads_from_sheets = google_sheets.load_from_google_sheets()
+    #     if leads_from_sheets:
+    #         database.save_to_db(leads_from_sheets)
+    # except: pass
 
 # ==========================================
 # MODERN SAAS UI CSS
@@ -1046,6 +1022,7 @@ header { visibility: hidden; }
 # ==========================================
 # Shared logout replaced by auth.render_logout_button()
 
+@st.cache_data(ttl=60)
 def get_stats():
     """Always reload fresh stats from database."""
     try:
@@ -2103,6 +2080,15 @@ def show_user_dashboard():
         render_billing_tab()
 
 
+@st.cache_data(ttl=60)
+def get_cached_all_users():
+    from auth import get_all_users
+    return get_all_users()
+
+@st.cache_data(ttl=60)
+def get_cached_db():
+    return database.load_db()
+
 # ==========================================
 # ADMIN DASHBOARD
 # ==========================================
@@ -2113,11 +2099,10 @@ def show_admin_dashboard():
     # ==========================================
     # PLATFORM OVERVIEW PANEL
     # ==========================================
-    from auth import get_all_users
     from subscription import get_plan
 
-    all_users = get_all_users()
-    df_master = database.load_db()
+    all_users = get_cached_all_users()
+    df_master = get_cached_db()
     total_leads = len(df_master)
     valid_leads = len(df_master[df_master["validation_status"] == "Valid"]) if "validation_status" in df_master.columns else 0
     quality_pct = int((valid_leads / total_leads * 100)) if total_leads > 0 else 0
@@ -2278,7 +2263,7 @@ def show_admin_dashboard():
     # ==========================================
     if selected_tab == tabs[1]:
         st.markdown("### 🗄️ Master Lead Repository")
-        df_master = database.load_db()
+        df_master = get_cached_db()
         if df_master.empty:
             st.info("No leads in database yet. Generate leads first.")
         else:
@@ -2331,10 +2316,10 @@ def show_admin_dashboard():
     # ==========================================
     if selected_tab == tabs[2]:
         st.markdown("### 👥 User Management")
-        from auth import get_all_users, register_user, delete_user, update_user_plan, update_password
+        from auth import register_user, delete_user, update_user_plan, update_password
 
-        # Always reload fresh
-        all_users_list = get_all_users()
+        # Use cached list (except when mutating)
+        all_users_list = get_cached_all_users()
         if all_users_list:
             df_users = pd.DataFrame(all_users_list)
             display_user_cols = ["username", "role", "plan", "name", "email", "created_at"]
@@ -2459,7 +2444,7 @@ def show_admin_dashboard():
             # Lead quality report
             st.markdown("---")
             st.markdown("**Lead Quality Report**")
-            df_analytics = database.load_db()
+            df_analytics = get_cached_db()
             total_analytics = len(df_analytics)
             if total_analytics > 0 and "validation_status" in df_analytics.columns:
                 for status in ["Valid", "Invalid", "Pending"]:
@@ -2517,7 +2502,7 @@ def show_admin_dashboard():
         with col1:
             if st.button("🔄 Force Cloud Sync", use_container_width=True, type="primary"):
                 with st.spinner("Syncing..."):
-                    df_local = database.load_db()
+                    df_local = get_cached_db()
                     if not df_local.empty:
                         success, msg = google_sheets.save_to_google_sheets(df_local.to_dict("records"))
                         st.success(f"✅ {msg}") if success else st.error(f"❌ {msg}")
