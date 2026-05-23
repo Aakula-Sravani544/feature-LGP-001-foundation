@@ -181,128 +181,143 @@ def render_login_page():
 
     st.markdown("""
 <style>
-/* Gradient Background */
+/* Gradient Background & No Scroll */
 .stApp {
-    background: linear-gradient(135deg, #1E1B4B 0%, #312E81 100%) !important;
+    background: linear-gradient(135deg, #110B29 0%, #2A1B54 50%, #1E1B4B 100%) !important;
     font-family: 'Inter', sans-serif !important;
 }
-[data-testid="stAppViewContainer"] { background: transparent !important; }
+[data-testid="stAppViewContainer"] {
+    background: transparent !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-height: 100vh !important;
+    overflow: hidden !important;
+}
 [data-testid="stSidebar"] { display: none !important; }
 [data-testid="stHeader"] { display: none !important; }
 
+/* Main Container centered without scrolling */
 .block-container {
-    max-width: 1100px !important;
-    padding-top: 4rem !important;
-    padding-bottom: 2rem !important;
+    max-width: 1200px !important;
+    padding: 0 2rem !important;
+    width: 100% !important;
+    margin-top: -3rem !important;
 }
 
 /* Force the exact right column to be a white card */
-div[data-testid="column"]:has(.white-card-target) {
+[data-testid="column"]:last-of-type {
     background-color: #FFFFFF !important;
     border-radius: 24px !important;
     padding: 3rem 2.5rem !important;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.25) !important;
+    max-width: 520px !important;
+    margin: 0 auto !important;
+}
+
+/* Force dark text color inside the white card */
+[data-testid="column"]:last-of-type p,
+[data-testid="column"]:last-of-type span,
+[data-testid="column"]:last-of-type h1,
+[data-testid="column"]:last-of-type h2,
+[data-testid="column"]:last-of-type h3,
+[data-testid="column"]:last-of-type div {
+    color: #111827 !important;
+}
+
+/* Exemptions for button text to keep it white */
+[data-testid="column"]:last-of-type .stButton > button p,
+[data-testid="column"]:last-of-type .stButton > button span {
+    color: #FFFFFF !important;
 }
 
 /* Inputs Styling inside the White Card */
-div[data-testid="column"]:has(.white-card-target) .stTextInput label p {
-    color: #0F172A !important;
+[data-testid="column"]:last-of-type .stTextInput label p {
     font-weight: 600 !important;
-    font-size: 13px !important;
+    font-size: 14px !important;
+    color: #374151 !important;
 }
-div[data-testid="column"]:has(.white-card-target) .stTextInput > div > div > input {
-    background: #FFFFFF !important;
-    border: 1px solid #E2E8F0 !important;
-    color: #0F172A !important;
-    border-radius: 8px !important;
+[data-testid="column"]:last-of-type .stTextInput > div > div > input {
+    background: #F9FAFB !important;
+    border: 1px solid #E5E7EB !important;
+    color: #111827 !important;
+    border-radius: 12px !important;
     padding: 14px 16px !important;
     font-size: 14px !important;
 }
-div[data-testid="column"]:has(.white-card-target) .stTextInput > div > div > input::placeholder {
-    color: #94A3B8 !important;
+[data-testid="column"]:last-of-type .stTextInput > div > div > input::placeholder {
+    color: #9CA3AF !important;
 }
 
 /* Button Styling */
-div[data-testid="column"]:has(.white-card-target) div.stButton > button {
-    background-color: #4F46E5 !important;
-    color: white !important;
-    border-radius: 8px !important;
+[data-testid="column"]:last-of-type div.stButton > button {
+    background: linear-gradient(135deg, #4F46E5 0%, #6366F1 100%) !important;
+    border-radius: 12px !important;
     padding: 0.75rem 1rem !important;
-    font-weight: 600 !important;
     border: none !important;
     width: 100% !important;
     transition: all 0.2s !important;
     margin-top: 1rem !important;
+    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3) !important;
 }
-div[data-testid="column"]:has(.white-card-target) div.stButton > button p {
-    color: white !important;
-    font-weight: 600 !important;
-    font-size: 16px !important;
-}
-div[data-testid="column"]:has(.white-card-target) div.stButton > button:hover {
-    background-color: #4338CA !important;
+[data-testid="column"]:last-of-type div.stButton > button:hover {
+    background: linear-gradient(135deg, #4338CA 0%, #4F46E5 100%) !important;
 }
 
-/* Streamlit Tabs styling to match screenshot pills */
-div[data-testid="column"]:has(.white-card-target) div[data-testid="stTabs"] {
-    margin-bottom: 1.5rem !important;
+/* Streamlit Tabs styling */
+[data-testid="column"]:last-of-type div[data-testid="stTabs"] {
+    margin-bottom: 2rem !important;
 }
-div[data-testid="column"]:has(.white-card-target) div[data-testid="stTabs"] button[role="tab"] {
+[data-testid="column"]:last-of-type div[data-testid="stTabs"] button[role="tab"] {
     background-color: transparent !important;
-    border: 1px solid #E2E8F0 !important;
-    border-radius: 8px !important;
+    border: 1px solid #E5E7EB !important;
+    border-radius: 10px !important;
     margin: 0 4px !important;
     padding: 8px 16px !important;
     flex: 1 !important;
     justify-content: center !important;
 }
-div[data-testid="column"]:has(.white-card-target) div[data-testid="stTabs"] button[role="tab"] p {
-    color: #64748B !important;
+[data-testid="column"]:last-of-type div[data-testid="stTabs"] button[role="tab"] p {
+    color: #6B7280 !important;
     font-weight: 600 !important;
 }
-div[data-testid="column"]:has(.white-card-target) div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] {
-    background-color: #F8FAFC !important;
-    border-color: #4F46E5 !important;
-    border-bottom-color: #4F46E5 !important;
+[data-testid="column"]:last-of-type div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] {
+    background-color: #EEF2FF !important;
+    border-color: #6366F1 !important;
+    border-bottom-color: #6366F1 !important;
 }
-div[data-testid="column"]:has(.white-card-target) div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] p {
+[data-testid="column"]:last-of-type div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] p {
     color: #4F46E5 !important;
 }
 
 /* Expander in the white card */
-div[data-testid="column"]:has(.white-card-target) [data-testid="stExpander"] {
-    background-color: #F8FAFC !important;
-    border: 1px solid #E2E8F0 !important;
-    border-radius: 8px !important;
+[data-testid="column"]:last-of-type [data-testid="stExpander"] {
+    background-color: #F9FAFB !important;
+    border: 1px solid #E5E7EB !important;
+    border-radius: 12px !important;
     margin-top: 1rem;
 }
-div[data-testid="column"]:has(.white-card-target) [data-testid="stExpander"] summary {
+[data-testid="column"]:last-of-type [data-testid="stExpander"] summary {
     background-color: transparent !important;
     border: none !important;
 }
-div[data-testid="column"]:has(.white-card-target) [data-testid="stExpander"] summary p {
+[data-testid="column"]:last-of-type [data-testid="stExpander"] summary p {
     color: #4F46E5 !important;
     font-weight: 600 !important;
 }
-div[data-testid="column"]:has(.white-card-target) [data-testid="stExpander"] div[role="region"] {
-    background-color: transparent !important;
-    border: none !important;
-}
 
-/* Trust row */
+/* Trust row absolute position at bottom */
 .trust-row {
+    position: absolute;
+    bottom: 2rem;
+    left: 0;
+    width: 100%;
     display: flex;
     justify-content: center;
     gap: 3rem;
-    margin-top: 4rem;
-    color: #A5B4FC;
+    color: rgba(255,255,255,0.6);
     font-size: 0.9rem;
     font-weight: 500;
-}
-.trust-item {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -312,14 +327,14 @@ div[data-testid="column"]:has(.white-card-target) [data-testid="stExpander"] div
 
     with col1:
         st.markdown("""
-<div style="display: flex; align-items: center; gap: 12px; margin-bottom: 2rem; margin-top: 2rem;">
+<div style="display: flex; align-items: center; gap: 12px; margin-bottom: 2rem;">
     <div style="background: linear-gradient(135deg, #4F46E5, #7C3AED); padding: 8px; border-radius: 12px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">
         <span style="font-size: 28px; line-height: 1;">📈</span>
     </div>
     <span style="font-size: 32px; font-weight: 800; color: white; letter-spacing: -0.5px;">LeadPulse <span style="color: #A5B4FC;">Pro</span></span>
 </div>
 
-<h1 style="color: white; font-size: 3.2rem; font-weight: 800; line-height: 1.15; margin-bottom: 1.5rem; letter-spacing: -1px;">
+<h1 style="color: white; font-size: 3.5rem; font-weight: 800; line-height: 1.15; margin-bottom: 1.5rem; margin-top: 0; letter-spacing: -1px;">
     AI-Powered<br>Lead Generation<br>Platform
 </h1>
 
@@ -327,57 +342,55 @@ div[data-testid="column"]:has(.white-card-target) [data-testid="stExpander"] div
     Generate verified leads faster with<br>AI-powered enrichment.
 </p>
 
-<!-- Feature Point 1 -->
-<div style="display: flex; align-items: flex-start; gap: 16px; margin-bottom: 1.8rem;">
-    <div style="background: rgba(255,255,255,0.06); padding: 12px; border-radius: 12px; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-        <span style="font-size: 22px;">👥</span>
+<!-- Features -->
+<div style="display: flex; flex-direction: column; gap: 1.8rem;">
+    <div style="display: flex; align-items: flex-start; gap: 16px;">
+        <div style="background: rgba(255,255,255,0.06); padding: 12px; border-radius: 12px; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;">
+            <span style="font-size: 22px;">👥</span>
+        </div>
+        <div>
+            <div style="color: white; font-weight: 600; font-size: 1.15rem; margin-bottom: 4px;">Smart Lead Discovery</div>
+            <div style="color: rgba(255,255,255,0.6); font-size: 0.95rem;">Find high-quality leads in seconds</div>
+        </div>
     </div>
-    <div>
-        <div style="color: white; font-weight: 600; font-size: 1.15rem; margin-bottom: 4px;">Smart Lead Discovery</div>
-        <div style="color: rgba(255,255,255,0.6); font-size: 0.95rem;">Find high-quality leads in seconds</div>
+    
+    <div style="display: flex; align-items: flex-start; gap: 16px;">
+        <div style="background: rgba(255,255,255,0.06); padding: 12px; border-radius: 12px; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;">
+            <span style="font-size: 22px;">📊</span>
+        </div>
+        <div>
+            <div style="color: white; font-weight: 600; font-size: 1.15rem; margin-bottom: 4px;">AI Enrichment</div>
+            <div style="color: rgba(255,255,255,0.6); font-size: 0.95rem;">Get enriched data & insights automatically</div>
+        </div>
     </div>
-</div>
-
-<!-- Feature Point 2 -->
-<div style="display: flex; align-items: flex-start; gap: 16px; margin-bottom: 1.8rem;">
-    <div style="background: rgba(255,255,255,0.06); padding: 12px; border-radius: 12px; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-        <span style="font-size: 22px;">📊</span>
+    
+    <div style="display: flex; align-items: flex-start; gap: 16px;">
+        <div style="background: rgba(255,255,255,0.06); padding: 12px; border-radius: 12px; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;">
+            <span style="font-size: 22px;">🛡️</span>
+        </div>
+        <div>
+            <div style="color: white; font-weight: 600; font-size: 1.15rem; margin-bottom: 4px;">Data Verification</div>
+            <div style="color: rgba(255,255,255,0.6); font-size: 0.95rem;">Ensure accuracy and reliability</div>
+        </div>
     </div>
-    <div>
-        <div style="color: white; font-weight: 600; font-size: 1.15rem; margin-bottom: 4px;">AI Enrichment</div>
-        <div style="color: rgba(255,255,255,0.6); font-size: 0.95rem;">Get enriched data & insights automatically</div>
-    </div>
-</div>
-
-<!-- Feature Point 3 -->
-<div style="display: flex; align-items: flex-start; gap: 16px; margin-bottom: 1.8rem;">
-    <div style="background: rgba(255,255,255,0.06); padding: 12px; border-radius: 12px; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-        <span style="font-size: 22px;">🛡️</span>
-    </div>
-    <div>
-        <div style="color: white; font-weight: 600; font-size: 1.15rem; margin-bottom: 4px;">Data Verification</div>
-        <div style="color: rgba(255,255,255,0.6); font-size: 0.95rem;">Ensure accuracy and reliability</div>
-    </div>
-</div>
-
-<!-- Feature Point 4 -->
-<div style="display: flex; align-items: flex-start; gap: 16px; margin-bottom: 1.8rem;">
-    <div style="background: rgba(255,255,255,0.06); padding: 12px; border-radius: 12px; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-        <span style="font-size: 22px;">🔒</span>
-    </div>
-    <div>
-        <div style="color: white; font-weight: 600; font-size: 1.15rem; margin-bottom: 4px;">Secure & Reliable</div>
-        <div style="color: rgba(255,255,255,0.6); font-size: 0.95rem;">Enterprise-grade security for your data</div>
+    
+    <div style="display: flex; align-items: flex-start; gap: 16px;">
+        <div style="background: rgba(255,255,255,0.06); padding: 12px; border-radius: 12px; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;">
+            <span style="font-size: 22px;">🔒</span>
+        </div>
+        <div>
+            <div style="color: white; font-weight: 600; font-size: 1.15rem; margin-bottom: 4px;">Secure & Reliable</div>
+            <div style="color: rgba(255,255,255,0.6); font-size: 0.95rem;">Enterprise-grade security for your data</div>
+        </div>
     </div>
 </div>
 """, unsafe_allow_html=True)
 
     with col2:
         st.markdown("""
-<span class="white-card-target"></span>
 <div style="text-align: center; margin-bottom: 2rem;">
-    <h2 style="color: #0F172A; margin: 0; font-weight: 800; font-size: 28px;">Welcome Back!</h2>
-    <p style="color: #64748B; font-size: 15px; margin-top: 8px;">Sign in to access your account</p>
+    <h2 style="color: #111827; margin: 0; font-weight: 800; font-size: 28px;">Welcome Back!</h2>
+    <p style="color: #6B7280; font-size: 15px; margin-top: 8px;">Sign in to access your account</p>
 </div>
 """, unsafe_allow_html=True)
         
@@ -428,11 +441,11 @@ div[data-testid="column"]:has(.white-card-target) [data-testid="stExpander"] div
         # Registration section
         st.markdown("""
 <div style="display: flex; align-items: center; justify-content: center; margin: 1.5rem 0;">
-    <div style="flex: 1; height: 1px; background-color: #E2E8F0;"></div>
-    <div style="padding: 0 1rem; color: #94A3B8; font-size: 13px;">or</div>
-    <div style="flex: 1; height: 1px; background-color: #E2E8F0;"></div>
+    <div style="flex: 1; height: 1px; background-color: #E5E7EB;"></div>
+    <div style="padding: 0 1rem; color: #9CA3AF; font-size: 13px;">or</div>
+    <div style="flex: 1; height: 1px; background-color: #E5E7EB;"></div>
 </div>
-<div style="text-align: center; color: #64748B; font-size: 14px; margin-bottom: 1rem;">
+<div style="text-align: center; color: #6B7280; font-size: 14px; margin-bottom: 1rem;">
     Don't have an account? 
 </div>
 """, unsafe_allow_html=True)
@@ -458,11 +471,9 @@ div[data-testid="column"]:has(.white-card-target) [data-testid="stExpander"] div
     # Bottom trust row
     st.markdown("""
 <div class="trust-row">
-    <div class="trust-item">🔒 Secure Access</div>
-    <div style="width: 1px; height: 15px; background: rgba(255,255,255,0.2);"></div>
-    <div class="trust-item">🛡️ Encrypted Data</div>
-    <div style="width: 1px; height: 15px; background: rgba(255,255,255,0.2);"></div>
-    <div class="trust-item">⚡ 99.9% Uptime</div>
+    <div style="display: flex; align-items: center; gap: 8px;">🛡️ Secure Access</div>
+    <div style="display: flex; align-items: center; gap: 8px;">🔒 Encrypted Data</div>
+    <div style="display: flex; align-items: center; gap: 8px;">☁️ 99.9% Uptime</div>
 </div>
 """, unsafe_allow_html=True)
 
