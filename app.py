@@ -330,25 +330,20 @@ div[data-testid="column"]:nth-of-type(2) [data-testid="stExpander"] div[role="re
     <p style="color: #E0E7FF; font-size: 1.15rem; margin-bottom: 3rem; line-height: 1.6;">
         Generate verified leads faster with AI-powered enrichment
     </p>
-    
-    <div class="feature-point">
-        <div class="feature-icon">🔍</div>
-        Smart Lead Discovery
-    </div>
-    <div class="feature-point">
-        <div class="feature-icon">✨</div>
-        AI Enrichment
-    </div>
-    <div class="feature-point">
-        <div class="feature-icon">✓</div>
-        Data Verification
-    </div>
-    <div class="feature-point">
-        <div class="feature-icon">🔒</div>
-        Secure & Reliable
-    </div>
 </div>
 """, unsafe_allow_html=True)
+
+        st.markdown("### 🔍 Smart Lead Discovery")
+        st.caption("Find high-quality leads in seconds")
+
+        st.markdown("### ✨ AI Enrichment")
+        st.caption("Get enriched data and insights automatically")
+
+        st.markdown("### ✅ Data Verification")
+        st.caption("Ensure accuracy and reliability")
+
+        st.markdown("### 🔒 Secure & Reliable")
+        st.caption("Enterprise-grade security for your data")
 
     with col2:
         st.markdown("""
