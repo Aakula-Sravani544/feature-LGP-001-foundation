@@ -298,6 +298,8 @@ div:has(> div > div > div > div > .login-card-marker) {
     height: 58px !important;
     font-size: 16px !important;
     color: #111827 !important;
+    -webkit-text-fill-color: #111827 !important;
+    font-weight: 500 !important;
     padding: 0 16px !important;
     transition: all 0.2s ease !important;
     box-shadow: 0 1px 2px rgba(0,0,0,0.02) inset !important;
@@ -311,10 +313,11 @@ div:has(> div > div > div > div > .login-card-marker) {
     background: #ffffff !important;
 }
 .stTextInput label {
-    color: #374151 !important;
-    font-weight: 600 !important;
+    color: #111827 !important;
+    font-weight: 700 !important;
     font-size: 14px !important;
     margin-bottom: 6px !important;
+    opacity: 1 !important;
 }
 
 .stButton > button {
@@ -364,7 +367,12 @@ div[role="radiogroup"] label[data-checked="true"] {
     left, right = st.columns([1.1, 0.9])
 
     with left:
-        st.markdown('''<div class="brand-title">LeadPulse <span class="brand-pro">Pro</span><br>Platform</div>
+        st.markdown('''
+<div style="display: flex; align-items: center; gap: 12px; margin-bottom: 48px;">
+    <div style="width: 42px; height: 42px; background: #6d28d9; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 22px;">📊</div>
+    <div style="font-size: 22px; font-weight: 800; color: #ffffff;">LeadPulse <span style="color: #c084fc;">Pro</span></div>
+</div>
+<div class="brand-title">AI-Powered<br>Lead Generation<br>Platform</div>
 <div class="brand-subtitle">Generate verified leads faster with AI-powered enrichment.<br>Designed for modern revenue teams.</div>
 <div class="feat-row">
     <div class="feat-icon-box">👥</div>
@@ -418,15 +426,13 @@ div[role="radiogroup"] label[data-checked="true"] {
         username = st.text_input(
             "Username",
             placeholder="Enter your username",
-            key="login_username",
-            label_visibility="collapsed"
+            key="login_username"
         )
         password = st.text_input(
             "Password",
             placeholder="Enter your password",
             type="password",
-            key="login_password",
-            label_visibility="collapsed"
+            key="login_password"
         )
         
         c1, c2 = st.columns(2)
