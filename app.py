@@ -197,7 +197,7 @@ def render_login_page():
 }
 
 /* Force the exact right column to be a white card */
-div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2) {
+div[data-testid="column"]:has(.white-card-target) {
     background-color: #FFFFFF !important;
     border-radius: 24px !important;
     padding: 3rem 2.5rem !important;
@@ -205,12 +205,12 @@ div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2) {
 }
 
 /* Inputs Styling inside the White Card */
-div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2) .stTextInput label p {
+div[data-testid="column"]:has(.white-card-target) .stTextInput label p {
     color: #0F172A !important;
     font-weight: 600 !important;
     font-size: 13px !important;
 }
-div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2) .stTextInput > div > div > input {
+div[data-testid="column"]:has(.white-card-target) .stTextInput > div > div > input {
     background: #FFFFFF !important;
     border: 1px solid #E2E8F0 !important;
     color: #0F172A !important;
@@ -218,12 +218,12 @@ div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2) .s
     padding: 14px 16px !important;
     font-size: 14px !important;
 }
-div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2) .stTextInput > div > div > input::placeholder {
+div[data-testid="column"]:has(.white-card-target) .stTextInput > div > div > input::placeholder {
     color: #94A3B8 !important;
 }
 
 /* Button Styling */
-div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2) div.stButton > button {
+div[data-testid="column"]:has(.white-card-target) div.stButton > button {
     background-color: #4F46E5 !important;
     color: white !important;
     border-radius: 8px !important;
@@ -234,20 +234,20 @@ div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2) di
     transition: all 0.2s !important;
     margin-top: 1rem !important;
 }
-div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2) div.stButton > button p {
+div[data-testid="column"]:has(.white-card-target) div.stButton > button p {
     color: white !important;
     font-weight: 600 !important;
     font-size: 16px !important;
 }
-div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2) div.stButton > button:hover {
+div[data-testid="column"]:has(.white-card-target) div.stButton > button:hover {
     background-color: #4338CA !important;
 }
 
 /* Streamlit Tabs styling to match screenshot pills */
-div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2) div[data-testid="stTabs"] {
+div[data-testid="column"]:has(.white-card-target) div[data-testid="stTabs"] {
     margin-bottom: 1.5rem !important;
 }
-div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2) div[data-testid="stTabs"] button[role="tab"] {
+div[data-testid="column"]:has(.white-card-target) div[data-testid="stTabs"] button[role="tab"] {
     background-color: transparent !important;
     border: 1px solid #E2E8F0 !important;
     border-radius: 8px !important;
@@ -256,35 +256,35 @@ div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2) di
     flex: 1 !important;
     justify-content: center !important;
 }
-div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2) div[data-testid="stTabs"] button[role="tab"] p {
+div[data-testid="column"]:has(.white-card-target) div[data-testid="stTabs"] button[role="tab"] p {
     color: #64748B !important;
     font-weight: 600 !important;
 }
-div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2) div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] {
+div[data-testid="column"]:has(.white-card-target) div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] {
     background-color: #F8FAFC !important;
     border-color: #4F46E5 !important;
     border-bottom-color: #4F46E5 !important;
 }
-div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2) div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] p {
+div[data-testid="column"]:has(.white-card-target) div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] p {
     color: #4F46E5 !important;
 }
 
 /* Expander in the white card */
-div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2) [data-testid="stExpander"] {
+div[data-testid="column"]:has(.white-card-target) [data-testid="stExpander"] {
     background-color: #F8FAFC !important;
     border: 1px solid #E2E8F0 !important;
     border-radius: 8px !important;
     margin-top: 1rem;
 }
-div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2) [data-testid="stExpander"] summary {
+div[data-testid="column"]:has(.white-card-target) [data-testid="stExpander"] summary {
     background-color: transparent !important;
     border: none !important;
 }
-div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2) [data-testid="stExpander"] summary p {
+div[data-testid="column"]:has(.white-card-target) [data-testid="stExpander"] summary p {
     color: #4F46E5 !important;
     font-weight: 600 !important;
 }
-div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2) [data-testid="stExpander"] div[role="region"] {
+div[data-testid="column"]:has(.white-card-target) [data-testid="stExpander"] div[role="region"] {
     background-color: transparent !important;
     border: none !important;
 }
@@ -374,6 +374,7 @@ div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2) [d
 
     with col2:
         st.markdown("""
+<span class="white-card-target"></span>
 <div style="text-align: center; margin-bottom: 2rem;">
     <h2 style="color: #0F172A; margin: 0; font-weight: 800; font-size: 28px;">Welcome Back!</h2>
     <p style="color: #64748B; font-size: 15px; margin-top: 8px;">Sign in to access your account</p>
