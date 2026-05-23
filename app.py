@@ -193,27 +193,42 @@ def render_login_page():
 .main .block-container {
     padding: 0 !important;
     overflow: hidden !important;
-    max-height: 100vh !important;
+    max-width: 100% !important;
 }
 .stApp {
     overflow: hidden !important;
     height: 100vh !important;
-    background:#0a0520 !important;
+    background: linear-gradient(135deg, #0a0520 0%, #1a0a4a 50%, #0f0635 100%) !important;
 }
-iframe {
-    display: block !important;
-    border: none !important;
-    position: absolute !important;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 0 !important;
-}
+
+/* Vertically center the columns */
 [data-testid="stHorizontalBlock"] {
-    position: relative;
-    z-index: 10;
+    align-items: center !important;
+    height: 100vh !important;
+    margin: 0 !important;
+    padding: 0 !important;
 }
+
+/* Left Column Styling */
+div[data-testid="column"]:nth-of-type(1) {
+    padding: 56px 48px !important;
+}
+
+/* Right Column (Card) Styling */
+div:has(> div > div > div > div > .login-card-marker) {
+    background: white !important;
+    border-radius: 20px !important;
+    padding: 40px 36px !important;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.4) !important;
+    max-width: 460px !important;
+    margin: 0 auto !important;
+}
+
+/* Fallback if :has doesn't work perfectly */
+.login-card-marker {
+    display: none;
+}
+
 .stTextInput input {
     background: white !important;
     border: 1.5px solid #e5e7eb !important;
@@ -236,6 +251,7 @@ iframe {
     font-size: 15px !important;
     font-weight: 600 !important;
     width: 100% !important;
+    margin-top: 10px !important;
 }
 .stButton > button:hover {
     background: #4c1d95 !important;
@@ -258,331 +274,138 @@ div[role="radiogroup"] label {
 div[role="radiogroup"] label[data-checked="true"] {
     background: white;
     box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+    color: #5b21b6 !important;
+    font-weight: 700 !important;
 }
 </style>
     ''', unsafe_allow_html=True)
 
-    # Render the full login page background as HTML component
-    components.html('''
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8"/>
-<meta name="viewport" 
-      content="width=device-width, initial-scale=1.0"/>
-<style>
-  * { margin:0; padding:0; box-sizing:border-box; 
-      font-family: -apple-system, BlinkMacSystemFont, 
-      'Segoe UI', sans-serif; }
+    left, right = st.columns([1.1, 0.9])
 
-  html, body {
-      height: 100%;
-      overflow: hidden !important;
-      margin: 0 !important;
-      padding: 0 !important;
-  }
-  
-  body {
-    background: linear-gradient(135deg, 
-      #0a0520 0%, #1a0a4a 50%, #0f0635 100%);
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .page {
-    display: flex;
-    flex: 1;
-    min-height: 100vh;
-    height: 100vh;
-    overflow: hidden;
-  }
-
-  /* ── LEFT PANEL ── */
-  .left {
-    flex: 1.1;
-    padding: 56px 48px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    overflow: hidden;
-  }
-
-  .logo {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 48px;
-  }
-  .logo-icon {
-    width: 48px; height: 48px;
-    background: #5b21b6;
-    border-radius: 12px;
-    display: flex; align-items: center;
-    justify-content: center;
-    font-size: 22px;
-  }
-  .logo-text {
-    font-size: 24px;
-    font-weight: 700;
-    color: white;
-  }
-  .logo-text span { color: #a78bfa; }
-
-  .headline {
-    font-size: 48px;
-    font-weight: 800;
-    color: white;
-    line-height: 1.15;
-    margin-bottom: 20px;
-  }
-
-  .subtext {
-    font-size: 16px;
-    color: rgba(255,255,255,0.55);
-    line-height: 1.7;
-    margin-bottom: 44px;
-  }
-
-  .features {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-    margin-bottom: 48px;
-  }
-
-  .feature {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-  }
-
-  .feature-icon {
-    width: 42px; height: 42px;
-    flex-shrink: 0;
-    background: rgba(91,33,182,0.5);
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 20px;
-  }
-
-  .feature-title {
-    color: white;
-    font-weight: 600;
-    font-size: 15px;
-    margin-bottom: 2px;
-  }
-
-  .feature-sub {
-    color: rgba(255,255,255,0.45);
-    font-size: 13px;
-  }
-
-  .trust-bar {
-    display: flex;
-    gap: 32px;
-    padding-top: 24px;
-    border-top: 1px solid rgba(255,255,255,0.08);
-  }
-
-  .trust-item {
-    color: rgba(255,255,255,0.4);
-    font-size: 13px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  /* ── RIGHT PANEL ── */
-  .right {
-    flex: 0.9;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 40px 32px;
-    overflow: hidden;
-  }
-
-  .card {
-    background: white;
-    border-radius: 20px;
-    padding: 40px 36px;
-    width: 100%;
-    max-width: 460px;
-    height: 520px;
-    box-shadow: 0 24px 64px rgba(0,0,0,0.4);
-  }
-
-  .card-header {
-    text-align: center;
-    margin-bottom: 28px;
-  }
-
-  .card-title {
-    font-size: 26px;
-    font-weight: 800;
-    color: #111827;
-    margin-bottom: 8px;
-  }
-
-  .card-sub {
-    font-size: 14px;
-    color: #6b7280;
-  }
-</style>
-</head>
-<body>
-
-<div class="page">
-
-  <!-- LEFT PANEL -->
-  <div class="left">
-    <div class="logo">
-      <div class="logo-icon">📊</div>
-      <div class="logo-text">
-        LeadPulse <span>Pro</span>
-      </div>
-    </div>
-
-    <div class="headline">
-      AI-Powered<br>Lead Generation<br>Platform
-    </div>
-
-    <div class="subtext">
-      Generate verified leads faster with<br>
-      AI-powered enrichment.
-    </div>
-
-    <div class="features">
-      <div class="feature">
-        <div class="feature-icon">👥</div>
-        <div>
-          <div class="feature-title">
-            Smart Lead Discovery</div>
-          <div class="feature-sub">
-            Find high-quality leads in seconds</div>
-        </div>
-      </div>
-      <div class="feature">
-        <div class="feature-icon">📈</div>
-        <div>
-          <div class="feature-title">AI Enrichment</div>
-          <div class="feature-sub">
-            Get enriched data & insights 
-            automatically</div>
-        </div>
-      </div>
-      <div class="feature">
-        <div class="feature-icon">🛡️</div>
-        <div>
-          <div class="feature-title">
-            Data Verification</div>
-          <div class="feature-sub">
-            Ensure accuracy and reliability</div>
-        </div>
-      </div>
-      <div class="feature">
-        <div class="feature-icon">🔒</div>
-        <div>
-          <div class="feature-title">
-            Secure & Reliable</div>
-          <div class="feature-sub">
-            Enterprise-grade security</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="trust-bar">
-      <div class="trust-item">🛡️ Secure Access</div>
-      <div class="trust-item">🔒 Encrypted Data</div>
-      <div class="trust-item">☁️ 99.9% Uptime</div>
-    </div>
-  </div>
-
-  <!-- RIGHT PANEL -->
-  <div class="right">
-    <div class="card">
-      <div class="card-header">
-        <div class="card-title">Welcome Back!</div>
-        <div class="card-sub">
-          Sign in to access your account</div>
-      </div>
-    </div>
-  </div>
-</div>
-
-</body>
-</html>
-''', height=900, scrolling=False)
-
-    # Streamlit form on top of iframe
-    _, right = st.columns([1.1, 0.9])
-
-    with right:
+    with left:
         st.markdown('''
-        <div style="height: 310px;"></div>
+        <div style="color: white; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 48px;">
+                <div style="width: 48px; height: 48px; background: #5b21b6; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px;">📊</div>
+                <div style="font-size: 24px; font-weight: 700;">LeadPulse <span style="color: #a78bfa;">Pro</span></div>
+            </div>
+            
+            <div style="font-size: 48px; font-weight: 800; line-height: 1.15; margin-bottom: 20px;">
+                AI-Powered<br>Lead Generation<br>Platform
+            </div>
+            
+            <div style="font-size: 16px; color: rgba(255,255,255,0.55); line-height: 1.7; margin-bottom: 44px;">
+                Generate verified leads faster with<br>AI-powered enrichment.
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 20px; margin-bottom: 48px;">
+                <div style="display: flex; align-items: center; gap: 14px;">
+                    <div style="width: 42px; height: 42px; background: rgba(91,33,182,0.5); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px;">👥</div>
+                    <div>
+                        <div style="font-weight: 600; font-size: 15px; margin-bottom: 2px;">Smart Lead Discovery</div>
+                        <div style="color: rgba(255,255,255,0.45); font-size: 13px;">Find high-quality leads in seconds</div>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 14px;">
+                    <div style="width: 42px; height: 42px; background: rgba(91,33,182,0.5); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px;">📈</div>
+                    <div>
+                        <div style="font-weight: 600; font-size: 15px; margin-bottom: 2px;">AI Enrichment</div>
+                        <div style="color: rgba(255,255,255,0.45); font-size: 13px;">Get enriched data & insights automatically</div>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 14px;">
+                    <div style="width: 42px; height: 42px; background: rgba(91,33,182,0.5); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px;">🛡️</div>
+                    <div>
+                        <div style="font-weight: 600; font-size: 15px; margin-bottom: 2px;">Data Verification</div>
+                        <div style="color: rgba(255,255,255,0.45); font-size: 13px;">Ensure accuracy and reliability</div>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 14px;">
+                    <div style="width: 42px; height: 42px; background: rgba(91,33,182,0.5); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px;">🔒</div>
+                    <div>
+                        <div style="font-weight: 600; font-size: 15px; margin-bottom: 2px;">Secure & Reliable</div>
+                        <div style="color: rgba(255,255,255,0.45); font-size: 13px;">Enterprise-grade security</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 32px; padding-top: 24px; border-top: 1px solid rgba(255,255,255,0.08); color: rgba(255,255,255,0.4); font-size: 13px;">
+                <div>🛡️ Secure Access</div>
+                <div>🔒 Encrypted Data</div>
+                <div>☁️ 99.9% Uptime</div>
+            </div>
+        </div>
         ''', unsafe_allow_html=True)
 
-        # We wrap in a container so we can limit width
-        _, center, _ = st.columns([0.1, 0.8, 0.1])
-        with center:
-            portal = st.radio(
-                "Portal",
-                ["Admin Portal", "User Workspace"],
-                horizontal=True,
-                key="portal_select",
-                label_visibility="collapsed"
-            )
+    with right:
+        # This marker lets our CSS target this specific container to make it the white card
+        st.markdown('<div class="login-card-marker"></div>', unsafe_allow_html=True)
+        
+        st.markdown('<div style="text-align:center; font-size:26px; font-weight:800; color:#111827; margin-bottom:8px;">Welcome Back!</div>', unsafe_allow_html=True)
+        st.markdown('<div style="text-align:center; font-size:14px; color:#6b7280; margin-bottom:28px;">Sign in to access your account</div>', unsafe_allow_html=True)
 
-            username = st.text_input(
-                "Username",
-                placeholder="Enter your username",
-                key="login_username",
-                label_visibility="collapsed"
-            )
-            password = st.text_input(
-                "Password",
-                placeholder="Enter your password",
-                type="password",
-                key="login_password",
-                label_visibility="collapsed"
-            )
+        portal = st.radio(
+            "Portal",
+            ["Admin Portal", "User Workspace"],
+            horizontal=True,
+            key="portal_select",
+            label_visibility="collapsed"
+        )
+
+        username = st.text_input(
+            "Username",
+            placeholder="Enter your username",
+            key="login_username",
+            label_visibility="collapsed"
+        )
+        password = st.text_input(
+            "Password",
+            placeholder="Enter your password",
+            type="password",
+            key="login_password",
+            label_visibility="collapsed"
+        )
+        
+        c1, c2 = st.columns(2)
+        with c1:
+            st.checkbox("Remember me")
+        with c2:
+            st.markdown('<div style="text-align:right; font-size:14px; color:#5b21b6; cursor:pointer; margin-top:10px;">Forgot Password?</div>', unsafe_allow_html=True)
+
+        login_btn = st.button("➜ Login", key="login_btn", use_container_width=True)
+        
+        st.markdown('''
+        <div style="text-align:center; color:#9ca3af; font-size:13px; margin: 16px 0;">or</div>
+        <div style="text-align:center; font-size:13px; color:#374151;">
+            Don't have an account? <a href="#" style="color:#5b21b6; font-weight:600; text-decoration:none;">Register now</a>
+        </div>
+        ''', unsafe_allow_html=True)
+
+        if login_btn:
+            success, role, plan = login(username, password)
             
-            c1, c2 = st.columns(2)
-            with c1:
-                st.checkbox("Remember me")
-            with c2:
-                st.markdown('<div style="text-align:right; font-size:14px; color:#5b21b6; cursor:pointer;">Forgot Password?</div>', unsafe_allow_html=True)
-
-            login_btn = st.button("➜ Login", key="login_btn", use_container_width=True)
-
-            if login_btn:
-                success, role, plan = login(username, password)
-                
-                if portal == "Admin Portal":
-                    if success and role == "admin":
-                        st.session_state["authenticated"] = True
-                        st.session_state["username"] = username
-                        st.session_state["role"] = role
-                        st.session_state["plan"] = plan
-                        st.session_state["login_time"] = datetime.now()
-                        st.rerun()
-                    elif success and role != "admin":
-                        st.error("This account does not have admin access")
-                    else:
-                        st.error("Invalid admin credentials")
-                else:  # User Workspace
-                    if success:
-                        st.session_state["authenticated"] = True
-                        st.session_state["username"] = username
-                        st.session_state["role"] = role
-                        st.session_state["plan"] = plan
-                        st.session_state["login_time"] = datetime.now()
-                        st.rerun()
-                    else:
-                        st.error("Invalid credentials")
+            if portal == "Admin Portal":
+                if success and role == "admin":
+                    st.session_state["authenticated"] = True
+                    st.session_state["username"] = username
+                    st.session_state["role"] = role
+                    st.session_state["plan"] = plan
+                    st.session_state["login_time"] = datetime.now()
+                    st.rerun()
+                elif success and role != "admin":
+                    st.error("This account does not have admin access")
+                else:
+                    st.error("Invalid admin credentials")
+            else:  # User Workspace
+                if success:
+                    st.session_state["authenticated"] = True
+                    st.session_state["username"] = username
+                    st.session_state["role"] = role
+                    st.session_state["plan"] = plan
+                    st.session_state["login_time"] = datetime.now()
+                    st.rerun()
+                else:
+                    st.error("Invalid credentials")
 
 # Show login if not authenticated
 if not st.session_state.get('authenticated', False):
