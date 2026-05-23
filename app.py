@@ -475,13 +475,12 @@ if not st.session_state.get('authenticated', False):
     render_login_page()
     st.stop()
 
-# Safe fallback if session looks empty but authenticated is True
-if not st.session_state.get("username"):
-    st.session_state["username"] = "admin"
-if not st.session_state.get("role"):
-    st.session_state["role"] = "admin"
-if not st.session_state.get("plan"):
-    st.session_state["plan"] = "Enterprise"
+# Check if session is corrupted
+if st.session_state.get('authenticated', False):
+    if not st.session_state.get("username") or not st.session_state.get("role"):
+        st.session_state.clear()
+        st.session_state["authenticated"] = False
+        st.rerun()
 # ==========================================
 # STARTUP SYNC
 # ==========================================

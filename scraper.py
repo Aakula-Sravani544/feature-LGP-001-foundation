@@ -12,7 +12,13 @@ from email_validator import validate_email
 from typing import Dict, Any
 
 from validation import validate_lead
-from ai_engine import enrich_leads_with_ai
+try:
+    from ai_engine import enrich_leads_with_ai
+except Exception as e:
+    logger = logging.getLogger(__name__)
+    logger.error(f"Failed to import ai_engine: {e}")
+    # Dummy fallback
+    def enrich_leads_with_ai(leads): return leads
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
