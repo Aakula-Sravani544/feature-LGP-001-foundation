@@ -180,424 +180,405 @@ def render_login_page():
     import streamlit.components.v1 as components
     from datetime import datetime
 
-    # Session state init
-    if "authenticated" not in st.session_state:
-        st.session_state.authenticated = False
-    if "role" not in st.session_state:
-        st.session_state.role = ""
-
-    # If already logged in skip this page
-    if st.session_state.authenticated:
-        st.rerun()
-
-    # Hide all streamlit UI
     st.markdown('''
 <style>
 #MainMenu,footer,header{visibility:hidden !important;}
 [data-testid="collapsedControl"]{display:none !important;}
 [data-testid="stSidebar"]{display:none !important;}
-.main .block-container {
-    padding: 0 !important;
-    overflow: hidden !important;
-    max-height: 100vh !important;
+.main .block-container{
+    padding:0 !important;
+    max-width:100% !important;
+    overflow:hidden !important;
 }
-.stApp {
-    overflow: hidden !important;
-    height: 100vh !important;
+.stApp{
+    overflow:hidden !important;
+    height:100vh !important;
     background:#0a0520 !important;
 }
-iframe {
-    display: block !important;
-    border: none !important;
-    position: absolute !important;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 0 !important;
-}
-[data-testid="stHorizontalBlock"] {
-    position: relative;
-    z-index: 10;
-}
-.stTextInput input {
-    background: white !important;
-    border: 1.5px solid #e5e7eb !important;
-    border-radius: 10px !important;
-    height: 48px !important;
-    font-size: 14px !important;
-    color: #111827 !important;
-}
-.stTextInput label {
-    color: #111827 !important;
-    font-weight: 600 !important;
-    font-size: 14px !important;
-}
-.stButton > button {
-    background: #5b21b6 !important;
-    color: white !important;
-    border: none !important;
-    border-radius: 12px !important;
-    height: 50px !important;
-    font-size: 15px !important;
-    font-weight: 600 !important;
-    width: 100% !important;
-}
-.stButton > button:hover {
-    background: #4c1d95 !important;
-}
-div[role="radiogroup"] {
-    background: #f3f4f6;
-    border-radius: 12px;
-    padding: 4px;
-    display: flex;
-    margin-bottom: 16px;
-}
-div[role="radiogroup"] label {
-    flex: 1;
-    text-align: center;
-    background: transparent;
-    padding: 10px;
-    border-radius: 10px;
-    cursor: pointer;
-}
-div[role="radiogroup"] label[data-checked="true"] {
-    background: white;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.12);
-}
 </style>
-    ''', unsafe_allow_html=True)
+''', unsafe_allow_html=True)
 
-    # Render the full login page as HTML component
-    components.html('''
+    # ── READ QUERY PARAMS (form submission) ──
+    params = st.query_params
+    submitted_user = params.get("u", "")
+    submitted_pass = params.get("p", "")
+    submitted_portal = params.get("portal", "")
+
+    # ── AUTH LOGIC ──
+    if submitted_user and submitted_pass and submitted_portal:
+        success, role, plan = login(submitted_user, submitted_pass)
+        
+        if submitted_portal == "admin":
+            if success and role == "admin":
+                st.session_state.authenticated = True
+                st.session_state.role = role
+                st.session_state.username = submitted_user
+                st.session_state.plan = plan
+                st.session_state.login_time = datetime.now()
+                st.session_state.login_mode = None
+                st.query_params.clear()
+                st.rerun()
+            elif success and role != "admin":
+                st.query_params.clear()
+                st.session_state.login_error = "This account does not have admin access"
+            else:
+                st.query_params.clear()
+                st.session_state.login_error = "Invalid admin credentials"
+        else:
+            if success:
+                st.session_state.authenticated = True
+                st.session_state.role = role
+                st.session_state.username = submitted_user
+                st.session_state.plan = plan
+                st.session_state.login_time = datetime.now()
+                st.session_state.login_mode = None
+                st.query_params.clear()
+                st.rerun()
+            else:
+                st.query_params.clear()
+                st.session_state.login_error = "Invalid credentials"
+
+    login_error = st.session_state.get("login_error", "")
+
+    # ── RENDER FULL PAGE ──
+    components.html(f'''
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" 
-      content="width=device-width, initial-scale=1.0"/>
+<meta name="viewport" content="width=device-width"/>
 <style>
-  * { margin:0; padding:0; box-sizing:border-box; 
-      font-family: -apple-system, BlinkMacSystemFont, 
-      'Segoe UI', sans-serif; }
+*{{margin:0;padding:0;box-sizing:border-box;
+   font-family:-apple-system,BlinkMacSystemFont,
+   'Segoe UI',sans-serif;}}
+html,body{{
+    width:100%;height:100vh;
+    overflow:hidden;
+    background:linear-gradient(135deg,
+        #0a0520 0%,#1a0a4a 50%,#0f0635 100%);
+}}
+.wrap{{
+    display:flex;
+    width:100%;
+    height:100vh;
+}}
 
-  html, body {
-      height: 100%;
-      overflow: hidden !important;
-      margin: 0 !important;
-      padding: 0 !important;
-  }
-  
-  body {
-    background: linear-gradient(135deg, 
-      #0a0520 0%, #1a0a4a 50%, #0f0635 100%);
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-  }
+/* LEFT */
+.left{{
+    flex:1.1;
+    padding:40px 44px;
+    display:flex;
+    flex-direction:column;
+    justify-content:center;
+    overflow:hidden;
+}}
+.logo{{
+    display:flex;align-items:center;
+    gap:10px;margin-bottom:32px;
+}}
+.logo-box{{
+    width:42px;height:42px;
+    background:#5b21b6;border-radius:11px;
+    display:flex;align-items:center;
+    justify-content:center;font-size:20px;
+}}
+.logo-name{{
+    font-size:20px;font-weight:700;color:white;
+}}
+.logo-name span{{color:#a78bfa;}}
+.headline{{
+    font-size:38px;font-weight:800;
+    color:white;line-height:1.2;
+    margin-bottom:14px;
+}}
+.subtext{{
+    font-size:14px;
+    color:rgba(255,255,255,0.5);
+    line-height:1.7;margin-bottom:30px;
+}}
+.features{{
+    display:flex;flex-direction:column;gap:14px;
+    margin-bottom:30px;
+}}
+.feat{{
+    display:flex;align-items:center;gap:12px;
+}}
+.feat-icon{{
+    width:38px;height:38px;flex-shrink:0;
+    background:rgba(91,33,182,0.45);
+    border-radius:9px;
+    display:flex;align-items:center;
+    justify-content:center;font-size:17px;
+}}
+.feat-title{{
+    color:white;font-weight:600;font-size:13px;
+}}
+.feat-sub{{
+    color:rgba(255,255,255,0.4);font-size:12px;
+}}
+.trust{{
+    display:flex;gap:20px;padding-top:16px;
+    border-top:1px solid rgba(255,255,255,0.08);
+}}
+.trust span{{
+    color:rgba(255,255,255,0.35);font-size:12px;
+}}
 
-  .page {
-    display: flex;
-    flex: 1;
-    min-height: 100vh;
-    height: 100vh;
-    overflow: hidden;
-  }
-
-  /* ── LEFT PANEL ── */
-  .left {
-    flex: 1.1;
-    padding: 56px 48px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    overflow: hidden;
-  }
-
-  .logo {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 48px;
-  }
-  .logo-icon {
-    width: 48px; height: 48px;
-    background: #5b21b6;
-    border-radius: 12px;
-    display: flex; align-items: center;
-    justify-content: center;
-    font-size: 22px;
-  }
-  .logo-text {
-    font-size: 24px;
-    font-weight: 700;
-    color: white;
-  }
-  .logo-text span { color: #a78bfa; }
-
-  .headline {
-    font-size: 48px;
-    font-weight: 800;
-    color: white;
-    line-height: 1.15;
-    margin-bottom: 20px;
-  }
-
-  .subtext {
-    font-size: 16px;
-    color: rgba(255,255,255,0.55);
-    line-height: 1.7;
-    margin-bottom: 44px;
-  }
-
-  .features {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-    margin-bottom: 48px;
-  }
-
-  .feature {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-  }
-
-  .feature-icon {
-    width: 42px; height: 42px;
-    flex-shrink: 0;
-    background: rgba(91,33,182,0.5);
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 20px;
-  }
-
-  .feature-title {
-    color: white;
-    font-weight: 600;
-    font-size: 15px;
-    margin-bottom: 2px;
-  }
-
-  .feature-sub {
-    color: rgba(255,255,255,0.45);
-    font-size: 13px;
-  }
-
-  .trust-bar {
-    display: flex;
-    gap: 32px;
-    padding-top: 24px;
-    border-top: 1px solid rgba(255,255,255,0.08);
-  }
-
-  .trust-item {
-    color: rgba(255,255,255,0.4);
-    font-size: 13px;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  /* ── RIGHT PANEL ── */
-  .right {
-    flex: 0.9;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 40px 32px;
-    overflow: hidden;
-  }
-
-  .card {
-    background: white;
-    border-radius: 20px;
-    padding: 40px 36px;
-    width: 100%;
-    max-width: 460px;
-    height: 520px;
-    box-shadow: 0 24px 64px rgba(0,0,0,0.4);
-  }
-
-  .card-header {
-    text-align: center;
-    margin-bottom: 28px;
-  }
-
-  .card-title {
-    font-size: 26px;
-    font-weight: 800;
-    color: #111827;
-    margin-bottom: 8px;
-  }
-
-  .card-sub {
-    font-size: 14px;
-    color: #6b7280;
-  }
+/* RIGHT */
+.right{{
+    flex:0.9;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+    overflow:hidden;
+}}
+.card{{
+    background:white;border-radius:18px;
+    padding:32px 30px;
+    width:100%;max-width:440px;
+    box-shadow:0 20px 60px rgba(0,0,0,0.4);
+}}
+.card-title{{
+    text-align:center;
+    font-size:22px;font-weight:800;
+    color:#111827;margin-bottom:6px;
+}}
+.card-sub{{
+    text-align:center;
+    font-size:13px;color:#6b7280;
+    margin-bottom:20px;
+}}
+.tabs{{
+    display:flex;background:#f3f4f6;
+    border-radius:11px;padding:4px;
+    gap:4px;margin-bottom:18px;
+}}
+.tab{{
+    flex:1;padding:9px;text-align:center;
+    border-radius:9px;cursor:pointer;
+    font-size:13px;font-weight:500;
+    color:#6b7280;border:none;
+    background:transparent;
+    display:flex;align-items:center;
+    justify-content:center;gap:5px;
+    transition:all 0.15s;
+}}
+.tab.active{{
+    background:white;color:#5b21b6;
+    font-weight:700;
+    box-shadow:0 1px 4px rgba(0,0,0,0.12);
+}}
+.flabel{{
+    display:block;font-size:13px;
+    font-weight:600;color:#111827;
+    margin-bottom:5px;
+}}
+.finput{{
+    width:100%;padding:11px 14px;
+    border:1.5px solid #e5e7eb;
+    border-radius:9px;font-size:13px;
+    color:#111827;outline:none;
+    margin-bottom:14px;
+    transition:border-color 0.2s;
+}}
+.finput:focus{{
+    border-color:#6d28d9;
+    box-shadow:0 0 0 3px rgba(109,40,217,0.1);
+}}
+.frow{{
+    display:flex;justify-content:space-between;
+    align-items:center;margin-bottom:16px;
+}}
+.remember{{
+    display:flex;align-items:center;
+    gap:7px;font-size:13px;color:#374151;
+}}
+.forgot{{
+    color:#5b21b6;font-size:13px;
+    font-weight:500;cursor:pointer;
+    text-decoration:none;
+}}
+.loginbtn{{
+    width:100%;padding:13px;
+    background:#5b21b6;color:white;
+    border:none;border-radius:11px;
+    font-size:15px;font-weight:600;
+    cursor:pointer;margin-bottom:14px;
+    transition:background 0.2s;
+}}
+.loginbtn:hover{{background:#4c1d95;}}
+.divider{{
+    text-align:center;color:#9ca3af;
+    font-size:13px;margin-bottom:12px;
+}}
+.regtext{{
+    text-align:center;font-size:13px;
+    color:#374151;
+}}
+.regtext a{{
+    color:#5b21b6;font-weight:600;
+    text-decoration:none;
+}}
+.errmsg{{
+    background:#fef2f2;
+    border:1px solid #fecaca;
+    color:#dc2626;padding:9px 13px;
+    border-radius:8px;font-size:13px;
+    margin-bottom:12px;
+    display:{'block' if login_error else 'none'};
+}}
 </style>
 </head>
 <body>
+<div class="wrap">
 
-<div class="page">
-
-  <!-- LEFT PANEL -->
   <div class="left">
     <div class="logo">
-      <div class="logo-icon">📊</div>
-      <div class="logo-text">
-        LeadPulse <span>Pro</span>
-      </div>
+      <div class="logo-box">📊</div>
+      <div class="logo-name">
+        LeadPulse <span>Pro</span></div>
     </div>
-
     <div class="headline">
       AI-Powered<br>Lead Generation<br>Platform
     </div>
-
     <div class="subtext">
       Generate verified leads faster with<br>
       AI-powered enrichment.
     </div>
-
     <div class="features">
-      <div class="feature">
-        <div class="feature-icon">👥</div>
+      <div class="feat">
+        <div class="feat-icon">👥</div>
         <div>
-          <div class="feature-title">
+          <div class="feat-title">
             Smart Lead Discovery</div>
-          <div class="feature-sub">
+          <div class="feat-sub">
             Find high-quality leads in seconds</div>
         </div>
       </div>
-      <div class="feature">
-        <div class="feature-icon">📈</div>
+      <div class="feat">
+        <div class="feat-icon">📈</div>
         <div>
-          <div class="feature-title">AI Enrichment</div>
-          <div class="feature-sub">
+          <div class="feat-title">AI Enrichment</div>
+          <div class="feat-sub">
             Get enriched data & insights 
             automatically</div>
         </div>
       </div>
-      <div class="feature">
-        <div class="feature-icon">🛡️</div>
+      <div class="feat">
+        <div class="feat-icon">🛡️</div>
         <div>
-          <div class="feature-title">
+          <div class="feat-title">
             Data Verification</div>
-          <div class="feature-sub">
+          <div class="feat-sub">
             Ensure accuracy and reliability</div>
         </div>
       </div>
-      <div class="feature">
-        <div class="feature-icon">🔒</div>
+      <div class="feat">
+        <div class="feat-icon">🔒</div>
         <div>
-          <div class="feature-title">
+          <div class="feat-title">
             Secure & Reliable</div>
-          <div class="feature-sub">
-            Enterprise-grade security for your 
-            data</div>
+          <div class="feat-sub">
+            Enterprise-grade security</div>
         </div>
       </div>
     </div>
-
-    <div class="trust-bar">
-      <div class="trust-item">🛡️ Secure Access</div>
-      <div class="trust-item">🔒 Encrypted Data</div>
-      <div class="trust-item">☁️ 99.9% Uptime</div>
+    <div class="trust">
+      <span>🛡️ Secure Access</span>
+      <span>🔒 Encrypted Data</span>
+      <span>☁️ 99.9% Uptime</span>
     </div>
   </div>
 
-  <!-- RIGHT PANEL -->
   <div class="right">
     <div class="card">
-      <div class="card-header">
-        <div class="card-title">Welcome Back!</div>
-        <div class="card-sub">
-          Sign in to access your account</div>
+      <div class="card-title">Welcome Back!</div>
+      <div class="card-sub">
+        Sign in to access your account</div>
+
+      <div class="tabs">
+        <button class="tab active" 
+                id="adminTab"
+                onclick="switchTab('admin')">
+          🛡️ Admin Portal
+        </button>
+        <button class="tab" 
+                id="userTab"
+                onclick="switchTab('user')">
+          👤 User Workspace
+        </button>
+      </div>
+
+      <div class="errmsg" id="errMsg">
+        {login_error if login_error else 
+         'Invalid credentials'}
+      </div>
+
+      <form id="loginForm">
+        <input type="hidden" 
+               id="portalVal" value="admin"/>
+        <label class="flabel">Username</label>
+        <input type="text" 
+               class="finput" 
+               id="uInput"
+               placeholder="Enter your username"
+               required/>
+        <label class="flabel">Password</label>
+        <input type="password" 
+               class="finput" 
+               id="pInput"
+               placeholder="Enter your password"
+               required/>
+        <div class="frow">
+          <label class="remember">
+            <input type="checkbox"/> Remember me
+          </label>
+          <a class="forgot" href="#">
+            Forgot Password?</a>
+        </div>
+        <button type="submit" class="loginbtn">
+          ➜ Login
+        </button>
+      </form>
+
+      <div class="divider">or</div>
+      <div class="regtext">
+        Don't have an account?
+        <a href="#">Register now</a>
       </div>
     </div>
   </div>
 </div>
 
+<script>
+function switchTab(p){{
+  document.getElementById('portalVal').value=p;
+  document.getElementById('adminTab')
+    .classList.toggle('active', p==='admin');
+  document.getElementById('userTab')
+    .classList.toggle('active', p==='user');
+  document.getElementById('errMsg')
+    .style.display='none';
+}}
+
+document.getElementById('loginForm')
+  .addEventListener('submit', function(e){{
+    e.preventDefault();
+    var u=document.getElementById('uInput').value;
+    var p=document.getElementById('pInput').value;
+    var portal=document.getElementById(
+      'portalVal').value;
+    var url=new URL(window.parent.location.href);
+    url.searchParams.set('u', u);
+    url.searchParams.set('p', p);
+    url.searchParams.set('portal', portal);
+    window.parent.location.href=url.toString();
+}});
+</script>
 </body>
 </html>
-''', height=900, scrolling=False)
-
-    # Streamlit form on top of iframe
-    _, right = st.columns([1.1, 0.9])
-
-    with right:
-        st.markdown('''
-        <div style="height: 310px;"></div>
-        ''', unsafe_allow_html=True)
-
-        # We wrap in a container so we can limit width
-        _, center, _ = st.columns([0.1, 0.8, 0.1])
-        with center:
-            portal = st.radio(
-                "Portal",
-                ["Admin Portal", "User Workspace"],
-                horizontal=True,
-                key="portal_select",
-                label_visibility="collapsed"
-            )
-
-            username = st.text_input(
-                "Username",
-                placeholder="Enter your username",
-                key="login_username",
-                label_visibility="collapsed"
-            )
-            password = st.text_input(
-                "Password",
-                placeholder="Enter your password",
-                type="password",
-                key="login_password",
-                label_visibility="collapsed"
-            )
-            
-            c1, c2 = st.columns(2)
-            with c1:
-                st.checkbox("Remember me")
-            with c2:
-                st.markdown('<div style="text-align:right; font-size:14px; color:#5b21b6; cursor:pointer;">Forgot Password?</div>', unsafe_allow_html=True)
-
-            login_btn = st.button(
-                "➜  Login",
-                key="login_btn",
-                use_container_width=True
-            )
-
-            if login_btn:
-                if not username or not password:
-                    st.error("Please enter username and password")
-                else:
-                    success, role, plan = login(username, password)
-                    if portal == "Admin Portal":
-                        if success and role == "admin":
-                            st.session_state.authenticated = True
-                            st.session_state.role = role
-                            st.session_state.username = username
-                            st.session_state.plan = plan
-                            st.session_state.login_time = datetime.now()
-                            st.session_state.login_mode = None
-                            st.rerun()
-                        elif success and role != "admin":
-                            st.error("This account does not have admin access")
-                        else:
-                            st.error("Invalid admin credentials")
-                    else:  # User Workspace
-                        if success:
-                            st.session_state.authenticated = True
-                            st.session_state.role = role
-                            st.session_state.username = username
-                            st.session_state.plan = plan
-                            st.session_state.login_time = datetime.now()
-                            st.session_state.login_mode = None
-                            st.rerun()
-                        else:
-                            st.error("Invalid credentials")
+''', height=750, scrolling=False)
 # Show login if not authenticated
 if not st.session_state.authenticated:
     render_login_page()
