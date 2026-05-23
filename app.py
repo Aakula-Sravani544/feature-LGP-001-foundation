@@ -184,120 +184,108 @@ def render_login_page():
 /* Gradient Background */
 .stApp {
     background: linear-gradient(135deg, #1E1B4B 0%, #312E81 100%) !important;
+    font-family: 'Inter', sans-serif !important;
 }
 [data-testid="stAppViewContainer"] { background: transparent !important; }
 [data-testid="stSidebar"] { display: none !important; }
 [data-testid="stHeader"] { display: none !important; }
 
 .block-container {
-    max-width: 1000px !important;
-    padding-top: 5rem !important;
+    max-width: 1100px !important;
+    padding-top: 4rem !important;
+    padding-bottom: 2rem !important;
 }
 
-/* Target the second column for the white card */
-div[data-testid="column"]:nth-of-type(2) {
-    background: #FFFFFF;
-    border-radius: 24px;
-    padding: 40px 32px;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-}
-
-/* Branding typography (Left Column) */
-.brand-title {
-    color: white;
-    font-size: 3.5rem;
-    font-weight: 800;
-    line-height: 1.1;
-    margin-bottom: 0.5rem;
-}
-.brand-subtitle {
-    color: #A5B4FC;
-    font-size: 1.5rem;
-    font-weight: 500;
-    margin-bottom: 1.5rem;
-}
-.feature-point {
-    display: flex;
-    align-items: center;
-    color: #E0E7FF;
-    margin-bottom: 1.25rem;
-    font-size: 1.1rem;
-    font-weight: 500;
-}
-.feature-icon {
-    background: rgba(255,255,255,0.1);
-    border-radius: 50%;
-    width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-right: 12px;
+/* Force the exact right column to be a white card */
+div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2) {
+    background-color: #FFFFFF !important;
+    border-radius: 24px !important;
+    padding: 3rem 2.5rem !important;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
 }
 
 /* Inputs Styling inside the White Card */
-div[data-testid="column"]:nth-of-type(2) .stTextInput > div > div > input {
-    background: #F8FAFC !important;
-    border: 1px solid #E2E8F0 !important;
+div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2) .stTextInput label p {
     color: #0F172A !important;
-    border-radius: 10px !important;
-    padding: 12px 16px !important;
-    font-size: 14px !important;
-}
-div[data-testid="column"]:nth-of-type(2) .stTextInput > div > div > input::placeholder {
-    color: #94A3B8 !important;
-}
-div[data-testid="column"]:nth-of-type(2) .stTextInput label {
-    color: #475569 !important;
     font-weight: 600 !important;
     font-size: 13px !important;
-    text-transform: none !important;
-    letter-spacing: normal !important;
+}
+div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2) .stTextInput > div > div > input {
+    background: #FFFFFF !important;
+    border: 1px solid #E2E8F0 !important;
+    color: #0F172A !important;
+    border-radius: 8px !important;
+    padding: 14px 16px !important;
+    font-size: 14px !important;
+}
+div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2) .stTextInput > div > div > input::placeholder {
+    color: #94A3B8 !important;
 }
 
 /* Button Styling */
-div[data-testid="column"]:nth-of-type(2) div.stButton > button {
-    background: #4F46E5 !important;
+div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2) div.stButton > button {
+    background-color: #4F46E5 !important;
     color: white !important;
-    border-radius: 10px !important;
+    border-radius: 8px !important;
     padding: 0.75rem 1rem !important;
     font-weight: 600 !important;
-    font-size: 15px !important;
     border: none !important;
     width: 100% !important;
     transition: all 0.2s !important;
-    margin-top: 0.5rem !important;
+    margin-top: 1rem !important;
 }
-div[data-testid="column"]:nth-of-type(2) div.stButton > button:hover {
-    background: #4338CA !important;
+div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2) div.stButton > button p {
+    color: white !important;
+    font-weight: 600 !important;
+    font-size: 16px !important;
+}
+div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2) div.stButton > button:hover {
+    background-color: #4338CA !important;
 }
 
-/* Streamlit Tabs inside the white card */
-div[data-testid="column"]:nth-of-type(2) button[role="tab"] {
+/* Streamlit Tabs styling to match screenshot pills */
+div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2) div[data-testid="stTabs"] {
+    margin-bottom: 1.5rem !important;
+}
+div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2) div[data-testid="stTabs"] button[role="tab"] {
+    background-color: transparent !important;
+    border: 1px solid #E2E8F0 !important;
+    border-radius: 8px !important;
+    margin: 0 4px !important;
+    padding: 8px 16px !important;
+    flex: 1 !important;
+    justify-content: center !important;
+}
+div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2) div[data-testid="stTabs"] button[role="tab"] p {
     color: #64748B !important;
     font-weight: 600 !important;
-    background: transparent !important;
 }
-div[data-testid="column"]:nth-of-type(2) button[role="tab"][aria-selected="true"] {
-    color: #4F46E5 !important;
+div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2) div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] {
+    background-color: #F8FAFC !important;
+    border-color: #4F46E5 !important;
     border-bottom-color: #4F46E5 !important;
+}
+div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2) div[data-testid="stTabs"] button[role="tab"][aria-selected="true"] p {
+    color: #4F46E5 !important;
 }
 
 /* Expander in the white card */
-div[data-testid="column"]:nth-of-type(2) [data-testid="stExpander"] {
-    background: #F8FAFC !important;
+div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2) [data-testid="stExpander"] {
+    background-color: #F8FAFC !important;
     border: 1px solid #E2E8F0 !important;
-    border-radius: 10px !important;
+    border-radius: 8px !important;
     margin-top: 1rem;
 }
-div[data-testid="column"]:nth-of-type(2) [data-testid="stExpander"] summary {
-    color: #475569 !important;
-    font-weight: 600 !important;
-    background: transparent !important;
+div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2) [data-testid="stExpander"] summary {
+    background-color: transparent !important;
     border: none !important;
 }
-div[data-testid="column"]:nth-of-type(2) [data-testid="stExpander"] div[role="region"] {
-    background: transparent !important;
+div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2) [data-testid="stExpander"] summary p {
+    color: #4F46E5 !important;
+    font-weight: 600 !important;
+}
+div[data-testid="stHorizontalBlock"] > div[data-testid="column"]:nth-child(2) [data-testid="stExpander"] div[role="region"] {
+    background-color: transparent !important;
     border: none !important;
 }
 
@@ -306,9 +294,9 @@ div[data-testid="column"]:nth-of-type(2) [data-testid="stExpander"] div[role="re
     display: flex;
     justify-content: center;
     gap: 3rem;
-    margin-top: 6rem;
+    margin-top: 4rem;
     color: #A5B4FC;
-    font-size: 1rem;
+    font-size: 0.9rem;
     font-weight: 500;
 }
 .trust-item {
@@ -320,43 +308,84 @@ div[data-testid="column"]:nth-of-type(2) [data-testid="stExpander"] div[role="re
 """, unsafe_allow_html=True)
 
     # Layout Columns
-    col1, col2 = st.columns(2, gap="large")
+    col1, col2 = st.columns([1.1, 1], gap="large")
 
     with col1:
         st.markdown("""
-<div style="padding-top: 2rem;">
-    <div class="brand-title">LeadPulse Pro</div>
-    <div class="brand-subtitle">AI-Powered Lead Generation Platform</div>
-    <p style="color: #E0E7FF; font-size: 1.15rem; margin-bottom: 3rem; line-height: 1.6;">
-        Generate verified leads faster with AI-powered enrichment
-    </p>
+<div style="display: flex; align-items: center; gap: 12px; margin-bottom: 2rem; margin-top: 2rem;">
+    <div style="background: linear-gradient(135deg, #4F46E5, #7C3AED); padding: 8px; border-radius: 12px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">
+        <span style="font-size: 28px; line-height: 1;">📈</span>
+    </div>
+    <span style="font-size: 32px; font-weight: 800; color: white; letter-spacing: -0.5px;">LeadPulse <span style="color: #A5B4FC;">Pro</span></span>
+</div>
+
+<h1 style="color: white; font-size: 3.2rem; font-weight: 800; line-height: 1.15; margin-bottom: 1.5rem; letter-spacing: -1px;">
+    AI-Powered<br>Lead Generation<br>Platform
+</h1>
+
+<p style="color: #E0E7FF; font-size: 1.25rem; margin-bottom: 3.5rem; line-height: 1.6;">
+    Generate verified leads faster with<br>AI-powered enrichment.
+</p>
+
+<!-- Feature Point 1 -->
+<div style="display: flex; align-items: flex-start; gap: 16px; margin-bottom: 1.8rem;">
+    <div style="background: rgba(255,255,255,0.06); padding: 12px; border-radius: 12px; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+        <span style="font-size: 22px;">👥</span>
+    </div>
+    <div>
+        <div style="color: white; font-weight: 600; font-size: 1.15rem; margin-bottom: 4px;">Smart Lead Discovery</div>
+        <div style="color: rgba(255,255,255,0.6); font-size: 0.95rem;">Find high-quality leads in seconds</div>
+    </div>
+</div>
+
+<!-- Feature Point 2 -->
+<div style="display: flex; align-items: flex-start; gap: 16px; margin-bottom: 1.8rem;">
+    <div style="background: rgba(255,255,255,0.06); padding: 12px; border-radius: 12px; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+        <span style="font-size: 22px;">📊</span>
+    </div>
+    <div>
+        <div style="color: white; font-weight: 600; font-size: 1.15rem; margin-bottom: 4px;">AI Enrichment</div>
+        <div style="color: rgba(255,255,255,0.6); font-size: 0.95rem;">Get enriched data & insights automatically</div>
+    </div>
+</div>
+
+<!-- Feature Point 3 -->
+<div style="display: flex; align-items: flex-start; gap: 16px; margin-bottom: 1.8rem;">
+    <div style="background: rgba(255,255,255,0.06); padding: 12px; border-radius: 12px; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+        <span style="font-size: 22px;">🛡️</span>
+    </div>
+    <div>
+        <div style="color: white; font-weight: 600; font-size: 1.15rem; margin-bottom: 4px;">Data Verification</div>
+        <div style="color: rgba(255,255,255,0.6); font-size: 0.95rem;">Ensure accuracy and reliability</div>
+    </div>
+</div>
+
+<!-- Feature Point 4 -->
+<div style="display: flex; align-items: flex-start; gap: 16px; margin-bottom: 1.8rem;">
+    <div style="background: rgba(255,255,255,0.06); padding: 12px; border-radius: 12px; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+        <span style="font-size: 22px;">🔒</span>
+    </div>
+    <div>
+        <div style="color: white; font-weight: 600; font-size: 1.15rem; margin-bottom: 4px;">Secure & Reliable</div>
+        <div style="color: rgba(255,255,255,0.6); font-size: 0.95rem;">Enterprise-grade security for your data</div>
+    </div>
 </div>
 """, unsafe_allow_html=True)
 
-        st.markdown("### 🔍 Smart Lead Discovery")
-        st.caption("Find high-quality leads in seconds")
-
-        st.markdown("### ✨ AI Enrichment")
-        st.caption("Get enriched data and insights automatically")
-
-        st.markdown("### ✅ Data Verification")
-        st.caption("Ensure accuracy and reliability")
-
-        st.markdown("### 🔒 Secure & Reliable")
-        st.caption("Enterprise-grade security for your data")
-
     with col2:
         st.markdown("""
-<h2 style="color: #0F172A; margin-top: 0; margin-bottom: 0.5rem; font-weight: 800; font-size: 32px;">Welcome Back!</h2>
-<p style="color: #64748B; font-size: 15px; margin-bottom: 1.5rem;">Sign in to access your account</p>
+<div style="text-align: center; margin-bottom: 2rem;">
+    <h2 style="color: #0F172A; margin: 0; font-weight: 800; font-size: 28px;">Welcome Back!</h2>
+    <p style="color: #64748B; font-size: 15px; margin-top: 8px;">Sign in to access your account</p>
+</div>
 """, unsafe_allow_html=True)
         
-        tab_admin, tab_user = st.tabs(["Admin Portal", "User Workspace"])
+        tab_admin, tab_user = st.tabs(["🛡️ Admin Portal", "👤 User Workspace"])
         
         with tab_admin:
             st.markdown("<br>", unsafe_allow_html=True)
-            admin_user = st.text_input("Username", placeholder="admin", key="admin_u")
-            admin_pass = st.text_input("Password", type="password", placeholder="••••••••", key="admin_p")
+            admin_user = st.text_input("Username", placeholder="Enter your username", key="admin_u")
+            admin_pass = st.text_input("Password", type="password", placeholder="Enter your password", key="admin_p")
             if st.button("Login", key="admin_submit"):
                 if not admin_user or not admin_pass:
                     st.error("Enter username and password")
@@ -377,8 +406,8 @@ div[data-testid="column"]:nth-of-type(2) [data-testid="stExpander"] div[role="re
                         
         with tab_user:
             st.markdown("<br>", unsafe_allow_html=True)
-            user_user = st.text_input("Username", placeholder="your username", key="user_u")
-            user_pass = st.text_input("Password", type="password", placeholder="••••••••", key="user_p")
+            user_user = st.text_input("Username", placeholder="Enter your username", key="user_u")
+            user_pass = st.text_input("Password", type="password", placeholder="Enter your password", key="user_p")
             if st.button("Login", key="user_submit"):
                 if not user_user or not user_pass:
                     st.error("Enter username and password")
@@ -396,8 +425,17 @@ div[data-testid="column"]:nth-of-type(2) [data-testid="stExpander"] div[role="re
                         st.error("Invalid username or password")
         
         # Registration section
-        st.markdown("<hr style='margin: 1.5rem 0; border-color: #E2E8F0; border-width: 1px 0 0 0;'>", unsafe_allow_html=True)
-        with st.expander("Register new account"):
+        st.markdown("""
+<div style="display: flex; align-items: center; justify-content: center; margin: 1.5rem 0;">
+    <div style="flex: 1; height: 1px; background-color: #E2E8F0;"></div>
+    <div style="padding: 0 1rem; color: #94A3B8; font-size: 13px;">or</div>
+    <div style="flex: 1; height: 1px; background-color: #E2E8F0;"></div>
+</div>
+<div style="text-align: center; color: #64748B; font-size: 14px; margin-bottom: 1rem;">
+    Don't have an account? 
+</div>
+""", unsafe_allow_html=True)
+        with st.expander("Register now"):
             reg_user = st.text_input("Username", placeholder="min 3 characters", key="reg_user")
             reg_pass = st.text_input("Password", type="password", placeholder="min 6 characters", key="reg_pass")
             reg_name = st.text_input("Full name", placeholder="Your name", key="reg_name")
@@ -420,7 +458,9 @@ div[data-testid="column"]:nth-of-type(2) [data-testid="stExpander"] div[role="re
     st.markdown("""
 <div class="trust-row">
     <div class="trust-item">🔒 Secure Access</div>
+    <div style="width: 1px; height: 15px; background: rgba(255,255,255,0.2);"></div>
     <div class="trust-item">🛡️ Encrypted Data</div>
+    <div style="width: 1px; height: 15px; background: rgba(255,255,255,0.2);"></div>
     <div class="trust-item">⚡ 99.9% Uptime</div>
 </div>
 """, unsafe_allow_html=True)
