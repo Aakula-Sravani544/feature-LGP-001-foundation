@@ -187,6 +187,8 @@ def render_login_page():
 
     st.markdown('''
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
 #MainMenu,footer,header{visibility:hidden !important;}
 [data-testid="collapsedControl"]{display:none !important;}
 [data-testid="stSidebar"]{display:none !important;}
@@ -195,10 +197,15 @@ def render_login_page():
     overflow: hidden !important;
     max-width: 100% !important;
 }
+
+/* Background with radial glow */
 .stApp {
     overflow: hidden !important;
     height: 100vh !important;
-    background: linear-gradient(135deg, #0a0520 0%, #1a0a4a 50%, #0f0635 100%) !important;
+    background: radial-gradient(circle at 15% 50%, rgba(91, 33, 182, 0.15), transparent 40%),
+                radial-gradient(circle at 85% 30%, rgba(76, 29, 149, 0.2), transparent 50%),
+                linear-gradient(135deg, #0a0520 0%, #1a0a4a 50%, #0f0635 100%) !important;
+    font-family: 'Inter', sans-serif !important;
 }
 
 /* Vertically center the columns */
@@ -211,70 +218,145 @@ def render_login_page():
 
 /* Left Column Styling */
 div[data-testid="column"]:nth-of-type(1) {
-    padding: 56px 48px !important;
+    padding: 0 4vw 0 6vw !important;
 }
 
 /* Right Column (Card) Styling */
 div:has(> div > div > div > div > .login-card-marker) {
-    background: white !important;
-    border-radius: 20px !important;
-    padding: 40px 36px !important;
-    box-shadow: 0 24px 64px rgba(0,0,0,0.4) !important;
-    max-width: 460px !important;
+    background: #ffffff !important;
+    border-radius: 28px !important;
+    padding: 48px 40px !important;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.1) !important;
+    max-width: 480px !important;
     margin: 0 auto !important;
 }
+.login-card-marker { display: none; }
 
-/* Fallback if :has doesn't work perfectly */
-.login-card-marker {
-    display: none;
+/* Left Panel HTML styling */
+.brand-title {
+    font-size: 64px;
+    font-weight: 800;
+    color: #ffffff;
+    line-height: 1.1;
+    margin-bottom: 24px;
+    letter-spacing: -1px;
+}
+.brand-pro {
+    background: linear-gradient(90deg, #a78bfa, #c084fc);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+.brand-subtitle {
+    font-size: 18px;
+    color: rgba(255,255,255,0.82);
+    line-height: 1.6;
+    margin-bottom: 48px;
+    font-weight: 400;
+}
+.feat-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+.feat-icon-box {
+    width: 48px; height: 48px;
+    background: rgba(109, 40, 217, 0.15);
+    border: 1px solid rgba(139, 92, 246, 0.2);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    flex-shrink: 0;
+}
+.feat-text-title {
+    color: #ffffff;
+    font-weight: 600;
+    font-size: 16px;
+    margin-bottom: 4px;
+}
+.feat-text-sub {
+    color: rgba(255,255,255,0.65);
+    font-size: 14px;
+    line-height: 1.4;
+}
+.trust-bar-bottom {
+    display: flex;
+    gap: 32px;
+    padding-top: 32px;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.5);
+    font-size: 14px;
+    font-weight: 500;
 }
 
+/* Right Panel Streamlit Widget Styling */
 .stTextInput input {
-    background: white !important;
-    border: 1.5px solid #e5e7eb !important;
-    border-radius: 10px !important;
-    height: 48px !important;
-    font-size: 14px !important;
+    background: #f9fafb !important;
+    border: 1px solid #e5e7eb !important;
+    border-radius: 14px !important;
+    height: 56px !important;
+    font-size: 15px !important;
     color: #111827 !important;
+    padding: 0 16px !important;
+    transition: all 0.2s ease !important;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.02) inset !important;
+}
+.stTextInput input::placeholder {
+    color: #9ca3af !important;
+}
+.stTextInput input:focus {
+    border-color: #8b5cf6 !important;
+    box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.1) !important;
+    background: #ffffff !important;
 }
 .stTextInput label {
-    color: #111827 !important;
+    color: #374151 !important;
     font-weight: 600 !important;
     font-size: 14px !important;
+    margin-bottom: 6px !important;
 }
+
 .stButton > button {
-    background: #5b21b6 !important;
-    color: white !important;
+    background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%) !important;
+    color: #ffffff !important;
     border: none !important;
-    border-radius: 12px !important;
-    height: 50px !important;
-    font-size: 15px !important;
+    border-radius: 14px !important;
+    height: 58px !important;
+    font-size: 16px !important;
     font-weight: 600 !important;
     width: 100% !important;
-    margin-top: 10px !important;
+    margin-top: 12px !important;
+    box-shadow: 0 4px 14px rgba(109, 40, 217, 0.3) !important;
+    transition: all 0.2s ease !important;
 }
 .stButton > button:hover {
-    background: #4c1d95 !important;
+    background: linear-gradient(135deg, #6d28d9 0%, #5b21b6 100%) !important;
+    box-shadow: 0 6px 20px rgba(109, 40, 217, 0.4) !important;
+    transform: translateY(-1px) !important;
 }
+
 div[role="radiogroup"] {
     background: #f3f4f6;
-    border-radius: 12px;
-    padding: 4px;
+    border-radius: 14px;
+    padding: 6px;
     display: flex;
-    margin-bottom: 16px;
+    margin-bottom: 24px;
 }
 div[role="radiogroup"] label {
     flex: 1;
     text-align: center;
     background: transparent;
-    padding: 10px;
+    padding: 12px;
     border-radius: 10px;
     cursor: pointer;
+    transition: all 0.2s ease;
 }
 div[role="radiogroup"] label[data-checked="true"] {
-    background: white;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.12);
-    color: #5b21b6 !important;
+    background: #ffffff;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    color: #6d28d9 !important;
     font-weight: 700 !important;
 }
 </style>
@@ -283,25 +365,48 @@ div[role="radiogroup"] label[data-checked="true"] {
     left, right = st.columns([1.1, 0.9])
 
     with left:
-        st.markdown("# LeadPulse Pro")
-        st.markdown("## AI-Powered Lead Generation Platform")
-        st.markdown("Generate verified leads faster with AI-powered enrichment.")
-        st.markdown("### 👥 Smart Lead Discovery")
-        st.caption("Find high-quality leads in seconds")
-        st.markdown("### 📈 AI Enrichment")
-        st.caption("Get enriched data & insights automatically")
-        st.markdown("### 🛡️ Data Verification")
-        st.caption("Ensure accuracy and reliability")
-        st.markdown("### 🔒 Secure & Reliable")
-        st.caption("Enterprise-grade security")
-        st.markdown("🛡️ Secure Access   🔒 Encrypted Data   ☁️ 99.9% Uptime")
+        st.markdown('''<div class="brand-title">LeadPulse <span class="brand-pro">Pro</span><br>Platform</div>
+<div class="brand-subtitle">Generate verified leads faster with AI-powered enrichment.<br>Designed for modern revenue teams.</div>
+<div class="feat-row">
+    <div class="feat-icon-box">👥</div>
+    <div>
+        <div class="feat-text-title">Smart Lead Discovery</div>
+        <div class="feat-text-sub">Find high-quality leads in seconds without manual searching.</div>
+    </div>
+</div>
+<div class="feat-row">
+    <div class="feat-icon-box">📈</div>
+    <div>
+        <div class="feat-text-title">AI Enrichment</div>
+        <div class="feat-text-sub">Get enriched data and actionable insights automatically.</div>
+    </div>
+</div>
+<div class="feat-row">
+    <div class="feat-icon-box">🛡️</div>
+    <div>
+        <div class="feat-text-title">Data Verification</div>
+        <div class="feat-text-sub">Ensure accuracy and reliability across your entire CRM.</div>
+    </div>
+</div>
+<div class="feat-row">
+    <div class="feat-icon-box">🔒</div>
+    <div>
+        <div class="feat-text-title">Secure & Reliable</div>
+        <div class="feat-text-sub">Enterprise-grade security trusted by top organizations.</div>
+    </div>
+</div>
+<div class="trust-bar-bottom">
+    <span>🛡️ Secure Access</span>
+    <span>🔒 Encrypted Data</span>
+    <span>☁️ 99.9% Uptime</span>
+</div>''', unsafe_allow_html=True)
 
     with right:
-        # This marker lets our CSS target this specific container to make it the white card
+        # Marker for CSS styling
         st.markdown('<div class="login-card-marker"></div>', unsafe_allow_html=True)
         
-        st.markdown('<div style="text-align:center; font-size:26px; font-weight:800; color:#111827; margin-bottom:8px;">Welcome Back!</div>', unsafe_allow_html=True)
-        st.markdown('<div style="text-align:center; font-size:14px; color:#6b7280; margin-bottom:28px;">Sign in to access your account</div>', unsafe_allow_html=True)
+        st.markdown('<div style="text-align:center; font-size:42px; font-weight:800; color:#111827; margin-bottom:6px; letter-spacing:-0.5px;">Welcome Back</div>', unsafe_allow_html=True)
+        st.markdown('<div style="text-align:center; font-size:15px; color:#6b7280; margin-bottom:32px; font-weight:400;">Sign in to access your account</div>', unsafe_allow_html=True)
 
         portal = st.radio(
             "Portal",
@@ -329,14 +434,14 @@ div[role="radiogroup"] label[data-checked="true"] {
         with c1:
             st.checkbox("Remember me")
         with c2:
-            st.markdown('<div style="text-align:right; font-size:14px; color:#5b21b6; cursor:pointer; margin-top:10px;">Forgot Password?</div>', unsafe_allow_html=True)
+            st.markdown('<div style="text-align:right; font-size:14px; color:#6d28d9; cursor:pointer; margin-top:10px; font-weight:500;">Forgot Password?</div>', unsafe_allow_html=True)
 
         login_btn = st.button("➜ Login", key="login_btn", use_container_width=True)
         
         st.markdown('''
-        <div style="text-align:center; color:#9ca3af; font-size:13px; margin: 16px 0;">or</div>
-        <div style="text-align:center; font-size:13px; color:#374151;">
-            Don't have an account? <a href="#" style="color:#5b21b6; font-weight:600; text-decoration:none;">Register now</a>
+        <div style="text-align:center; color:#9ca3af; font-size:14px; margin: 20px 0; font-weight:500;">or</div>
+        <div style="text-align:center; font-size:14px; color:#4b5563; font-weight:500;">
+            Don't have an account? <a href="#" style="color:#6d28d9; font-weight:600; text-decoration:none;">Register now</a>
         </div>
         ''', unsafe_allow_html=True)
 
