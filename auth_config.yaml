@@ -6,6 +6,13 @@ users:
     password: $2b$12$yLA./u66O7c8cUgikAhlz.PIOvtcnLSyENwM0gmrf/0BE7HWBWPqq
     plan: Enterprise
     role: admin
+  test:
+    created_at: '2026-05-21'
+    email: ''
+    name: test
+    password: $2b$12$Kw.hpbwYLDCPbkgagBrYUO4TW5V2mvQcPrRvhLlt/zL5fEPaTu3Oy
+    plan: Free
+    role: user
   user:
     created_at: '2026-05-12'
     email: user@leadpulse.com

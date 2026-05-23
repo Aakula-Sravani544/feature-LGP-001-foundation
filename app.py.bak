@@ -4,7 +4,7 @@ st.set_page_config(
     page_title="LeadPulse Pro",
     page_icon="🚀",
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="expanded"
 )
 
 # Force sidebar to always stay open using specific CSS styles (STEP 2)
@@ -101,11 +101,9 @@ import database
 import google_sheets
 # Import new auth module
 from auth import (
-    init_session, render_login_page,
-    render_logout_button, check_session_expiry, 
-    get_user_info, get_all_users, register_user, 
-    delete_user, update_user_plan, update_password,
-    login
+    init_session, render_logout_button,
+    check_session_expiry, get_user_info, get_all_users,
+    register_user, delete_user, update_user_plan, update_password
 )
 from stripe_handler import (
     render_billing_tab,
@@ -117,53 +115,10 @@ from scheduler import render_scheduler_ui, start_scheduler
 
 # Initialize session
 init_session()
-
-if "authenticated" not in st.session_state:
-    st.session_state["authenticated"] = False
-if "username" not in st.session_state:
-    st.session_state["username"] = ""
-if "role" not in st.session_state:
-    st.session_state["role"] = ""
-if "plan" not in st.session_state:
-    st.session_state["plan"] = "Free"
-if "is_extracting" not in st.session_state:
-    st.session_state["is_extracting"] = False
-if "session_leads" not in st.session_state:
-    st.session_state["session_leads"] = []
-if "admin_nav" not in st.session_state:
-    st.session_state["admin_nav"] = "Generate"
 if "user_nav" not in st.session_state:
     st.session_state["user_nav"] = "Generate"
-if "collected_count" not in st.session_state:
-    st.session_state["collected_count"] = 0
-if "target_leads" not in st.session_state:
-    st.session_state["target_leads"] = 0
-if "current_query" not in st.session_state:
-    st.session_state["current_query"] = ""
-
-# Fix Streamlit native blur/disabled overlay issue permanently
-st.markdown("""
-<style>
-/* Remove Streamlit default blur/overlay during all interactions */
-[data-testid="stAppViewContainer"],
-[data-testid="stMainBlockContainer"],
-.stApp,
-[data-testid="stSidebar"],
-.main,
-.block-container,
-form, button {
-    opacity: 1 !important;
-    filter: blur(0px) !important;
-    pointer-events: auto !important;
-}
-/* Hide Streamlit running modal backdrop */
-[data-testid="stModalBackdrop"] {
-    display: none !important;
-}
-</style>
-""", unsafe_allow_html=True)
-
-
+if "admin_nav" not in st.session_state:
+    st.session_state["admin_nav"] = "Generate"
 if "admin_page" not in st.session_state:
     st.session_state["admin_page"] = "Generate"
 
@@ -174,63 +129,286 @@ if "scheduler" not in st.session_state:
 # Check for payment success from Stripe redirect
 check_payment_success()
 
+# Check session expiry
+if st.session_state.authenticated and check_session_expiry():
+    st.warning("Session expired. Please login again.")
+    for key in list(st.session_state.keys()):
+        del st.session_state[key]
+    st.rerun()
 # ==========================================
 # LOGIN PAGE
 # ==========================================
-# ── Handle login form submission ──
-_params = st.query_params
-_lgn_u = _params.get("lgn_u", "")
-_lgn_p = _params.get("lgn_p", "")
-_lgn_portal = _params.get("lgn_portal", "")
+def render_login_page():
+    """Premium login page — click Admin or User card to reveal credentials."""
+    from auth import login, register_user
 
-if _lgn_u and _lgn_p and _lgn_portal:
-    # Clear params immediately
-    st.query_params.clear()
-    
-    from auth import login as auth_login
-    from datetime import datetime
-    success, role, plan = auth_login(_lgn_u, _lgn_p)
-    
-    if _lgn_portal == "admin":
-        if success and role == "admin":
-            st.session_state["authenticated"] = True
-            st.session_state["username"] = _lgn_u
-            st.session_state["role"] = role
-            st.session_state["plan"] = plan
-            st.session_state["login_time"] = datetime.now()
-            st.session_state.pop("login_error", None)
+    st.markdown("""
+    <style>
+    .stApp { background: #0F172A !important; }
+    [data-testid="stAppViewContainer"] { background: #0F172A !important; }
+    [data-testid="stSidebar"] { display: none !important; }
+    [data-testid="stHeader"] { background: transparent !important; }
+    .block-container {
+        max-width: 560px !important;
+        margin: 0 auto !important;
+        padding: 2rem 1rem !important;
+    }
+    div.stButton > button {
+        border-radius: 8px !important;
+        font-weight: 500 !important;
+        font-size: 13px !important;
+        border: none !important;
+        width: 100% !important;
+    }
+    .stTextInput > div > div > input {
+        background: #ffffff !important;
+        border: 1px solid #cbd5e1 !important;
+        color: #000000 !important;
+        border-radius: 8px !important;
+        font-size: 13px !important;
+    }
+    .stTextInput > div > div > input::placeholder {
+        color: #94a3b8 !important;
+    }
+    .stTextInput label {
+        color: rgba(255,255,255,0.4) !important;
+        font-size: 11px !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.07em !important;
+        font-weight: 500 !important;
+    }
+    .stAlert {
+        border-radius: 8px !important;
+        font-size: 12px !important;
+    }
+    /* Expander styling using high-specificity selectors to force white text */
+    [data-testid="stExpander"] {
+        border: none !important;
+        background: transparent !important;
+        box-shadow: none !important;
+    }
+    [data-testid="stExpander"] summary {
+        background: rgba(255,255,255,0.04) !important;
+        border: 0.5px solid rgba(255,255,255,0.08) !important;
+        border-radius: 8px !important;
+        padding: 10px 14px !important;
+    }
+    [data-testid="stExpander"] summary * {
+        color: #ffffff !important;
+        font-weight: 500 !important;
+        font-size: 13px !important;
+    }
+    [data-testid="stExpander"] summary svg {
+        fill: #ffffff !important;
+        color: #ffffff !important;
+    }
+    [data-testid="stExpander"] div[role="region"] {
+        background: rgba(255,255,255,0.02) !important;
+        border: 0.5px solid rgba(255,255,255,0.08) !important;
+        border-top: none !important;
+        border-radius: 0 0 8px 8px !important;
+        padding: 16px !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # Logo
+    st.markdown("""
+        <div style="text-align:center; padding:2rem 0 1.5rem;">
+            <div style="font-size:24px; font-weight:500; color:#fff; letter-spacing:-0.4px; margin-bottom:6px;">
+                🚀 LeadPulse Pro
+            </div>
+            <div style="font-size:12px; color:rgba(255,255,255,0.3);">
+                Production Grade Lead Extraction Engine
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+
+    # Two clickable cards
+    col1, col2 = st.columns(2, gap="medium")
+
+    with col1:
+        st.markdown("""
+            <div style="background:#1E293B; border:0.5px solid rgba(255,255,255,0.08);
+                border-top:2px solid #F59E0B; border-radius:14px; padding:18px 16px;
+                text-align:center; cursor:pointer; margin-bottom:10px;">
+                <div style="font-size:10px; font-weight:500; padding:2px 10px;
+                    background:rgba(245,158,11,0.15); color:#F59E0B; border-radius:20px;
+                    display:inline-block; margin-bottom:10px; letter-spacing:0.05em;">
+                    ADMIN
+                </div>
+                <div style="font-size:36px; margin-bottom:8px;">🛡️</div>
+                <div style="font-size:14px; font-weight:500; color:#fff; margin-bottom:4px;">
+                    Admin Console
+                </div>
+                <div style="font-size:11px; color:rgba(255,255,255,0.3); line-height:1.5;">
+                    Platform management, users and system control
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+
+    with col2:
+        st.markdown("""
+            <div style="background:#1E293B; border:0.5px solid rgba(255,255,255,0.08);
+                border-top:2px solid #2563EB; border-radius:14px; padding:18px 16px;
+                text-align:center; cursor:pointer; margin-bottom:10px;">
+                <div style="font-size:10px; font-weight:500; padding:2px 10px;
+                    background:rgba(37,99,235,0.15); color:#60A5FA; border-radius:20px;
+                    display:inline-block; margin-bottom:10px; letter-spacing:0.05em;">
+                    USER
+                </div>
+                <div style="font-size:36px; margin-bottom:8px;">👤</div>
+                <div style="font-size:14px; font-weight:500; color:#fff; margin-bottom:4px;">
+                    User Workspace
+                </div>
+                <div style="font-size:11px; color:rgba(255,255,255,0.3); line-height:1.5;">
+                    Generate leads, export data and manage plan
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+
+    # Login mode selector
+    login_mode = st.session_state.get("login_mode", None)
+
+    col3, col4 = st.columns(2, gap="medium")
+    with col3:
+        if st.button("🛡️ Login as Admin", key="select_admin", use_container_width=True):
+            st.session_state.login_mode = "admin"
             st.rerun()
-        elif success and role != "admin":
-            st.session_state["login_error"] = "This account does not have admin access"
+    with col4:
+        if st.button("👤 Login as User", key="select_user", use_container_width=True):
+            st.session_state.login_mode = "user"
             st.rerun()
-        else:
-            st.session_state["login_error"] = "Invalid admin credentials"
-            st.rerun()
-    else:
-        if success:
-            st.session_state["authenticated"] = True
-            st.session_state["username"] = _lgn_u
-            st.session_state["role"] = role
-            st.session_state["plan"] = plan
-            st.session_state["login_time"] = datetime.now()
-            st.session_state.pop("login_error", None)
-            st.rerun()
-        else:
-            st.session_state["login_error"] = "Invalid username or password"
-            st.rerun()
+
+    # Show credentials form based on selection
+    if login_mode == "admin":
+        st.markdown("""
+            <div style="background:#1E293B; border:0.5px solid rgba(255,255,255,0.08);
+                border-top:2px solid #F59E0B; border-radius:14px;
+                padding:20px 20px 8px; margin-top:4px;">
+                <div style="display:flex; align-items:center; gap:8px; margin-bottom:14px;">
+                    <span style="font-size:18px;">🛡️</span>
+                    <span style="font-size:14px; font-weight:500; color:#fff;">
+                        Admin credentials
+                    </span>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+
+        admin_user = st.text_input("Username", placeholder="admin", key="admin_u")
+        admin_pass = st.text_input("Password", type="password", placeholder="••••••••", key="admin_p")
+
+        col5, col6 = st.columns([3, 1])
+        with col5:
+            if st.button("→ Enter Admin Console", key="admin_submit", use_container_width=True):
+                if not admin_user or not admin_pass:
+                    st.error("Enter username and password")
+                else:
+                    success, role, plan = login(admin_user, admin_pass)
+                    if success and role == "admin":
+                        st.session_state.authenticated = True
+                        st.session_state.username = admin_user
+                        st.session_state.role = role
+                        st.session_state.plan = plan
+                        st.session_state.login_time = datetime.now()
+                        st.session_state.login_mode = None
+                        st.rerun()
+                    elif success and role != "admin":
+                        st.error("This account does not have admin access")
+                    else:
+                        st.error("Invalid admin credentials")
+        with col6:
+            if st.button("✕ Cancel", key="cancel_admin", use_container_width=True):
+                st.session_state.login_mode = None
+                st.rerun()
+
+    elif login_mode == "user":
+        st.markdown("""
+            <div style="background:#1E293B; border:0.5px solid rgba(255,255,255,0.08);
+                border-top:2px solid #2563EB; border-radius:14px;
+                padding:20px 20px 8px; margin-top:4px;">
+                <div style="display:flex; align-items:center; gap:8px; margin-bottom:14px;">
+                    <span style="font-size:18px;">👤</span>
+                    <span style="font-size:14px; font-weight:500; color:#fff;">
+                        User credentials
+                    </span>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+
+        user_user = st.text_input("Username", placeholder="your username", key="user_u")
+        user_pass = st.text_input("Password", type="password", placeholder="••••••••", key="user_p")
+
+        col7, col8 = st.columns([3, 1])
+        with col7:
+            if st.button("→ Enter Workspace", key="user_submit", use_container_width=True):
+                if not user_user or not user_pass:
+                    st.error("Enter username and password")
+                else:
+                    success, role, plan = login(user_user, user_pass)
+                    if success:
+                        st.session_state.authenticated = True
+                        st.session_state.username = user_user
+                        st.session_state.role = role
+                        st.session_state.plan = plan
+                        st.session_state.login_time = datetime.now()
+                        st.session_state.login_mode = None
+                        st.rerun()
+                    else:
+                        st.error("Invalid username or password")
+        with col8:
+            if st.button("✕ Cancel", key="cancel_user", use_container_width=True):
+                st.session_state.login_mode = None
+                st.rerun()
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # Register section
+    st.markdown("""
+        <div style="background:#1E293B; border:0.5px solid rgba(255,255,255,0.07);
+            border-radius:10px; padding:12px 16px;
+            display:flex; align-items:center; justify-content:space-between;
+            margin-bottom:10px;">
+            <div>
+                <div style="font-size:12px; font-weight:500; color:#fff; margin-bottom:2px;">
+                    New to LeadPulse Pro?
+                </div>
+                <div style="font-size:11px; color:rgba(255,255,255,0.3);">
+                    50 leads/session free — no credit card needed
+                </div>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+
+    with st.expander("Create free account"):
+        reg_user = st.text_input("Username", placeholder="min 3 characters", key="reg_user")
+        reg_pass = st.text_input("Password", type="password", placeholder="min 6 characters", key="reg_pass")
+        reg_name = st.text_input("Full name", placeholder="Your name", key="reg_name")
+        reg_email = st.text_input("Email", placeholder="your@email.com", key="reg_email")
+        if st.button("Create account", key="reg_btn", use_container_width=True):
+            if not reg_user or not reg_pass:
+                st.error("Username and password required")
+            else:
+                success, msg = register_user(
+                    reg_user, reg_pass,
+                    role="user", plan="Free",
+                    name=reg_name, email=reg_email
+                )
+                st.success(msg + " — Login using User card above") if success else st.error(msg)
+
+    # Privacy bar
+    st.markdown("""
+        <div style="text-align:center; font-size:11px;
+            color:rgba(255,255,255,0.2); margin-top:12px; padding:10px;">
+            🔒 Your data is encrypted and never shared — secured by LeadPulse Pro
+        </div>
+    """, unsafe_allow_html=True)
 
 # Show login if not authenticated
-if not st.session_state.get('authenticated', False):
+if not st.session_state.authenticated:
     render_login_page()
     st.stop()
 
-# Safe fallback if session looks empty but authenticated is True
-if not st.session_state.get("username"):
-    st.session_state["username"] = "admin"
-if not st.session_state.get("role"):
-    st.session_state["role"] = "admin"
-if not st.session_state.get("plan"):
-    st.session_state["plan"] = "Enterprise"
 # ==========================================
 # STARTUP SYNC
 # ==========================================
@@ -903,11 +1081,11 @@ def get_sub_regions_ai(keyword: str, region: str, city: str) -> list:
     }
 
     city_hubs_fallback = {
-        "hyderabad": ["KPHB", "Kukatpally", "JNTU Road", "Hitech City", "Madhapur", "Gachibowli", "Kondapur", "Miyapur", "Ameerpet", "Banjara Hills", "Hyderabad"],
+        "hyderabad": ["Madhapur", "Banjara Hills", "Jubilee Hills", "Hitech City", "Gachibowli", "Secunderabad", "Kukatpally", "Ameerpet", "Begumpet", "Kondapur", "Manikonda", "Miyapur", "LB Nagar", "Dilsukhnagar", "Mehdipatnam"],
         "chennai": ["T Nagar", "Anna Nagar", "Adyar", "Velachery", "Nungambakkam", "Mylapore", "Tambaram", "OMR", "Porur", "Chromepet"],
         "bangalore": ["Koramangala", "Indiranagar", "Whitefield", "Electronic City", "Jayanagar", "HSR Layout", "Marathahalli", "JP Nagar", "Bannerghatta", "BTM Layout"],
         "vijayawada": ["Benz Circle", "MG Road", "Governorpet", "Labbipet", "Patamata", "Gunadala", "Suryaraopet", "Eluru Road", "Auto Nagar", "Kandrika"],
-        "guntur": ["Brodipet", "Arundelpet", "Kothapet", "AT Agraharam", "Old Town", "Amaravathi Road", "Vidyanagar", "Naaz Centre", "Brindavan Gardens"],
+        "guntur": ["Brodipet", "Arundelpet", "Kothapet", "AT Agraharam", "Old Town", "Amaravathi Road", "Vidyanagar", "Nallapadu", "Naaz Centre", "Brindavan Gardens"],
     }
 
     specific_regions = []
@@ -932,7 +1110,7 @@ Return ONLY a JSON array of strings. No other text. No markdown."""
                     if response and response.text:
                         break
                 except Exception as model_err:
-                    pass
+                    st.session_state.logs += f"[SYS] Model {model_name} failed: {model_err}\n"
 
             if response:
                 raw = response.text.strip().replace("```json","").replace("```","").strip()
@@ -941,7 +1119,7 @@ Return ONLY a JSON array of strings. No other text. No markdown."""
                 if isinstance(res, list) and len(res) > 0:
                     specific_regions = res[:15]
         except Exception as e:
-            st.session_state.logs += f"[SYS] AI sub-region generation unavailable. Using fallback sub-regions...\n"
+            st.session_state.logs += f"[SYS] AI sub-region failed: {e}\n"
 
     # 2. Try Hardcoded area fallback if AI failed or not used
     if not specific_regions and region.strip():
@@ -1142,182 +1320,60 @@ def generation_ui(label_suffix=""):
                 help=get_upgrade_message(current_plan, "ai_scoring") if not ai_allowed else "Enable AI lead scoring",
                 key=f"ai_{label_suffix}"
             )
-            # Add Deep Enrichment toggle
-            deep_enrich = st.toggle("🧪 Deep Enrichment", value=False, help="Deep search contact info (10x slower)", key=f"deep_{label_suffix}")
-            
             if not ai_allowed:
                 st.caption(f"🔒 AI Scoring requires Starter plan. You are on {current_plan}.")
         with c7:
             st.markdown("<br>", unsafe_allow_html=True)
-            btn_generate = False
-            btn_resume = False
-            
-            # Show Resume if extraction stopped mid-way
-            if not st.session_state.get("is_extracting", False) and st.session_state.get("remaining_leads", 0) > 0 and len(st.session_state.get("session_leads", [])) > 0:
-                btn_resume = st.button(
-                    f"▶️ Resume Extraction ({st.session_state.get('collected_leads', 0)}/{st.session_state.get('target_leads', 0)})",
-                    key=f"btn_resume_{label_suffix}",
-                    use_container_width=True
-                )
-            else:
-                btn_generate = st.button(
-                    "🚀 Generate Leads",
-                    disabled=st.session_state.get("is_extracting", False),
-                    key=f"btn_{label_suffix}",
-                    use_container_width=True
-                )
+            btn_generate = st.button(
+                "🚀 Generate Leads",
+                disabled=st.session_state.is_scraping,
+                key=f"btn_{label_suffix}",
+                use_container_width=True
+            )
 
     if btn_generate:
+        # Enforce lead cap
         if max_leads > max_allowed:
             st.error(f"Your {current_plan} plan allows max {max_allowed} leads per session.")
             render_upgrade_banner(current_plan)
             return
 
-        # Handle LinkedIn source
-        if "LinkedIn" in source and "🔒" not in source:
-            if not can_use_linkedin(current_plan):
-                st.error(get_upgrade_message(current_plan, "linkedin"))
-                render_upgrade_banner(current_plan)
-                return
+        # When LinkedIn is selected but not allowed
+        if source == "LinkedIn" and not can_use_linkedin(current_plan):
+            st.error(get_upgrade_message(current_plan, "linkedin"))
+            render_upgrade_banner(current_plan)
+            st.stop()
 
-            keyword = custom_keyword.strip() if custom_keyword.strip() else category
-
-            if not city.strip():
-                st.warning("Please enter a city name.")
-                return
-
-            st.session_state.is_extracting = True
-            st.session_state.session_leads = []
-            st.session_state.logs = ""
-
-            progress_bar = st.progress(0)
-            status_text = st.empty()
-            log_placeholder = st.empty()
-            metrics_placeholder = st.empty()
-            table_placeholder = st.empty()
-
-            with metrics_placeholder.container():
-                mc1, mc2, mc3 = st.columns(3)
-                m1 = mc1.empty()
-                m2 = mc2.empty()
-                m3 = mc3.empty()
-
-            status_text.text(f"🔍 Searching LinkedIn: {keyword} in {city}...")
-            st.session_state.logs += f"[SYS] Starting LinkedIn scraper...\n"
-            log_placeholder.markdown(
-                f'<div class="log-box">{st.session_state.logs}</div>',
-                unsafe_allow_html=True
-            )
-
-            try:
-                from linkedin_scraper import scrape_linkedin
-                import pandas as pd
-                profiles = scrape_linkedin(keyword, city, limit=max_leads)
-
-                st.session_state.logs += f"[SYS] LinkedIn returned {len(profiles)} profiles\n"
-                log_placeholder.markdown(
-                    f'<div class="log-box">{st.session_state.logs}</div>',
-                    unsafe_allow_html=True
-                )
-
-                for i, profile in enumerate(profiles):
-                    st.session_state.session_leads.append(profile)
-                    progress_bar.progress((i+1)/max(len(profiles),1))
-                    status_text.text(f"LinkedIn: {i+1}/{len(profiles)} profiles collected...")
-                    m1.metric("Total Scraped", i+1)
-                    m2.metric("Valid Leads", i+1)
-                    m3.metric("Duplicates Skipped", 0)
-                    st.session_state.logs += f"[SYS] ✅ {profile.get('name','')[:40]}\n"
-
-                    with table_placeholder.container():
-                        df_view = pd.DataFrame(st.session_state.session_leads)
-                        linkedin_cols = [c for c in [
-                            "name", "description", "email",
-                            "website", "category", "validation_status"
-                        ] if c in df_view.columns]
-                        st.dataframe(
-                            df_view[linkedin_cols] if linkedin_cols else df_view,
-                            hide_index=True
-                        )
-
-                # Save to database
-                if st.session_state.session_leads:
-                    database.save_to_db(st.session_state.session_leads)
-                    try:
-                        success, msg = google_sheets.save_to_google_sheets(
-                            st.session_state.session_leads
-                        )
-                        if success:
-                            st.success(f"✅ {len(profiles)} LinkedIn profiles saved!")
-                        else:
-                            st.warning(f"Saved locally. Sheets: {msg}")
-                    except Exception as e:
-                        st.warning(f"Sheets sync: {e}")
-                else:
-                    st.warning("LinkedIn returned 0 profiles. Try different keyword or city.")
-
-            except Exception as e:
-                st.error(f"LinkedIn error: {e}")
-                st.session_state.logs += f"[SYS] LinkedIn error: {e}\n"
-
-            st.session_state.is_extracting = False
-            import time as _time
-            _time.sleep(1)
-            st.rerun()
-            return
-
+        # Build keyword
         keyword = custom_keyword.strip() if custom_keyword.strip() else category
+
         if not city:
             st.warning("Please enter a city name.")
             return
 
-        st.session_state.is_extracting = True
-        st.session_state.target_leads = max_leads
-        st.session_state.collected_leads = 0
-        st.session_state.remaining_leads = max_leads
+        # Build base query
+        if region.strip():
+            base_query = f"{keyword} in {region} {city}"
+        else:
+            base_query = f"{keyword} in {city}"
+
+        st.session_state.is_scraping = True
         st.session_state.session_leads = []
         st.session_state.logs = ""
-        st.session_state.completed_batches = 0
-        
-        # State machine init
-        st.session_state.keyword = keyword
-        st.session_state.city = city
-        st.session_state.region = region
-        st.session_state.use_ai = use_ai
-        st.session_state.deep_enrich = deep_enrich
-        
-        status_text = st.empty()
-        status_text.text(f"🤖 AI analyzing sub-regions for {region or city}...")
-        st.session_state.specific_sub_regions, st.session_state.fallback_areas = get_sub_regions_ai(keyword, region or city, city)
-        
-        st.session_state.phase = 1
-        st.session_state.area_idx = 0
-        st.session_state.fallback_idx = 0
-        st.session_state.q_idx = 0
-        st.session_state.consecutive_zero_yields = 0
-        st.session_state.area_duplicates = 0
-        
-        st.rerun()
 
-    if btn_resume:
-        st.session_state.is_extracting = True
-        st.session_state.setdefault("area_duplicates", 0)
-        st.rerun()
-
-    if st.session_state.get("is_extracting", False):
-        progress_bar = st.progress(min(st.session_state.collected_leads / st.session_state.target_leads, 1.0) if st.session_state.target_leads else 0.0)
+        progress_bar = st.progress(0)
         status_text = st.empty()
         stop_placeholder = st.empty()
         log_placeholder = st.empty()
         metrics_placeholder = st.empty()
         table_placeholder = st.empty()
 
+        # Stop button
         with stop_placeholder.container():
+            import time as _time
             if st.button("⏹️ Stop Extraction", key=f"stop_{label_suffix}_{label_suffix}"):
-                st.session_state.is_extracting = False
-                st.warning("Extraction stopped by user. You can resume later.")
-                import time as _time
-                _time.sleep(2)
+                st.session_state.is_scraping = False
+                st.warning("Extraction stopped by user.")
                 st.rerun()
 
         with metrics_placeholder.container():
@@ -1325,216 +1381,268 @@ def generation_ui(label_suffix=""):
             m1_metric = m1.empty()
             m2_metric = m2.empty()
             m3_metric = m3.empty()
-            
-        m1_metric.metric("Total Scraped", st.session_state.collected_leads)
-        valid_count = len([x for x in st.session_state.session_leads if x.get("validation_status") == "Valid"])
-        m2_metric.metric("Valid Leads", valid_count)
-        
+
+        # Step 1 — Generate sub-regions using AI
+        status_text.text(f"🤖 AI analyzing sub-regions for {region or city}...")
+        st.session_state.logs += f"[SYS] Generating sub-regions for {region or city}...\n"
+        log_placeholder.markdown(
+            f'<div class="log-box">{st.session_state.logs}</div>',
+            unsafe_allow_html=True
+        )
+
+        specific_sub_regions, fallback_areas = get_sub_regions_ai(keyword, region or city, city)
+
+        st.session_state.logs += f"[SYS] Found {len(specific_sub_regions)} specific sub-regions and {len(fallback_areas)} fallbacks\n"
+        log_placeholder.markdown(f'<div class="log-box">{st.session_state.logs[-3000:]}</div>', unsafe_allow_html=True)
+
+        # Step 2 — Scrape each sub-region
+        collected_count = 0
+        duplicates_skipped = 0
+        target_total = max_leads
+
         try:
             df_db = database.load_db()
             db_leads_list = df_db.to_dict(orient="records")
         except:
             db_leads_list = []
 
-        # No longer using seen_session_ids for memory efficiency
+        seen_session_ids = set()
+        for l in st.session_state.session_leads:
+            for k in get_lead_keys(l):
+                seen_session_ids.add(k)
 
-        # Batch execution
-        FAST_MODE = True
-        deep_enrich = st.session_state.get("deep_enrich", False) and not FAST_MODE
-        batch_target = 3
-        fast_mode = st.session_state.target_leads >= 50
-        if fast_mode and "fast_mode_logged" not in st.session_state:
-            st.session_state.logs += "[SYS] Fast Mode Enabled\n"
-            st.session_state["fast_mode_logged"] = True
-            
-        batch_collected = 0
-        duplicates_skipped = 0
+        # --- PHASE 1: SUB-REGIONS (Main query only) ---
+        total_subs = len(specific_sub_regions)
         
-        # UI log refresh
-        log_placeholder.markdown(f'<div class="log-box">{st.session_state.logs[-3000:]}</div>', unsafe_allow_html=True)
-        
-        while st.session_state.get("is_extracting", False) and st.session_state.collected_leads < st.session_state.target_leads:
-            
-            # Determine Query
-            query = ""
-            current_sub_region = ""
-            
-            if st.session_state.phase == 1:
-                if st.session_state.area_idx >= len(st.session_state.specific_sub_regions):
-                    st.session_state.phase = 2
-                    st.session_state.logs += "[SYS] All sub-regions attempted. Starting broader fallback...\n"
-                    log_placeholder.markdown(f'<div class="log-box">{st.session_state.logs[-3000:]}</div>', unsafe_allow_html=True)
-                    continue
-                    
-                current_sub_region = st.session_state.specific_sub_regions[st.session_state.area_idx]
-                query = f"{st.session_state.keyword} in {current_sub_region} {st.session_state.city}"
-                st.session_state.logs += f"[SYS] Sub-region attempted: {current_sub_region} | Query: {query}\n"
-                
-            elif st.session_state.phase == 2:
-                if st.session_state.fallback_idx >= len(st.session_state.fallback_areas):
-                    st.session_state.phase = 3
-                    break
-                    
-                fallback_area = st.session_state.fallback_areas[st.session_state.fallback_idx]
-                query_variants = get_query_variants(st.session_state.keyword)
-                
-                max_q = 2 if fast_mode else len(query_variants)
-                if st.session_state.q_idx >= max_q:
-                    st.session_state.fallback_idx += 1
-                    st.session_state.q_idx = 0
-                    st.session_state.consecutive_zero_yields = 0
-                    continue
-                    
-                q_variant = query_variants[st.session_state.q_idx]
-                if q_variant.startswith("Top ") and any(v.startswith("Best ") for v in query_variants):
-                    st.session_state.logs += f"[SYS] Skipping similar query: {q_variant} because Best {st.session_state.keyword} already used\n"
-                    st.session_state.q_idx += 1
-                    continue
-                    
-                if fallback_area:
-                    query = f"{q_variant} in {fallback_area} {st.session_state.city}"
-                else:
-                    query = f"{q_variant} in {st.session_state.city}"
-                st.session_state.logs += f"[SYS] Fallback Query: {query}\n"
-                current_sub_region = fallback_area
-                
-            else:
+        for area_idx, sub_region in enumerate(specific_sub_regions):
+            if collected_count >= target_total:
                 break
                 
-            status_text.text(f"🔄 Scraping: {query} ({st.session_state.collected_leads}/{st.session_state.target_leads})")
+            query = f"{keyword} in {sub_region} {city}"
+            st.session_state.logs += f"[SYS] Sub-region attempted: {sub_region} | Query: {query}\n"
+            status_text.text(f"🔄 Scraping: {query} ({collected_count}/{target_total})")
             log_placeholder.markdown(f'<div class="log-box">{st.session_state.logs[-3000:]}</div>', unsafe_allow_html=True)
             
-            ai_flag = "1" if st.session_state.use_ai else "0"
-            deep_flag = "1" if deep_enrich else "0"
-            sub_batch_target = 10
-            target_unique_per_phase = 5
-            
-            import subprocess
-            import sys
-            import json
-            import os
-            
-            st.session_state.logs += f"[SYS] Phase target: {target_unique_per_phase} unique leads\n"
-            
+            ai_flag = "1" if use_ai else "0"
+            batch_target = min(10, target_total - collected_count)
+
             process = subprocess.Popen(
-                [sys.executable, "-u", "scraper.py", query, str(sub_batch_target), ai_flag, deep_flag],
+                [sys.executable, "scraper.py", query, str(batch_target), ai_flag],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
                 bufsize=1,
-                universal_newlines=True,
-                env={**os.environ, "PYTHONUNBUFFERED": "1"}
+                universal_newlines=True
             )
 
             leads_found_this_query = 0
+            duplicates_skipped_this_query = 0
             unique_added_this_query = 0
-            duplicates_this_query = 0
 
             for line in process.stdout:
                 line = line.strip()
                 if line.startswith("DATA:"):
-                    leads_found_this_query += 1
                     try:
                         data = json.loads(line.replace("DATA:", "").strip())
-                        is_dup = False
-                        # Memory-safe duplicate check
-                        recent_leads = st.session_state.session_leads[-50:]
-                        existing_names = [l.get("name","").lower() for l in recent_leads]
+                        leads_found_this_query += 1
 
-                        if data.get("name","").lower() in existing_names:
-                            is_dup = True
+                        is_dup = False
+                        data_keys = get_lead_keys(data)
+                        for k in data_keys:
+                            if k in seen_session_ids:
+                                is_dup = True
+                                break
                         
-                        if is_dup:
-                            duplicates_skipped += 1
-                            duplicates_this_query += 1
-                        else:
-                            data["validation_status"] = "Valid"
-                            
+                        if not is_dup:
+                            for db_lead in db_leads_list:
+                                if is_db_duplicate_lead(data, db_lead):
+                                    is_dup = True
+                                    break
+
+                        if not is_dup:
+                            for k in data_keys:
+                                seen_session_ids.add(k)
+                                
                             st.session_state.session_leads.append(data)
                             database.save_to_db([data])
+                            db_leads_list.append(data)
                             
-                            st.session_state.collected_leads = len(st.session_state.session_leads)
-                            st.session_state.remaining_leads = st.session_state.target_leads - st.session_state.collected_leads
                             unique_added_this_query += 1
-                            batch_collected += 1
-                            
-                            if unique_added_this_query >= target_unique_per_phase or st.session_state.collected_leads >= st.session_state.target_leads:
-                                st.session_state.completed_batches += 1
-                                google_sheets.save_to_google_sheets(st.session_state.session_leads)
-                                batch_collected = 0
-                                
-                                process.terminate()
-                                break
+                            collected_count = len(st.session_state.session_leads)
+                        else:
+                            duplicates_skipped_this_query += 1
+                            duplicates_skipped += 1
 
                         valid_count = len([x for x in st.session_state.session_leads if x.get("validation_status") == "Valid"])
-                        m1_metric.metric("Total Scraped", st.session_state.collected_leads)
+                        m1_metric.metric("Total Scraped", collected_count)
                         m2_metric.metric("Valid Leads", valid_count)
                         m3_metric.metric("Duplicates Skipped", duplicates_skipped)
-                        progress_bar.progress(min(st.session_state.collected_leads / st.session_state.target_leads, 1.0))
+                        progress_bar.progress(min(collected_count / target_total, 1.0))
 
                         with table_placeholder.container():
-                            import pandas as pd
                             df_view = pd.DataFrame(st.session_state.session_leads).iloc[::-1]
                             cols = [c for c in ["name", "phone", "email", "sub_region", "validation_status"] if c in df_view.columns]
                             st.dataframe(df_view[cols] if cols else df_view, hide_index=True)
                     except Exception as e:
-                        import logging
-                        logging.debug(f"Data parse error: {e}")
+                        logger.debug(f"Data parse error: {e}")
 
                 elif line.startswith("LOG:"):
                     msg = line.replace("LOG:", "").strip()
                     st.session_state.logs += f"[SYS] {msg}\n"
-                    log_placeholder.markdown(f'<div class="log-box">{st.session_state.logs[-3000:]}</div>', unsafe_allow_html=True)
+                    log_placeholder.markdown(
+                        f'<div class="log-box">{st.session_state.logs[-3000:]}</div>',
+                        unsafe_allow_html=True
+                    )
 
             process.wait()
             
-            st.session_state.logs += f"[SYS] Found {leads_found_this_query} | Added {unique_added_this_query} unique | Duplicates {duplicates_this_query}\n"
-            st.session_state.logs += f"[SYS] Moving to next phase\n"
-            log_placeholder.markdown(f'<div class="log-box">{st.session_state.logs[-3000:]}</div>', unsafe_allow_html=True)
-            
-            import time as _time
-            _time.sleep(2)  # Let Render recover memory between batches
-
-            if st.session_state.phase == 1:
-                st.session_state.area_idx += 1
-                if st.session_state.area_idx < len(st.session_state.specific_sub_regions):
-                    next_area = st.session_state.specific_sub_regions[st.session_state.area_idx]
-                    st.session_state.logs += f"[SYS] Moving to next area: {next_area}\n"
-                
-            elif st.session_state.phase == 2:
-                if unique_added_this_query == 0:
-                    st.session_state.consecutive_zero_yields += 1
-                else:
-                    st.session_state.consecutive_zero_yields = 0
-
-                if st.session_state.consecutive_zero_yields >= 2:
-                    st.session_state.fallback_idx += 1
-                    st.session_state.q_idx = 0
-                    st.session_state.consecutive_zero_yields = 0
-                    if st.session_state.fallback_idx < len(st.session_state.fallback_areas):
-                        next_area = st.session_state.fallback_areas[st.session_state.fallback_idx]
-                        st.session_state.logs += f"[SYS] Moving to next area: {next_area}\n"
-                else:
-                    st.session_state.q_idx += 1
-                    
-            log_placeholder.markdown(f'<div class="log-box">{st.session_state.logs[-3000:]}</div>', unsafe_allow_html=True)
-            
-        # End of extraction
-        if st.session_state.get("is_extracting", False):
-            st.session_state.is_extracting = False
-            st.session_state.remaining_leads = 0
-            if st.session_state.collected_leads >= st.session_state.target_leads:
-                st.session_state.logs += f"[SYS] Target reached: {st.session_state.collected_leads}/{st.session_state.target_leads}\n"
-                st.success("✅ 100 leads generated successfully.")
+            if unique_added_this_query == 0:
+                st.session_state.logs += f"[SYS] Sub-region attempted: {sub_region} | Found 0 | Moving next\n\n"
             else:
-                st.session_state.logs += f"[SYS] All fallback areas exhausted. Final total: {st.session_state.collected_leads}/{st.session_state.target_leads}\n"
-            
+                st.session_state.logs += f"[SYS] Sub-region attempted: {sub_region} | Found {leads_found_this_query} | Unique added {unique_added_this_query}\n\n"
             log_placeholder.markdown(f'<div class="log-box">{st.session_state.logs[-3000:]}</div>', unsafe_allow_html=True)
-            status_text.text("✅ Extraction Complete! Syncing to Cloud...")
-            success, msg = google_sheets.save_to_google_sheets(st.session_state.session_leads)
-            import time as _time
-            _time.sleep(2)
-            st.rerun()
+
+
+        # --- PHASE 2: FALLBACK AREAS (Broadened variants) ---
+        if collected_count < target_total:
+            st.session_state.logs += f"[SYS] All sub-regions attempted. Starting broader fallback...\n"
+            log_placeholder.markdown(f'<div class="log-box">{st.session_state.logs[-3000:]}</div>', unsafe_allow_html=True)
+            
+            total_fallbacks = len(fallback_areas)
+            
+            for area_idx, fallback_area in enumerate(fallback_areas):
+                if collected_count >= target_total:
+                    break
+                    
+                display_area = fallback_area if fallback_area else f"{city} (City-wide)"
+                st.session_state.logs += f"[SYS] Fallback Area {area_idx+1}/{total_fallbacks}: {display_area}\n"
+                log_placeholder.markdown(f'<div class="log-box">{st.session_state.logs[-3000:]}</div>', unsafe_allow_html=True)
+                
+                query_variants = get_query_variants(keyword)
+                consecutive_zero_yields = 0
+
+                for q_variant in query_variants:
+                    if collected_count >= target_total:
+                        break
+
+                    if fallback_area:
+                        query = f"{q_variant} in {fallback_area} {city}"
+                    else:
+                        query = f"{q_variant} in {city}"
+                    status_text.text(f"🔄 Scraping Fallback: {query} ({collected_count}/{target_total})")
+                    st.session_state.logs += f"[SYS] Query: {query}\n"
+                    log_placeholder.markdown(
+                        f'<div class="log-box">{st.session_state.logs[-3000:]}</div>',
+                        unsafe_allow_html=True
+                    )
+
+                    ai_flag = "1" if use_ai else "0"
+                    batch_target = min(10, target_total - collected_count)
+
+                    process = subprocess.Popen(
+                        [sys.executable, "scraper.py", query, str(batch_target), ai_flag],
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.STDOUT,
+                        text=True,
+                        bufsize=1,
+                        universal_newlines=True
+                    )
+
+                    leads_found_this_query = 0
+                    duplicates_skipped_this_query = 0
+                    unique_added_this_query = 0
+
+                    for line in process.stdout:
+                        line = line.strip()
+                        if line.startswith("DATA:"):
+                            try:
+                                data = json.loads(line.replace("DATA:", "").strip())
+                                leads_found_this_query += 1
+
+                                is_dup = False
+                                data_keys = get_lead_keys(data)
+                                for k in data_keys:
+                                    if k in seen_session_ids:
+                                        is_dup = True
+                                        break
+                                
+                                if not is_dup:
+                                    for db_lead in db_leads_list:
+                                        if is_db_duplicate_lead(data, db_lead):
+                                            is_dup = True
+                                            break
+
+                                if not is_dup:
+                                    for k in data_keys:
+                                        seen_session_ids.add(k)
+                                        
+                                    st.session_state.session_leads.append(data)
+                                    database.save_to_db([data])
+                                    db_leads_list.append(data)
+                                    
+                                    unique_added_this_query += 1
+                                    collected_count = len(st.session_state.session_leads)
+                                else:
+                                    duplicates_skipped_this_query += 1
+                                    duplicates_skipped += 1
+
+                                valid_count = len([x for x in st.session_state.session_leads if x.get("validation_status") == "Valid"])
+                                m1_metric.metric("Total Scraped", collected_count)
+                                m2_metric.metric("Valid Leads", valid_count)
+                                m3_metric.metric("Duplicates Skipped", duplicates_skipped)
+                                progress_bar.progress(min(collected_count / target_total, 1.0))
+
+                                with table_placeholder.container():
+                                    df_view = pd.DataFrame(st.session_state.session_leads).iloc[::-1]
+                                    cols = [c for c in ["name", "phone", "email", "sub_region", "validation_status"] if c in df_view.columns]
+                                    st.dataframe(df_view[cols] if cols else df_view, hide_index=True)
+                            except Exception as e:
+                                logger.debug(f"Data parse error: {e}")
+
+                        elif line.startswith("LOG:"):
+                            msg = line.replace("LOG:", "").strip()
+                            st.session_state.logs += f"[SYS] {msg}\n"
+                            log_placeholder.markdown(
+                                f'<div class="log-box">{st.session_state.logs[-3000:]}</div>',
+                                unsafe_allow_html=True
+                            )
+
+                    process.wait()
+
+                    st.session_state.logs += f"[SYS] Found {leads_found_this_query} | Added {unique_added_this_query} | Duplicates {duplicates_skipped_this_query} | Total {collected_count}/{target_total}\n\n"
+                    log_placeholder.markdown(
+                        f'<div class="log-box">{st.session_state.logs[-3000:]}</div>',
+                        unsafe_allow_html=True
+                    )
+
+                    if unique_added_this_query == 0:
+                        consecutive_zero_yields += 1
+                    else:
+                        consecutive_zero_yields = 0
+
+                    if consecutive_zero_yields >= 3:
+                        st.session_state.logs += f"[SYS] Fallback area yielding no new leads. Moving to next fallback...\n"
+                        log_placeholder.markdown(f'<div class="log-box">{st.session_state.logs[-3000:]}</div>', unsafe_allow_html=True)
+                        break
+
+        if collected_count >= target_total:
+            st.session_state.logs += f"[SYS] Target reached: {collected_count}/{target_total}\n"
+        else:
+            st.session_state.logs += f"[SYS] All fallback areas exhausted. Final total: {collected_count}/{target_total}\n"
+        
+        st.session_state.logs += f"[SYS] Total collected {collected_count}/{target_total}\n"
+        log_placeholder.markdown(f'<div class="log-box">{st.session_state.logs[-3000:]}</div>', unsafe_allow_html=True)
+
+        # Step 3 — Save to Google Sheets
+        status_text.text("✅ Extraction Complete! Syncing to Cloud...")
+        success, msg = google_sheets.save_to_google_sheets(st.session_state.session_leads)
+        if success:
+            st.success(f"✅ {collected_count} leads collected from {len(sub_regions)} sub-regions!")
+
+        st.session_state.is_scraping = False
+        import time as _time
+        _time.sleep(2)
+        st.rerun()
 
 # ==========================================
 # USER DASHBOARD
@@ -1791,7 +1899,7 @@ def show_user_dashboard():
     with c2:
         st.markdown(f'<div class="metric-card"><div class="metric-label">Data Accuracy</div><div class="metric-value">{quality_pct}%</div></div>', unsafe_allow_html=True)
     with c3:
-        status_text = "ACTIVE" if st.session_state.get("is_extracting", False) else "IDLE"
+        status_text = "ACTIVE" if st.session_state.is_scraping else "IDLE"
         st.markdown(f'<div class="metric-card"><div class="metric-label">Engine Status</div><div class="metric-value">{status_text}</div></div>', unsafe_allow_html=True)
     with c4:
         gs_connected = google_sheets.check_connection()
@@ -1810,14 +1918,12 @@ def show_user_dashboard():
 
     with tab1:
         generation_ui()
-        if st.session_state.get("session_leads", []):
+        if not st.session_state.is_scraping and st.session_state.session_leads:
             st.markdown("### ⚡ Session Preview")
             import pandas as pd
             st.dataframe(pd.DataFrame(st.session_state.session_leads), hide_index=True)
 
     with tab2:
-        if st.session_state.get("is_extracting", False):
-            st.info("Extraction running in background — progress saved. Return to Generate to view live table.")
         if st.session_state.session_leads:
             st.markdown("### 📋 My Leads Table")
             import pandas as pd
@@ -1837,13 +1943,9 @@ def show_user_dashboard():
             st.info("💡 Generate leads first to see your leads table.")
 
     with tab3:
-        if st.session_state.get("is_extracting", False):
-            st.info("Extraction running in background — progress saved. Return to Generate to view live table.")
         show_user_analytics(st.session_state.get("username", ""))
 
     with tab4:
-        if st.session_state.get("is_extracting", False):
-            st.info("Extraction running in background — progress saved. Return to Generate to view live table.")
         render_billing_tab()
 
 
@@ -1871,128 +1973,25 @@ def show_admin_dashboard():
     mrr = sum(plan_revenue.get(u.get("plan", "Free"), 0) for u in all_users)
 
     # Top row metrics
-    
-    st.markdown("""
-    <style>
-    /* Metric Card Buttons */
-    div[data-testid="column"] button[kind="secondary"] {
-        background: #fff !important;
-        border: 0.5px solid #E2E8F0 !important;
-        border-radius: 12px !important;
-        padding: 16px !important;
-        text-align: center !important;
-        height: auto !important;
-        min-height: 90px !important;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.02) !important;
-        transition: all 0.2s ease !important;
-        cursor: pointer !important;
-        display: flex !important;
-        flex-direction: column !important;
-        justify-content: center !important;
-    }
-    div[data-testid="column"] button[kind="secondary"]:hover {
-        transform: translateY(-2px) !important;
-        box-shadow: 0 8px 15px rgba(0,0,0,0.05) !important;
-        border-color: #3B82F6 !important;
-    }
-    div[data-testid="column"] button[kind="secondary"] p {
-        font-size: 13px !important;
-        font-weight: 500 !important;
-        color: #64748B !important;
-        margin: 0 !important;
-        line-height: 1.2 !important;
-    }
-    div[data-testid="column"] button[kind="secondary"] p:nth-of-type(2) {
-        font-size: 24px !important;
-        font-weight: 600 !important;
-        color: #0F172A !important;
-        margin-top: 8px !important;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
-    def nav_to(page):
-        st.session_state["admin_nav"] = page
-
     c1, c2, c3, c4, c5 = st.columns(5)
     with c1:
-        if st.button(f"Total Leads\n\n**{total_leads}**", key="nav_total_leads", use_container_width=True):
-            nav_to("🗄️ Master Database")
+        st.markdown(f'<div class="metric-card"><div class="metric-label">Total Leads</div><div class="metric-value">{total_leads}</div></div>', unsafe_allow_html=True)
     with c2:
-        if st.button(f"Active Users\n\n**{len(all_users)}**", key="nav_active_users", use_container_width=True):
-            nav_to("👥 User Management")
+        st.markdown(f'<div class="metric-card"><div class="metric-label">Active Users</div><div class="metric-value">{len(all_users)}</div></div>', unsafe_allow_html=True)
     with c3:
-        if st.button(f"Global Quality\n\n**{quality_pct}%**", key="nav_global_quality", use_container_width=True):
-            nav_to("📊 Analytics")
+        st.markdown(f'<div class="metric-card"><div class="metric-label">Global Quality</div><div class="metric-value">{quality_pct}%</div></div>', unsafe_allow_html=True)
     with c4:
-        if st.button(f"MRR\n\n**${mrr}**", key="nav_mrr", use_container_width=True):
-            nav_to("💰 Revenue")
+        st.markdown(f'<div class="metric-card"><div class="metric-label">MRR</div><div class="metric-value">${mrr}</div></div>', unsafe_allow_html=True)
     with c5:
         paid_users = sum(1 for u in all_users if u.get("plan", "Free") != "Free")
-        if st.button(f"Paid Users\n\n**{paid_users}**", key="nav_paid_users", use_container_width=True):
-            nav_to("💰 Revenue")
+        st.markdown(f'<div class="metric-card"><div class="metric-label">Paid Users</div><div class="metric-value">{paid_users}</div></div>', unsafe_allow_html=True)
 
     st.markdown("<br><hr><br>", unsafe_allow_html=True)
 
     # ==========================================
-    # TABS (Using radio for programmable state)
+    # TABS
     # ==========================================
-    st.markdown("""
-    <style>
-    /* Radio Tabs Styling */
-    div[data-testid="stRadio"] > div[role="radiogroup"] {
-        display: flex;
-        flex-direction: row;
-        flex-wrap: nowrap !important;
-        overflow-x: auto !important;
-        white-space: nowrap !important;
-        gap: 24px !important;
-        border-bottom: 1px solid #dbe3ef !important;
-        padding-bottom: 0px;
-        margin-bottom: 20px;
-    }
-    div[data-testid="stRadio"] > div[role="radiogroup"]::-webkit-scrollbar {
-        display: none;
-    }
-    div[data-testid="stRadio"] > div[role="radiogroup"] {
-        -ms-overflow-style: none;
-        scrollbar-width: none;
-    }
-    div[data-testid="stRadio"] > div[role="radiogroup"] > label {
-        padding: 10px 0px !important;
-        margin: 0 !important;
-        background: transparent !important;
-        border: none !important;
-        border-radius: 0 !important;
-        cursor: pointer !important;
-        border-bottom: 2px solid transparent !important;
-        margin-bottom: -1px !important;
-        white-space: nowrap !important;
-    }
-    /* Hide the radio circle */
-    div[data-testid="stRadio"] > div[role="radiogroup"] > label > div:first-child {
-        display: none !important;
-    }
-    div[data-testid="stRadio"] > div[role="radiogroup"] > label p {
-        font-size: 14px !important;
-        font-weight: 600 !important;
-        color: #64748B !important;
-        margin: 0 !important;
-        white-space: nowrap !important;
-    }
-    div[data-testid="stRadio"] > div[role="radiogroup"] > label:hover p {
-        color: #3B82F6 !important;
-    }
-    div[data-testid="stRadio"] > div[role="radiogroup"] > label:has(input:checked) {
-        border-bottom: 2px solid red !important;
-    }
-    div[data-testid="stRadio"] > div[role="radiogroup"] > label:has(input:checked) p {
-        color: #3B82F6 !important;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
-    tabs = [
+    tabs = st.tabs([
         "🚀 Generate",
         "🗄️ Master Database",
         "👥 User Management",
@@ -2001,26 +2000,21 @@ def show_admin_dashboard():
         "💰 Revenue",
         "⏰ Scheduler",
         "🛠️ System Settings"
-    ]
-    
-    selected_tab = st.radio("Navigation", tabs, horizontal=True, label_visibility="collapsed", key="admin_nav")
-    
-    if st.session_state.get("is_extracting", False) and selected_tab != tabs[0]:
-        st.info("Extraction running in background — progress saved. Return to Generate to view live table.")
+    ])
 
     # ==========================================
     # TAB 1 — Generate
     # ==========================================
-    if selected_tab == tabs[0]:
+    with tabs[0]:
         generation_ui("(Admin)")
-        if st.session_state.get("session_leads", []):
+        if not st.session_state.is_scraping and st.session_state.session_leads:
             st.markdown("### ⚡ Session Preview")
             st.dataframe(pd.DataFrame(st.session_state.session_leads), hide_index=True)
 
     # ==========================================
     # TAB 2 — Master Database
     # ==========================================
-    if selected_tab == tabs[1]:
+    with tabs[1]:
         st.markdown("### 🗄️ Master Lead Repository")
         df_master = database.load_db()
         if df_master.empty:
@@ -2073,7 +2067,7 @@ def show_admin_dashboard():
     # ==========================================
     # TAB 3 — User Management (CRUD)
     # ==========================================
-    if selected_tab == tabs[2]:
+    with tabs[2]:
         st.markdown("### 👥 User Management")
         from auth import get_all_users, register_user, delete_user, update_user_plan, update_password
 
@@ -2137,7 +2131,7 @@ def show_admin_dashboard():
     # ==========================================
     # TAB 4 — Activity Logs
     # ==========================================
-    if selected_tab == tabs[3]:
+    with tabs[3]:
         st.markdown("### 📜 System Activity Logs")
         try:
             logs_df = database.get_logs()
@@ -2151,7 +2145,7 @@ def show_admin_dashboard():
     # ==========================================
     # TAB 5 — Analytics
     # ==========================================
-    if selected_tab == tabs[4]:
+    with tabs[4]:
         st.markdown("### 📊 Platform Analytics")
         if not df_master.empty:
             import plotly.express as px
@@ -2218,7 +2212,7 @@ def show_admin_dashboard():
     # ==========================================
     # TAB 6 — Revenue
     # ==========================================
-    if selected_tab == tabs[5]:
+    with tabs[5]:
         st.markdown("### 💰 Revenue Dashboard")
         from auth import get_all_users
         all_users_rev = get_all_users()
@@ -2247,19 +2241,19 @@ def show_admin_dashboard():
     # ==========================================
     # TAB 7 — Scheduler
     # ==========================================
-    if selected_tab == tabs[6]:
+    with tabs[6]:
         render_scheduler_ui(st.session_state.get("plan", "Free"))
 
     # ==========================================
     # TAB 8 — System Settings
     # ==========================================
-    if selected_tab == tabs[7]:
+    with tabs[7]:
         st.markdown("### ⚙️ System Settings")
 
         st.markdown("#### ☁️ Google Sheets Sync")
         col1, col2 = st.columns(2)
         with col1:
-            if st.button("🔄 Force Cloud Sync", use_container_width=True, type="primary"):
+            if st.button("🔄 Force Cloud Sync", use_container_width=True):
                 with st.spinner("Syncing..."):
                     df_local = database.load_db()
                     if not df_local.empty:
@@ -2310,7 +2304,7 @@ def show_admin_dashboard():
             json_master = df_master.to_json(orient="records").encode("utf-8")
             st.download_button("📥 Master JSON", json_master, "master.json", "application/json", use_container_width=True)
         with dm_col3:
-            if st.button("🚨 Wipe System", use_container_width=True, type="primary"):
+            if st.button("🚨 Wipe System", use_container_width=True):
                 database.clear_all_leads()
                 google_sheets.clear_sheet_data()
                 st.success("✅ System wiped")
