@@ -283,59 +283,18 @@ div[role="radiogroup"] label[data-checked="true"] {
     left, right = st.columns([1.1, 0.9])
 
     with left:
-        st.markdown('''
-        <div style="color: white; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;">
-            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 48px;">
-                <div style="width: 48px; height: 48px; background: #5b21b6; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px;">📊</div>
-                <div style="font-size: 24px; font-weight: 700;">LeadPulse <span style="color: #a78bfa;">Pro</span></div>
-            </div>
-            
-            <div style="font-size: 48px; font-weight: 800; line-height: 1.15; margin-bottom: 20px;">
-                AI-Powered<br>Lead Generation<br>Platform
-            </div>
-            
-            <div style="font-size: 16px; color: rgba(255,255,255,0.55); line-height: 1.7; margin-bottom: 44px;">
-                Generate verified leads faster with<br>AI-powered enrichment.
-            </div>
-            
-            <div style="display: flex; flex-direction: column; gap: 20px; margin-bottom: 48px;">
-                <div style="display: flex; align-items: center; gap: 14px;">
-                    <div style="width: 42px; height: 42px; background: rgba(91,33,182,0.5); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px;">👥</div>
-                    <div>
-                        <div style="font-weight: 600; font-size: 15px; margin-bottom: 2px;">Smart Lead Discovery</div>
-                        <div style="color: rgba(255,255,255,0.45); font-size: 13px;">Find high-quality leads in seconds</div>
-                    </div>
-                </div>
-                <div style="display: flex; align-items: center; gap: 14px;">
-                    <div style="width: 42px; height: 42px; background: rgba(91,33,182,0.5); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px;">📈</div>
-                    <div>
-                        <div style="font-weight: 600; font-size: 15px; margin-bottom: 2px;">AI Enrichment</div>
-                        <div style="color: rgba(255,255,255,0.45); font-size: 13px;">Get enriched data & insights automatically</div>
-                    </div>
-                </div>
-                <div style="display: flex; align-items: center; gap: 14px;">
-                    <div style="width: 42px; height: 42px; background: rgba(91,33,182,0.5); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px;">🛡️</div>
-                    <div>
-                        <div style="font-weight: 600; font-size: 15px; margin-bottom: 2px;">Data Verification</div>
-                        <div style="color: rgba(255,255,255,0.45); font-size: 13px;">Ensure accuracy and reliability</div>
-                    </div>
-                </div>
-                <div style="display: flex; align-items: center; gap: 14px;">
-                    <div style="width: 42px; height: 42px; background: rgba(91,33,182,0.5); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px;">🔒</div>
-                    <div>
-                        <div style="font-weight: 600; font-size: 15px; margin-bottom: 2px;">Secure & Reliable</div>
-                        <div style="color: rgba(255,255,255,0.45); font-size: 13px;">Enterprise-grade security</div>
-                    </div>
-                </div>
-            </div>
-            
-            <div style="display: flex; gap: 32px; padding-top: 24px; border-top: 1px solid rgba(255,255,255,0.08); color: rgba(255,255,255,0.4); font-size: 13px;">
-                <div>🛡️ Secure Access</div>
-                <div>🔒 Encrypted Data</div>
-                <div>☁️ 99.9% Uptime</div>
-            </div>
-        </div>
-        ''', unsafe_allow_html=True)
+        st.markdown("# LeadPulse Pro")
+        st.markdown("## AI-Powered Lead Generation Platform")
+        st.markdown("Generate verified leads faster with AI-powered enrichment.")
+        st.markdown("### 👥 Smart Lead Discovery")
+        st.caption("Find high-quality leads in seconds")
+        st.markdown("### 📈 AI Enrichment")
+        st.caption("Get enriched data & insights automatically")
+        st.markdown("### 🛡️ Data Verification")
+        st.caption("Ensure accuracy and reliability")
+        st.markdown("### 🔒 Secure & Reliable")
+        st.caption("Enterprise-grade security")
+        st.markdown("🛡️ Secure Access   🔒 Encrypted Data   ☁️ 99.9% Uptime")
 
     with right:
         # This marker lets our CSS target this specific container to make it the white card
