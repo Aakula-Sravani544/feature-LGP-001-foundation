@@ -218,15 +218,15 @@ def render_login_page():
 
 /* Left Column Styling */
 div[data-testid="column"]:nth-of-type(1) {
-    padding: 0 4vw 0 6vw !important;
+    padding: 2vw 4vw 0 6vw !important;
 }
 
 /* Right Column (Card) Styling */
 div:has(> div > div > div > div > .login-card-marker) {
-    background: #ffffff !important;
+    background: #f8f8fb !important;
     border-radius: 28px !important;
     padding: 48px 40px !important;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.1) !important;
+    box-shadow: 0 25px 60px rgba(0,0,0,0.35), 0 8px 20px rgba(91,33,182,0.12) !important;
     max-width: 480px !important;
     margin: 0 auto !important;
 }
@@ -237,7 +237,7 @@ div:has(> div > div > div > div > .login-card-marker) {
     font-size: 64px;
     font-weight: 800;
     color: #ffffff;
-    line-height: 1.1;
+    line-height: 1.05;
     margin-bottom: 24px;
     letter-spacing: -1px;
 }
@@ -257,7 +257,7 @@ div:has(> div > div > div > div > .login-card-marker) {
     display: flex;
     align-items: center;
     gap: 16px;
-    margin-bottom: 24px;
+    margin-bottom: 28px;
 }
 .feat-icon-box {
     width: 48px; height: 48px;
@@ -277,7 +277,7 @@ div:has(> div > div > div > div > .login-card-marker) {
     margin-bottom: 4px;
 }
 .feat-text-sub {
-    color: rgba(255,255,255,0.65);
+    color: rgba(255,255,255,0.68);
     font-size: 14px;
     line-height: 1.4;
 }
@@ -286,18 +286,18 @@ div:has(> div > div > div > div > .login-card-marker) {
     gap: 32px;
     padding-top: 32px;
     border-top: 1px solid rgba(255,255,255,0.1);
-    color: rgba(255,255,255,0.5);
+    color: rgba(255,255,255,0.72);
     font-size: 14px;
     font-weight: 500;
 }
 
 /* Right Panel Streamlit Widget Styling */
 .stTextInput input {
-    background: #f9fafb !important;
-    border: 1px solid #e5e7eb !important;
+    background: #ffffff !important;
+    border: 1px solid #d9dce3 !important;
     border-radius: 14px !important;
-    height: 56px !important;
-    font-size: 15px !important;
+    height: 58px !important;
+    font-size: 16px !important;
     color: #111827 !important;
     padding: 0 16px !important;
     transition: all 0.2s ease !important;
@@ -319,7 +319,7 @@ div:has(> div > div > div > div > .login-card-marker) {
 }
 
 .stButton > button {
-    background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%) !important;
+    background: linear-gradient(135deg, #7c3aed, #9333ea) !important;
     color: #ffffff !important;
     border: none !important;
     border-radius: 14px !important;
@@ -328,13 +328,13 @@ div:has(> div > div > div > div > .login-card-marker) {
     font-weight: 600 !important;
     width: 100% !important;
     margin-top: 12px !important;
-    box-shadow: 0 4px 14px rgba(109, 40, 217, 0.3) !important;
+    box-shadow: 0 10px 30px rgba(124, 58, 237, 0.35) !important;
     transition: all 0.2s ease !important;
 }
 .stButton > button:hover {
+    transform: translateY(-2px) !important;
     background: linear-gradient(135deg, #6d28d9 0%, #5b21b6 100%) !important;
-    box-shadow: 0 6px 20px rgba(109, 40, 217, 0.4) !important;
-    transform: translateY(-1px) !important;
+    box-shadow: 0 12px 32px rgba(124, 58, 237, 0.45) !important;
 }
 
 div[role="radiogroup"] {
@@ -405,7 +405,7 @@ div[role="radiogroup"] label[data-checked="true"] {
         # Marker for CSS styling
         st.markdown('<div class="login-card-marker"></div>', unsafe_allow_html=True)
         
-        st.markdown('<div style="text-align:center; font-size:42px; font-weight:800; color:#111827; margin-bottom:6px; letter-spacing:-0.5px;">Welcome Back</div>', unsafe_allow_html=True)
+        st.markdown('<div style="text-align:center; font-size:48px; font-weight:800; color:#0f172a; margin-bottom:6px; letter-spacing:-0.5px;">Welcome Back</div>', unsafe_allow_html=True)
         st.markdown('<div style="text-align:center; font-size:15px; color:#6b7280; margin-bottom:32px; font-weight:400;">Sign in to access your account</div>', unsafe_allow_html=True)
 
         portal = st.radio(
