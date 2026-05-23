@@ -182,7 +182,6 @@ check_payment_success()
 
 def render_login_page():
     from auth import login
-    import streamlit.components.v1 as components
     from datetime import datetime
 
     st.markdown('''
