@@ -177,388 +177,578 @@ check_payment_success()
 # ==========================================
 def render_login_page():
     from auth import login
+    import streamlit.components.v1 as components
     from datetime import datetime
 
+    # Initialize session state
+    if "login_username" not in st.session_state:
+        st.session_state.login_username = ""
+    if "login_password" not in st.session_state:
+        st.session_state.login_password = ""
+    if "login_portal" not in st.session_state:
+        st.session_state.login_portal = ""
+    if "login_submitted" not in st.session_state:
+        st.session_state.login_submitted = False
+
+    # Check if form was submitted via query params
+    params = st.query_params
+    if "username" in params and "password" in params:
+        st.session_state.login_username = params["username"]
+        st.session_state.login_password = params["password"]
+        st.session_state.login_portal = params.get("portal", "admin")
+        st.session_state.login_submitted = True
+
+    # If submitted, run your auth logic
+    if st.session_state.login_submitted:
+        username = st.session_state.login_username
+        password = st.session_state.login_password
+        portal = st.session_state.login_portal
+        
+        # Reset state so it doesn't loop
+        st.session_state.login_submitted = False
+        st.query_params.clear()
+
+        success, role, plan = login(username, password)
+        if portal == "admin":
+            if success and role == "admin":
+                st.session_state.authenticated = True
+                st.session_state.username = username
+                st.session_state.role = role
+                st.session_state.plan = plan
+                st.session_state.login_time = datetime.now()
+                st.session_state.login_mode = None
+                st.rerun()
+            elif success and role != "admin":
+                st.error("This account does not have admin access")
+            else:
+                st.error("Invalid admin credentials")
+        else:
+            if success:
+                st.session_state.authenticated = True
+                st.session_state.username = username
+                st.session_state.role = role
+                st.session_state.plan = plan
+                st.session_state.login_time = datetime.now()
+                st.session_state.login_mode = None
+                st.rerun()
+            else:
+                st.error("Invalid credentials")
+
+    # Hide all streamlit UI
     st.markdown('''
 <style>
-#MainMenu, footer, header {visibility:hidden !important;}
-[data-testid="collapsedControl"] {display:none !important;}
-[data-testid="stSidebar"] {display:none !important;}
-
-.main .block-container {
-    padding: 0 !important;
-    max-width: 100% !important;
+#MainMenu,footer,header{visibility:hidden !important;}
+[data-testid="collapsedControl"]{display:none !important;}
+[data-testid="stSidebar"]{display:none !important;}
+.main .block-container{
+    padding:0 !important;
+    max-width:100% !important;
 }
-.stApp {
-    background: linear-gradient(135deg,
-        #0a0520 0%, #1a0a4a 50%, #0f0635 100%) !important;
-    min-height: 100vh !important;
-}
-
-/* Center the login form area */
-.login-form-container {
-    position: fixed;
-    top: 0; right: 0;
-    width: 45%;
-    height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-    z-index: 10;
-}
-
-/* Input styling */
-.stTextInput input {
-    background: white !important;
-    border: 1.5px solid #e5e7eb !important;
-    border-radius: 10px !important;
-    height: 48px !important;
-    font-size: 14px !important;
-    color: #111827 !important;
-}
-.stTextInput label {
-    color: #111827 !important;
-    font-weight: 600 !important;
-    font-size: 14px !important;
-}
-
-/* Button */
-.stButton > button {
-    background: #5b21b6 !important;
-    color: white !important;
-    border: none !important;
-    border-radius: 12px !important;
-    height: 50px !important;
-    font-size: 15px !important;
-    font-weight: 600 !important;
-    width: 100% !important;
-}
-.stButton > button:hover {
-    background: #4c1d95 !important;
-}
-
-/* Tabs */
-.stTabs [data-baseweb="tab-list"] {
-    background: #f3f4f6 !important;
-    border-radius: 12px !important;
-    padding: 4px !important;
-    border: none !important;
-    gap: 4px !important;
-}
-.stTabs [data-baseweb="tab"] {
-    border-radius: 10px !important;
-    padding: 10px 16px !important;
-    font-size: 13px !important;
-    font-weight: 500 !important;
-    color: #6b7280 !important;
-    border: none !important;
-    background: transparent !important;
-}
-.stTabs [aria-selected="true"] {
-    background: white !important;
-    color: #5b21b6 !important;
-    font-weight: 700 !important;
-    border-bottom: none !important;
-}
-.stTabs [data-baseweb="tab-panel"] {
-    padding: 0 !important;
-    background: transparent !important;
-}
-
-/* Checkbox */
-.stCheckbox label p {
-    color: #374151 !important;
-    font-size: 13px !important;
-}
-
-/* Form wrapper width control */
-[data-testid="stVerticalBlock"] > 
-[data-testid="stVerticalBlockBorderWrapper"] {
-    max-width: 420px !important;
+.stApp{
+    background:#0a0520 !important;
 }
 </style>
 ''', unsafe_allow_html=True)
 
-    # This renders the entire left side as pure HTML
-    st.markdown('''
-<div style="
-    position: fixed;
-    top: 0; left: 0;
-    width: 52%;
-    height: 100vh;
-    padding: 48px 48px 48px 56px;
+    # Render the full login page as HTML component
+    components.html('''
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" 
+      content="width=device-width, initial-scale=1.0"/>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; 
+      font-family: -apple-system, BlinkMacSystemFont, 
+      'Segoe UI', sans-serif; }
+
+  body {
+    background: linear-gradient(135deg, 
+      #0a0520 0%, #1a0a4a 50%, #0f0635 100%);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .page {
+    display: flex;
+    flex: 1;
+    min-height: 100vh;
+  }
+
+  /* ── LEFT PANEL ── */
+  .left {
+    flex: 1.1;
+    padding: 56px 48px;
     display: flex;
     flex-direction: column;
     justify-content: center;
-    box-sizing: border-box;
-    z-index: 1;
-">
-    <div style="display:flex;align-items:center;gap:12px;
-                margin-bottom:40px;">
-        <div style="width:44px;height:44px;
-                    background:#5b21b6;border-radius:12px;
-                    display:flex;align-items:center;
-                    justify-content:center;font-size:20px;">
-            📊</div>
-        <span style="font-size:22px;font-weight:700;
-                     color:white;">
-            LeadPulse 
-            <span style="color:#a78bfa;">Pro</span>
-        </span>
-    </div>
+  }
 
-    <div style="font-size:42px;font-weight:800;color:white;
-                line-height:1.2;margin-bottom:16px;">
-        AI-Powered<br>Lead Generation<br>Platform
-    </div>
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 48px;
+  }
+  .logo-icon {
+    width: 48px; height: 48px;
+    background: #5b21b6;
+    border-radius: 12px;
+    display: flex; align-items: center;
+    justify-content: center;
+    font-size: 22px;
+  }
+  .logo-text {
+    font-size: 24px;
+    font-weight: 700;
+    color: white;
+  }
+  .logo-text span { color: #a78bfa; }
 
-    <div style="font-size:15px;
-                color:rgba(255,255,255,0.55);
-                margin-bottom:36px;line-height:1.7;">
-        Generate verified leads faster with<br>
-        AI-powered enrichment.
-    </div>
+  .headline {
+    font-size: 48px;
+    font-weight: 800;
+    color: white;
+    line-height: 1.15;
+    margin-bottom: 20px;
+  }
 
-    <div style="display:flex;flex-direction:column;gap:16px;
-                margin-bottom:36px;">
-        <div style="display:flex;align-items:center;gap:14px;">
-            <div style="width:40px;height:40px;flex-shrink:0;
-                        background:rgba(91,33,182,0.45);
-                        border-radius:10px;display:flex;
-                        align-items:center;
-                        justify-content:center;
-                        font-size:18px;">👥</div>
-            <div>
-                <div style="color:white;font-weight:600;
-                            font-size:14px;">
-                    Smart Lead Discovery</div>
-                <div style="color:rgba(255,255,255,0.45);
-                            font-size:12px;">
-                    Find high-quality leads in seconds</div>
-            </div>
-        </div>
-        <div style="display:flex;align-items:center;gap:14px;">
-            <div style="width:40px;height:40px;flex-shrink:0;
-                        background:rgba(91,33,182,0.45);
-                        border-radius:10px;display:flex;
-                        align-items:center;
-                        justify-content:center;
-                        font-size:18px;">📈</div>
-            <div>
-                <div style="color:white;font-weight:600;
-                            font-size:14px;">
-                    AI Enrichment</div>
-                <div style="color:rgba(255,255,255,0.45);
-                            font-size:12px;">
-                    Get enriched data and insights 
-                    automatically</div>
-            </div>
-        </div>
-        <div style="display:flex;align-items:center;gap:14px;">
-            <div style="width:40px;height:40px;flex-shrink:0;
-                        background:rgba(91,33,182,0.45);
-                        border-radius:10px;display:flex;
-                        align-items:center;
-                        justify-content:center;
-                        font-size:18px;">🛡️</div>
-            <div>
-                <div style="color:white;font-weight:600;
-                            font-size:14px;">
-                    Data Verification</div>
-                <div style="color:rgba(255,255,255,0.45);
-                            font-size:12px;">
-                    Ensure accuracy and reliability</div>
-            </div>
-        </div>
-        <div style="display:flex;align-items:center;gap:14px;">
-            <div style="width:40px;height:40px;flex-shrink:0;
-                        background:rgba(91,33,182,0.45);
-                        border-radius:10px;display:flex;
-                        align-items:center;
-                        justify-content:center;
-                        font-size:18px;">🔒</div>
-            <div>
-                <div style="color:white;font-weight:600;
-                            font-size:14px;">
-                    Secure and Reliable</div>
-                <div style="color:rgba(255,255,255,0.45);
-                            font-size:12px;">
-                    Enterprise-grade security for your 
-                    data</div>
-            </div>
-        </div>
-    </div>
+  .subtext {
+    font-size: 16px;
+    color: rgba(255,255,255,0.55);
+    line-height: 1.7;
+    margin-bottom: 44px;
+  }
 
-    <div style="display:flex;gap:24px;padding-top:20px;
-                border-top:1px solid 
-                rgba(255,255,255,0.08);">
-        <span style="color:rgba(255,255,255,0.35);
-                     font-size:12px;">🛡️ Secure Access</span>
-        <span style="color:rgba(255,255,255,0.35);
-                     font-size:12px;">🔒 Encrypted Data</span>
-        <span style="color:rgba(255,255,255,0.35);
-                     font-size:12px;">☁️ 99.9% Uptime</span>
-    </div>
-</div>
-''', unsafe_allow_html=True)
+  .features {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    margin-bottom: 48px;
+  }
 
-    # White card header (pure HTML)
-    st.markdown('''
-<div style="
-    position: fixed;
-    top: 50%;
-    right: 2%;
-    transform: translateY(-50%);
-    width: 42%;
+  .feature {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .feature-icon {
+    width: 42px; height: 42px;
+    flex-shrink: 0;
+    background: rgba(91,33,182,0.5);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+  }
+
+  .feature-title {
+    color: white;
+    font-weight: 600;
+    font-size: 15px;
+    margin-bottom: 2px;
+  }
+
+  .feature-sub {
+    color: rgba(255,255,255,0.45);
+    font-size: 13px;
+  }
+
+  .trust-bar {
+    display: flex;
+    gap: 32px;
+    padding-top: 24px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+  }
+
+  .trust-item {
+    color: rgba(255,255,255,0.4);
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* ── RIGHT PANEL ── */
+  .right {
+    flex: 0.9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 32px;
+  }
+
+  .card {
     background: white;
     border-radius: 20px;
-    padding: 36px 36px 20px 36px;
-    box-shadow: 0 24px 64px rgba(0,0,0,0.35);
-    box-sizing: border-box;
-    z-index: 100;
-">
-    <div style="text-align:center;margin-bottom:20px;">
-        <div style="font-size:24px;font-weight:800;
-                    color:#111827;margin-bottom:6px;">
-            Welcome Back!</div>
-        <div style="font-size:13px;color:#6b7280;">
-            Sign in to access your account</div>
+    padding: 40px 36px;
+    width: 100%;
+    max-width: 460px;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.4);
+  }
+
+  .card-header {
+    text-align: center;
+    margin-bottom: 28px;
+  }
+
+  .card-title {
+    font-size: 26px;
+    font-weight: 800;
+    color: #111827;
+    margin-bottom: 8px;
+  }
+
+  .card-sub {
+    font-size: 14px;
+    color: #6b7280;
+  }
+
+  /* Portal tabs */
+  .portal-tabs {
+    display: flex;
+    background: #f3f4f6;
+    border-radius: 12px;
+    padding: 4px;
+    margin-bottom: 24px;
+    gap: 4px;
+  }
+
+  .portal-tab {
+    flex: 1;
+    padding: 10px;
+    text-align: center;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    color: #6b7280;
+    border: none;
+    background: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 0.2s;
+  }
+
+  .portal-tab.active {
+    background: white;
+    color: #5b21b6;
+    font-weight: 700;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+  }
+
+  /* Form */
+  .form-group {
+    margin-bottom: 18px;
+  }
+
+  .form-label {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: #111827;
+    margin-bottom: 6px;
+  }
+
+  .form-input {
+    width: 100%;
+    padding: 13px 16px;
+    border: 1.5px solid #e5e7eb;
+    border-radius: 10px;
+    font-size: 14px;
+    color: #111827;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .form-input:focus {
+    border-color: #6d28d9;
+    box-shadow: 0 0 0 3px rgba(109,40,217,0.1);
+  }
+
+  .form-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+
+  .remember {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: #374151;
+    cursor: pointer;
+  }
+
+  .remember input[type="checkbox"] {
+    width: 16px; height: 16px;
+    border-radius: 4px;
+    accent-color: #5b21b6;
+    cursor: pointer;
+  }
+
+  .forgot {
+    color: #5b21b6;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: none;
+  }
+
+  .login-btn {
+    width: 100%;
+    padding: 14px;
+    background: #5b21b6;
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: background 0.2s, transform 0.1s;
+    margin-bottom: 16px;
+  }
+
+  .login-btn:hover { background: #4c1d95; }
+  .login-btn:active { transform: scale(0.99); }
+
+  .divider {
+    text-align: center;
+    color: #9ca3af;
+    font-size: 14px;
+    margin-bottom: 16px;
+    position: relative;
+  }
+
+  .register-text {
+    text-align: center;
+    font-size: 14px;
+    color: #374151;
+  }
+
+  .register-text a {
+    color: #5b21b6;
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  /* Error */
+  .error-msg {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #dc2626;
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    margin-bottom: 14px;
+    display: none;
+  }
+
+  /* Footer */
+  footer {
+    text-align: center;
+    padding: 16px;
+    color: rgba(255,255,255,0.25);
+    font-size: 12px;
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <!-- LEFT PANEL -->
+  <div class="left">
+    <div class="logo">
+      <div class="logo-icon">📊</div>
+      <div class="logo-text">
+        LeadPulse <span>Pro</span>
+      </div>
     </div>
+
+    <div class="headline">
+      AI-Powered<br>Lead Generation<br>Platform
+    </div>
+
+    <div class="subtext">
+      Generate verified leads faster with<br>
+      AI-powered enrichment.
+    </div>
+
+    <div class="features">
+      <div class="feature">
+        <div class="feature-icon">👥</div>
+        <div>
+          <div class="feature-title">
+            Smart Lead Discovery</div>
+          <div class="feature-sub">
+            Find high-quality leads in seconds</div>
+        </div>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">📈</div>
+        <div>
+          <div class="feature-title">AI Enrichment</div>
+          <div class="feature-sub">
+            Get enriched data & insights 
+            automatically</div>
+        </div>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">🛡️</div>
+        <div>
+          <div class="feature-title">
+            Data Verification</div>
+          <div class="feature-sub">
+            Ensure accuracy and reliability</div>
+        </div>
+      </div>
+      <div class="feature">
+        <div class="feature-icon">🔒</div>
+        <div>
+          <div class="feature-title">
+            Secure & Reliable</div>
+          <div class="feature-sub">
+            Enterprise-grade security for your 
+            data</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="trust-bar">
+      <div class="trust-item">🛡️ Secure Access</div>
+      <div class="trust-item">🔒 Encrypted Data</div>
+      <div class="trust-item">☁️ 99.9% Uptime</div>
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="right">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Welcome Back!</div>
+        <div class="card-sub">
+          Sign in to access your account</div>
+      </div>
+
+      <!-- Portal Tabs -->
+      <div class="portal-tabs">
+        <button class="portal-tab active" 
+                id="adminTab"
+                onclick="switchTab('admin')">
+          🛡️ Admin Portal
+        </button>
+        <button class="portal-tab" 
+                id="userTab"
+                onclick="switchTab('user')">
+          👤 User Workspace
+        </button>
+      </div>
+
+      <!-- Error message -->
+      <div class="error-msg" id="errorMsg">
+        Invalid username or password.
+      </div>
+
+      <!-- Form -->
+      <form onsubmit="handleLogin(event)">
+        <input type="hidden" id="portalInput" 
+               value="admin"/>
+        
+        <div class="form-group">
+          <label class="form-label">Username</label>
+          <input type="text" 
+                 class="form-input" 
+                 id="usernameInput"
+                 placeholder="Enter your username"
+                 required/>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input type="password" 
+                 class="form-input" 
+                 id="passwordInput"
+                 placeholder="Enter your password"
+                 required/>
+        </div>
+
+        <div class="form-row">
+          <label class="remember">
+            <input type="checkbox"/> Remember me
+          </label>
+          <a href="#" class="forgot">Forgot Password?</a>
+        </div>
+
+        <button type="submit" class="login-btn">
+          ➜ Login
+        </button>
+      </form>
+
+      <div class="divider">or</div>
+      <div class="register-text">
+        Don't have an account? 
+        <a href="#">Register now</a>
+      </div>
+    </div>
+  </div>
 </div>
-''', unsafe_allow_html=True)
 
-    # Streamlit widgets positioned over the card
-    # Add top margin to push content down to card position
-    st.markdown('''
-<div style="height: calc(50vh - 200px);"></div>
-''', unsafe_allow_html=True)
+<footer>© 2026 LeadPulse Pro. All rights reserved.</footer>
 
-    # Center the form using columns trick
-    _, center_col, _ = st.columns([1, 2, 1])
+<script>
+  function switchTab(portal) {
+    document.getElementById('portalInput').value = portal;
+    
+    const adminTab = document.getElementById('adminTab');
+    const userTab = document.getElementById('userTab');
+    
+    if (portal === 'admin') {
+      adminTab.classList.add('active');
+      userTab.classList.remove('active');
+    } else {
+      userTab.classList.add('active');
+      adminTab.classList.remove('active');
+    }
+    
+    document.getElementById('errorMsg').style.display 
+      = 'none';
+  }
 
-    with center_col:
-        admin_tab, user_tab = st.tabs([
-            "🛡️ Admin Portal",
-            "👤 User Workspace"
-        ])
+  function handleLogin(e) {
+    e.preventDefault();
+    
+    const username = document.getElementById(
+      'usernameInput').value;
+    const password = document.getElementById(
+      'passwordInput').value;
+    const portal = document.getElementById(
+      'portalInput').value;
+    
+    // Send to Streamlit via URL params
+    const url = new URL(window.parent.location.href);
+    url.searchParams.set('username', username);
+    url.searchParams.set('password', password);
+    url.searchParams.set('portal', portal);
+    window.parent.location.href = url.toString();
+  }
+</script>
 
-        with admin_tab:
-            admin_user = st.text_input(
-                "Username",
-                placeholder="Enter your username",
-                key="a_user",
-                label_visibility="collapsed"
-            )
-            admin_pass = st.text_input(
-                "Password",
-                placeholder="Enter your password",
-                type="password",
-                key="a_pass",
-                label_visibility="collapsed"
-            )
-            c1, c2 = st.columns(2)
-            with c1:
-                st.checkbox("Remember me", key="a_rem")
-            with c2:
-                st.markdown('''
-<div style="text-align:right;padding-top:4px;">
-  <span style="color:#5b21b6;font-size:12px;
-               font-weight:500;">
-    Forgot Password?</span>
-</div>
-''', unsafe_allow_html=True)
-            admin_btn = st.button(
-                "→  Login",
-                key="a_btn",
-                use_container_width=True
-            )
-            st.markdown('''
-<div style="text-align:center;font-size:12px;
-            color:#9ca3af;margin-top:10px;">or</div>
-<div style="text-align:center;font-size:13px;
-            color:#374151;margin-top:8px;">
-  Don't have an account?
-  <span style="color:#5b21b6;font-weight:600;">
-    Register now</span>
-</div>
-''', unsafe_allow_html=True)
-
-            if admin_btn:
-                if admin_user and admin_pass:
-                    success, role, plan = login(admin_user, admin_pass)
-                    if success and role == "admin":
-                        st.session_state.authenticated = True
-                        st.session_state.username = admin_user
-                        st.session_state.role = role
-                        st.session_state.plan = plan
-                        st.session_state.login_time = datetime.now()
-                        st.session_state.login_mode = None
-                        st.rerun()
-                    elif success and role != "admin":
-                        st.error("This account does not have admin access")
-                    else:
-                        st.error("Invalid admin credentials")
-                else:
-                    st.error("Enter username and password")
-
-        with user_tab:
-            user_user = st.text_input(
-                "Username",
-                placeholder="Enter your username",
-                key="u_user",
-                label_visibility="collapsed"
-            )
-            user_pass = st.text_input(
-                "Password",
-                placeholder="Enter your password",
-                type="password",
-                key="u_pass",
-                label_visibility="collapsed"
-            )
-            c3, c4 = st.columns(2)
-            with c3:
-                st.checkbox("Remember me", key="u_rem")
-            with c4:
-                st.markdown('''
-<div style="text-align:right;padding-top:4px;">
-  <span style="color:#5b21b6;font-size:12px;
-               font-weight:500;">
-    Forgot Password?</span>
-</div>
-''', unsafe_allow_html=True)
-            user_btn = st.button(
-                "→  Login",
-                key="u_btn",
-                use_container_width=True
-            )
-            st.markdown('''
-<div style="text-align:center;font-size:12px;
-            color:#9ca3af;margin-top:10px;">or</div>
-<div style="text-align:center;font-size:13px;
-            color:#374151;margin-top:8px;">
-  Don't have an account?
-  <span style="color:#5b21b6;font-weight:600;">
-    Register now</span>
-</div>
-''', unsafe_allow_html=True)
-
-            if user_btn:
-                if user_user and user_pass:
-                    success, role, plan = login(user_user, user_pass)
-                    if success:
-                        st.session_state.authenticated = True
-                        st.session_state.username = user_user
-                        st.session_state.role = role
-                        st.session_state.plan = plan
-                        st.session_state.login_time = datetime.now()
-                        st.session_state.login_mode = None
-                        st.rerun()
-                    else:
-                        st.error("Invalid username or password")
-                else:
-                    st.error("Enter username and password")
-
+</body>
+</html>
+''', height=750, scrolling=False)
 # Show login if not authenticated
 if not st.session_state.authenticated:
     render_login_page()
