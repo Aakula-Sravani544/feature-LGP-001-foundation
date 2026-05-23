@@ -180,181 +180,181 @@ def render_login_page():
     from auth import login, register_user
 
     st.markdown("""
-    <style>
-    /* Gradient Background */
-    .stApp {
-        background: linear-gradient(135deg, #1E1B4B 0%, #312E81 100%) !important;
-    }
-    [data-testid="stAppViewContainer"] { background: transparent !important; }
-    [data-testid="stSidebar"] { display: none !important; }
-    [data-testid="stHeader"] { display: none !important; }
-    
-    .block-container {
-        max-width: 1000px !important;
-        padding-top: 5rem !important;
-    }
+<style>
+/* Gradient Background */
+.stApp {
+    background: linear-gradient(135deg, #1E1B4B 0%, #312E81 100%) !important;
+}
+[data-testid="stAppViewContainer"] { background: transparent !important; }
+[data-testid="stSidebar"] { display: none !important; }
+[data-testid="stHeader"] { display: none !important; }
 
-    /* Target the second column for the white card */
-    div[data-testid="column"]:nth-of-type(2) {
-        background: #FFFFFF;
-        border-radius: 24px;
-        padding: 40px 32px;
-        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-    }
-    
-    /* Branding typography (Left Column) */
-    .brand-title {
-        color: white;
-        font-size: 3.5rem;
-        font-weight: 800;
-        line-height: 1.1;
-        margin-bottom: 0.5rem;
-    }
-    .brand-subtitle {
-        color: #A5B4FC;
-        font-size: 1.5rem;
-        font-weight: 500;
-        margin-bottom: 1.5rem;
-    }
-    .feature-point {
-        display: flex;
-        align-items: center;
-        color: #E0E7FF;
-        margin-bottom: 1.25rem;
-        font-size: 1.1rem;
-        font-weight: 500;
-    }
-    .feature-icon {
-        background: rgba(255,255,255,0.1);
-        border-radius: 50%;
-        width: 32px;
-        height: 32px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-right: 12px;
-    }
-    
-    /* Inputs Styling inside the White Card */
-    div[data-testid="column"]:nth-of-type(2) .stTextInput > div > div > input {
-        background: #F8FAFC !important;
-        border: 1px solid #E2E8F0 !important;
-        color: #0F172A !important;
-        border-radius: 10px !important;
-        padding: 12px 16px !important;
-        font-size: 14px !important;
-    }
-    div[data-testid="column"]:nth-of-type(2) .stTextInput > div > div > input::placeholder {
-        color: #94A3B8 !important;
-    }
-    div[data-testid="column"]:nth-of-type(2) .stTextInput label {
-        color: #475569 !important;
-        font-weight: 600 !important;
-        font-size: 13px !important;
-        text-transform: none !important;
-        letter-spacing: normal !important;
-    }
-    
-    /* Button Styling */
-    div[data-testid="column"]:nth-of-type(2) div.stButton > button {
-        background: #4F46E5 !important;
-        color: white !important;
-        border-radius: 10px !important;
-        padding: 0.75rem 1rem !important;
-        font-weight: 600 !important;
-        font-size: 15px !important;
-        border: none !important;
-        width: 100% !important;
-        transition: all 0.2s !important;
-        margin-top: 0.5rem !important;
-    }
-    div[data-testid="column"]:nth-of-type(2) div.stButton > button:hover {
-        background: #4338CA !important;
-    }
-    
-    /* Streamlit Tabs inside the white card */
-    div[data-testid="column"]:nth-of-type(2) button[role="tab"] {
-        color: #64748B !important;
-        font-weight: 600 !important;
-        background: transparent !important;
-    }
-    div[data-testid="column"]:nth-of-type(2) button[role="tab"][aria-selected="true"] {
-        color: #4F46E5 !important;
-        border-bottom-color: #4F46E5 !important;
-    }
-    
-    /* Expander in the white card */
-    div[data-testid="column"]:nth-of-type(2) [data-testid="stExpander"] {
-        background: #F8FAFC !important;
-        border: 1px solid #E2E8F0 !important;
-        border-radius: 10px !important;
-        margin-top: 1rem;
-    }
-    div[data-testid="column"]:nth-of-type(2) [data-testid="stExpander"] summary {
-        color: #475569 !important;
-        font-weight: 600 !important;
-        background: transparent !important;
-        border: none !important;
-    }
-    div[data-testid="column"]:nth-of-type(2) [data-testid="stExpander"] div[role="region"] {
-        background: transparent !important;
-        border: none !important;
-    }
-    
-    /* Trust row */
-    .trust-row {
-        display: flex;
-        justify-content: center;
-        gap: 3rem;
-        margin-top: 6rem;
-        color: #A5B4FC;
-        font-size: 1rem;
-        font-weight: 500;
-    }
-    .trust-item {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-    </style>
-    """, unsafe_allow_html=True)
+.block-container {
+    max-width: 1000px !important;
+    padding-top: 5rem !important;
+}
+
+/* Target the second column for the white card */
+div[data-testid="column"]:nth-of-type(2) {
+    background: #FFFFFF;
+    border-radius: 24px;
+    padding: 40px 32px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+/* Branding typography (Left Column) */
+.brand-title {
+    color: white;
+    font-size: 3.5rem;
+    font-weight: 800;
+    line-height: 1.1;
+    margin-bottom: 0.5rem;
+}
+.brand-subtitle {
+    color: #A5B4FC;
+    font-size: 1.5rem;
+    font-weight: 500;
+    margin-bottom: 1.5rem;
+}
+.feature-point {
+    display: flex;
+    align-items: center;
+    color: #E0E7FF;
+    margin-bottom: 1.25rem;
+    font-size: 1.1rem;
+    font-weight: 500;
+}
+.feature-icon {
+    background: rgba(255,255,255,0.1);
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 12px;
+}
+
+/* Inputs Styling inside the White Card */
+div[data-testid="column"]:nth-of-type(2) .stTextInput > div > div > input {
+    background: #F8FAFC !important;
+    border: 1px solid #E2E8F0 !important;
+    color: #0F172A !important;
+    border-radius: 10px !important;
+    padding: 12px 16px !important;
+    font-size: 14px !important;
+}
+div[data-testid="column"]:nth-of-type(2) .stTextInput > div > div > input::placeholder {
+    color: #94A3B8 !important;
+}
+div[data-testid="column"]:nth-of-type(2) .stTextInput label {
+    color: #475569 !important;
+    font-weight: 600 !important;
+    font-size: 13px !important;
+    text-transform: none !important;
+    letter-spacing: normal !important;
+}
+
+/* Button Styling */
+div[data-testid="column"]:nth-of-type(2) div.stButton > button {
+    background: #4F46E5 !important;
+    color: white !important;
+    border-radius: 10px !important;
+    padding: 0.75rem 1rem !important;
+    font-weight: 600 !important;
+    font-size: 15px !important;
+    border: none !important;
+    width: 100% !important;
+    transition: all 0.2s !important;
+    margin-top: 0.5rem !important;
+}
+div[data-testid="column"]:nth-of-type(2) div.stButton > button:hover {
+    background: #4338CA !important;
+}
+
+/* Streamlit Tabs inside the white card */
+div[data-testid="column"]:nth-of-type(2) button[role="tab"] {
+    color: #64748B !important;
+    font-weight: 600 !important;
+    background: transparent !important;
+}
+div[data-testid="column"]:nth-of-type(2) button[role="tab"][aria-selected="true"] {
+    color: #4F46E5 !important;
+    border-bottom-color: #4F46E5 !important;
+}
+
+/* Expander in the white card */
+div[data-testid="column"]:nth-of-type(2) [data-testid="stExpander"] {
+    background: #F8FAFC !important;
+    border: 1px solid #E2E8F0 !important;
+    border-radius: 10px !important;
+    margin-top: 1rem;
+}
+div[data-testid="column"]:nth-of-type(2) [data-testid="stExpander"] summary {
+    color: #475569 !important;
+    font-weight: 600 !important;
+    background: transparent !important;
+    border: none !important;
+}
+div[data-testid="column"]:nth-of-type(2) [data-testid="stExpander"] div[role="region"] {
+    background: transparent !important;
+    border: none !important;
+}
+
+/* Trust row */
+.trust-row {
+    display: flex;
+    justify-content: center;
+    gap: 3rem;
+    margin-top: 6rem;
+    color: #A5B4FC;
+    font-size: 1rem;
+    font-weight: 500;
+}
+.trust-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+</style>
+""", unsafe_allow_html=True)
 
     # Layout Columns
     col1, col2 = st.columns(2, gap="large")
 
     with col1:
         st.markdown("""
-        <div style="padding-top: 2rem;">
-            <div class="brand-title">LeadPulse Pro</div>
-            <div class="brand-subtitle">AI-Powered Lead Generation Platform</div>
-            <p style="color: #E0E7FF; font-size: 1.15rem; margin-bottom: 3rem; line-height: 1.6;">
-                Generate verified leads faster with AI-powered enrichment
-            </p>
-            
-            <div class="feature-point">
-                <div class="feature-icon">🔍</div>
-                Smart Lead Discovery
-            </div>
-            <div class="feature-point">
-                <div class="feature-icon">✨</div>
-                AI Enrichment
-            </div>
-            <div class="feature-point">
-                <div class="feature-icon">✓</div>
-                Data Verification
-            </div>
-            <div class="feature-point">
-                <div class="feature-icon">🔒</div>
-                Secure & Reliable
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+<div style="padding-top: 2rem;">
+    <div class="brand-title">LeadPulse Pro</div>
+    <div class="brand-subtitle">AI-Powered Lead Generation Platform</div>
+    <p style="color: #E0E7FF; font-size: 1.15rem; margin-bottom: 3rem; line-height: 1.6;">
+        Generate verified leads faster with AI-powered enrichment
+    </p>
+    
+    <div class="feature-point">
+        <div class="feature-icon">🔍</div>
+        Smart Lead Discovery
+    </div>
+    <div class="feature-point">
+        <div class="feature-icon">✨</div>
+        AI Enrichment
+    </div>
+    <div class="feature-point">
+        <div class="feature-icon">✓</div>
+        Data Verification
+    </div>
+    <div class="feature-point">
+        <div class="feature-icon">🔒</div>
+        Secure & Reliable
+    </div>
+</div>
+""", unsafe_allow_html=True)
 
     with col2:
         st.markdown("""
-            <h2 style="color: #0F172A; margin-top: 0; margin-bottom: 0.5rem; font-weight: 800; font-size: 32px;">Welcome Back!</h2>
-            <p style="color: #64748B; font-size: 15px; margin-bottom: 1.5rem;">Sign in to access your account</p>
-        """, unsafe_allow_html=True)
+<h2 style="color: #0F172A; margin-top: 0; margin-bottom: 0.5rem; font-weight: 800; font-size: 32px;">Welcome Back!</h2>
+<p style="color: #64748B; font-size: 15px; margin-bottom: 1.5rem;">Sign in to access your account</p>
+""", unsafe_allow_html=True)
         
         tab_admin, tab_user = st.tabs(["Admin Portal", "User Workspace"])
         
@@ -423,12 +423,12 @@ def render_login_page():
 
     # Bottom trust row
     st.markdown("""
-    <div class="trust-row">
-        <div class="trust-item">🔒 Secure Access</div>
-        <div class="trust-item">🛡️ Encrypted Data</div>
-        <div class="trust-item">⚡ 99.9% Uptime</div>
-    </div>
-    """, unsafe_allow_html=True)
+<div class="trust-row">
+    <div class="trust-item">🔒 Secure Access</div>
+    <div class="trust-item">🛡️ Encrypted Data</div>
+    <div class="trust-item">⚡ 99.9% Uptime</div>
+</div>
+""", unsafe_allow_html=True)
 
 # Show login if not authenticated
 if not st.session_state.authenticated:
