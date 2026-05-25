@@ -2276,11 +2276,11 @@ def show_admin_dashboard():
         border-radius: 4px;
     }
     /* Streamlit structural overrides for clickable cards */
-    div[data-testid="column"]:has(.kpi-click-overlay) {
+    div[data-testid="column"]:has(.kpi-card) {
         position: relative !important;
     }
     
-    div[data-testid="column"]:has(.kpi-click-overlay) .stButton > button {
+    div[data-testid="column"]:has(.kpi-card) .stButton > button {
         position: absolute !important;
         top: 0 !important;
         left: 0 !important;
@@ -2291,10 +2291,13 @@ def show_admin_dashboard():
         cursor: pointer !important;
         margin: 0 !important;
         padding: 0 !important;
+        background: transparent !important;
+        color: transparent !important;
+        border: none !important;
     }
     
     /* Hover effects triggered on the column but applied to the card */
-    div[data-testid="column"]:has(.kpi-click-overlay):hover .kpi-card {
+    div[data-testid="column"]:has(.kpi-card):hover .kpi-card {
         transform: translateY(-4px);
         box-shadow: 0 12px 20px -3px rgba(0, 0, 0, 0.1), 0 8px 10px -4px rgba(0, 0, 0, 0.04);
         border-color: #cbd5e1;
@@ -2304,11 +2307,11 @@ def show_admin_dashboard():
 
     def nav_to(page):
         st.session_state["admin_nav"] = page
+        st.rerun()
 
     c1, c2, c3, c4, c5 = st.columns(5)
     with c1:
         st.markdown(f"""
-        <div class="kpi-click-overlay"></div>
         <div class="kpi-card">
             <div class="kpi-header">
                 <div class="kpi-icon icon-purple">👥</div>
@@ -2321,11 +2324,10 @@ def show_admin_dashboard():
             </div>
         </div>
         """, unsafe_allow_html=True)
-        if st.button("invisible1", key="nav_total_leads", use_container_width=True):
+        if st.button("\u200b"*1, key="nav_total_leads", use_container_width=True):
             nav_to("🚀 Generate")
     with c2:
         st.markdown(f"""
-        <div class="kpi-click-overlay"></div>
         <div class="kpi-card">
             <div class="kpi-header">
                 <div class="kpi-icon icon-blue">👤</div>
@@ -2338,11 +2340,10 @@ def show_admin_dashboard():
             </div>
         </div>
         """, unsafe_allow_html=True)
-        if st.button("invisible2", key="nav_active_users", use_container_width=True):
+        if st.button("\u200b"*2, key="nav_active_users", use_container_width=True):
             nav_to("👥 User Management")
     with c3:
         st.markdown(f"""
-        <div class="kpi-click-overlay"></div>
         <div class="kpi-card">
             <div class="kpi-header">
                 <div class="kpi-icon icon-green">🛡️</div>
@@ -2355,11 +2356,10 @@ def show_admin_dashboard():
             </div>
         </div>
         """, unsafe_allow_html=True)
-        if st.button("invisible3", key="nav_global_quality", use_container_width=True):
+        if st.button("\u200b"*3, key="nav_global_quality", use_container_width=True):
             nav_to("📊 Analytics")
     with c4:
         st.markdown(f"""
-        <div class="kpi-click-overlay"></div>
         <div class="kpi-card">
             <div class="kpi-header">
                 <div class="kpi-icon icon-orange">💰</div>
@@ -2372,12 +2372,11 @@ def show_admin_dashboard():
             </div>
         </div>
         """, unsafe_allow_html=True)
-        if st.button("invisible4", key="nav_mrr", use_container_width=True):
+        if st.button("\u200b"*4, key="nav_mrr", use_container_width=True):
             nav_to("💰 Revenue")
     with c5:
         paid_users = sum(1 for u in all_users if u.get("plan", "Free") != "Free")
         st.markdown(f"""
-        <div class="kpi-click-overlay"></div>
         <div class="kpi-card">
             <div class="kpi-header">
                 <div class="kpi-icon icon-pink">👥</div>
@@ -2390,7 +2389,7 @@ def show_admin_dashboard():
             </div>
         </div>
         """, unsafe_allow_html=True)
-        if st.button("invisible5", key="nav_paid_users", use_container_width=True):
+        if st.button("\u200b"*5, key="nav_paid_users", use_container_width=True):
             nav_to("👥 User Management")
 
     st.markdown("<div style='height: 16px;'></div>", unsafe_allow_html=True)
