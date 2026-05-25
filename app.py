@@ -2191,7 +2191,7 @@ def show_admin_dashboard():
         import pandas as pd
         all_users = []
         df_master = pd.DataFrame()
-        total_leads, valid_leads, quality_pct, mrr = 0, 0, 0, 0
+        total_leads, valid_leads, quality_pct, mrr, paid_users = 0, 0, 0, 0, 0
     else:
         all_users = get_cached_all_users()
         df_master = get_cached_db()
@@ -2199,9 +2199,10 @@ def show_admin_dashboard():
         valid_leads = len(df_master[df_master["validation_status"] == "Valid"]) if "validation_status" in df_master.columns else 0
         quality_pct = int((valid_leads / total_leads * 100)) if total_leads > 0 else 0
 
-        # Calculate MRR
+        # Calculate MRR and Paid Users
         plan_revenue = {"Free": 0, "Starter": 29, "Pro": 79, "Enterprise": 500}
         mrr = sum(plan_revenue.get(u.get("plan", "Free"), 0) for u in all_users)
+        paid_users = sum(1 for u in all_users if u.get("plan", "Free") != "Free")
 
     # Top row metrics
     
@@ -2300,7 +2301,6 @@ def show_admin_dashboard():
         if st.button("↑ 18% Monthly recurring", help="MRR KPI", use_container_width=True):
             nav_to("💰 Revenue")
     with c5:
-        paid_users = sum(1 for u in all_users if u.get("plan", "Free") != "Free")
         if st.button("↑ 22% Total paid users", help="Paid Users KPI", use_container_width=True):
             nav_to("👥 User Management")
 
