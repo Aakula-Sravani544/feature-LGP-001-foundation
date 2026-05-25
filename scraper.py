@@ -271,12 +271,16 @@ def search_with_serper(query: str, limit: int = 10) -> list:
             # 6. REVIEWS
             reviews = (
                 place.get("reviews")
+                or place.get("reviewCount")
                 or place.get("reviewsCount")
                 or place.get("review_count")
                 or place.get("userRatingCount")
-                or 0
+                or place.get("ratingCount")
+                or place.get("totalReviews")
+                or ""
             )
             lead["reviews"] = str(reviews)
+            print(f"LOG: Reviews for {name}: {lead['reviews']}", flush=True)
             
             # 7. CATEGORY
             lead["category"] = place.get("category") or place.get("type") or place.get("businessType") or query.split()[0].title()

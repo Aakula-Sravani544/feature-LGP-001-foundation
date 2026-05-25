@@ -2198,7 +2198,10 @@ def show_user_dashboard():
         if st.session_state.get("session_leads", []):
             st.markdown("### ⚡ Session Preview")
             import pandas as pd
-            st.dataframe(pd.DataFrame(st.session_state.session_leads), hide_index=True)
+            df_preview = pd.DataFrame(st.session_state.session_leads)
+            if "review_count" in df_preview.columns:
+                df_preview = df_preview.rename(columns={"review_count": "reviews"})
+            st.dataframe(df_preview, hide_index=True)
 
     with tab2:
         if st.session_state.get("is_extracting", False):
@@ -2214,6 +2217,11 @@ def show_user_dashboard():
             )
             if status_filter and "validation_status" in df.columns:
                 df = df[df["validation_status"].isin(status_filter)]
+            if "review_count" in df.columns:
+                df = df.rename(columns={"review_count": "reviews"})
+            if "business_name" in df.columns:
+                df = df.rename(columns={"business_name": "name"})
+                
             user_cols = ["name", "address", "phone", "email", "rating", "reviews", "category", "validation_status"]
             st.dataframe(df[[c for c in user_cols if c in df.columns]], hide_index=True)
             st.markdown("---")
@@ -2533,7 +2541,11 @@ def show_admin_dashboard():
         generation_ui("(Admin)")
         if st.session_state.get("session_leads", []):
             st.markdown("### ⚡ Session Preview")
-            st.dataframe(pd.DataFrame(st.session_state.session_leads), hide_index=True)
+            import pandas as pd
+            df_preview = pd.DataFrame(st.session_state.session_leads)
+            if "review_count" in df_preview.columns:
+                df_preview = df_preview.rename(columns={"review_count": "reviews"})
+            st.dataframe(df_preview, hide_index=True)
 
     # ==========================================
     # TAB 2 — Master Database
@@ -2571,7 +2583,12 @@ def show_admin_dashboard():
                 filtered = filtered[filtered["name"].str.contains(search, case=False, na=False)]
 
             st.markdown(f"Showing **{len(filtered)}** of **{len(df_master)}** leads")
-            display_cols = ["name", "phone", "email", "category", "rating", "sub_region", "validation_status", "scraped_date"]
+            if "review_count" in filtered.columns:
+                filtered = filtered.rename(columns={"review_count": "reviews"})
+            if "business_name" in filtered.columns:
+                filtered = filtered.rename(columns={"business_name": "name"})
+                
+            display_cols = ["name", "phone", "email", "category", "rating", "reviews", "sub_region", "validation_status", "scraped_date", "timestamp"]
             show_cols = [c for c in display_cols if c in filtered.columns]
             st.dataframe(filtered[show_cols], hide_index=True, use_container_width=True)
 
