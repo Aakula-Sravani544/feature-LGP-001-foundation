@@ -2215,28 +2215,32 @@ def show_admin_dashboard():
     <style>
     /* Admin HTML KPI Cards */
     .kpi-card {
+        height: 170px;
+        min-height: 170px;
+        overflow: hidden;
+        position: relative;
+        padding: 20px 22px;
+        border-radius: 18px;
         background: #ffffff;
         border: 1px solid #e5e7eb;
-        border-radius: 18px;
-        padding: 20px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        box-shadow: 0 8px 24px rgba(15,23,42,0.08);
         display: flex;
         flex-direction: column;
-        gap: 12px;
-        height: 140px; /* Equal height */
+        justify-content: space-between;
     }
-    .kpi-header {
+    .kpi-top {
         display: flex;
         align-items: center;
-        gap: 12px;
+        gap: 14px;
     }
     .kpi-icon {
-        width: 40px;
-        height: 40px;
-        border-radius: 10px;
+        width: 46px;
+        height: 46px;
+        border-radius: 12px;
         display: flex;
         align-items: center;
         justify-content: center;
+        flex-shrink: 0;
         font-size: 20px;
     }
     .icon-purple { background: #f3e8ff; color: #9333ea; }
@@ -2252,34 +2256,41 @@ def show_admin_dashboard():
         margin: 0;
     }
     .kpi-value {
-        font-size: 28px;
-        font-weight: 700;
-        color: #111827;
-        margin: 0;
-        line-height: 1.2;
+        font-size: 30px;
+        font-weight: 800;
+        color: #0f172a;
+        margin: 12px 0 8px 0;
+        line-height: 1;
     }
-    .kpi-footer {
+    .kpi-bottom {
         display: flex;
         align-items: center;
-        gap: 6px;
-        margin-top: auto;
+        gap: 8px;
+        min-width: 0;
     }
     .kpi-subtitle {
         font-size: 12px;
-        color: #9ca3af;
-        font-weight: 500;
+        color: #64748b;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
-    .kpi-trend {
+    .kpi-badge {
+        white-space: nowrap;
+        flex-shrink: 0;
         font-size: 12px;
         font-weight: 600;
         color: #10b981;
-        display: flex;
-        align-items: center;
-        gap: 2px;
         background: #d1fae5;
-        padding: 2px 6px;
-        border-radius: 4px;
-        white-space: nowrap;
+        padding: 4px 8px;
+        border-radius: 8px;
+    }
+    .kpi-arrow {
+        position: absolute;
+        right: 18px;
+        bottom: 18px;
+        font-size: 20px;
+        color: #3b82f6;
     }
     /* Increase gap between header and cards */
     .sub-title {
@@ -2299,75 +2310,80 @@ def show_admin_dashboard():
     with c1:
         st.markdown(f"""
         <div class="kpi-card">
-            <div class="kpi-header">
+            <div class="kpi-top">
                 <div class="kpi-icon icon-purple">👥</div>
                 <div class="kpi-title">Total Leads</div>
             </div>
             <div class="kpi-value">{total_leads}</div>
-            <div class="kpi-footer">
-                <div class="kpi-trend">↑ 8%</div>
+            <div class="kpi-bottom">
+                <div class="kpi-badge">↑ 8%</div>
                 <div class="kpi-subtitle">All time collected</div>
             </div>
+            <div class="kpi-arrow">→</div>
         </div>
         """, unsafe_allow_html=True)
 
     with c2:
         st.markdown(f"""
         <div class="kpi-card">
-            <div class="kpi-header">
+            <div class="kpi-top">
                 <div class="kpi-icon icon-blue">👤</div>
                 <div class="kpi-title">Active Users</div>
             </div>
             <div class="kpi-value">{len(all_users)}</div>
-            <div class="kpi-footer">
-                <div class="kpi-trend">↑ 12%</div>
+            <div class="kpi-bottom">
+                <div class="kpi-badge">↑ 12%</div>
                 <div class="kpi-subtitle">Currently active</div>
             </div>
+            <div class="kpi-arrow">→</div>
         </div>
         """, unsafe_allow_html=True)
 
     with c3:
         st.markdown(f"""
         <div class="kpi-card">
-            <div class="kpi-header">
+            <div class="kpi-top">
                 <div class="kpi-icon icon-green">🛡️</div>
                 <div class="kpi-title">Global Quality</div>
             </div>
             <div class="kpi-value">{quality_pct}%</div>
-            <div class="kpi-footer">
-                <div class="kpi-trend">↑ 5%</div>
+            <div class="kpi-bottom">
+                <div class="kpi-badge">↑ 5%</div>
                 <div class="kpi-subtitle">Average quality score</div>
             </div>
+            <div class="kpi-arrow">→</div>
         </div>
         """, unsafe_allow_html=True)
 
     with c4:
         st.markdown(f"""
         <div class="kpi-card">
-            <div class="kpi-header">
+            <div class="kpi-top">
                 <div class="kpi-icon icon-orange">💰</div>
                 <div class="kpi-title">MRR</div>
             </div>
             <div class="kpi-value">${mrr}</div>
-            <div class="kpi-footer">
-                <div class="kpi-trend">↑ 18%</div>
+            <div class="kpi-bottom">
+                <div class="kpi-badge">↑ 18%</div>
                 <div class="kpi-subtitle">Monthly recurring</div>
             </div>
+            <div class="kpi-arrow">→</div>
         </div>
         """, unsafe_allow_html=True)
 
     with c5:
         st.markdown(f"""
         <div class="kpi-card">
-            <div class="kpi-header">
+            <div class="kpi-top">
                 <div class="kpi-icon icon-pink">👥</div>
                 <div class="kpi-title">Paid Users</div>
             </div>
             <div class="kpi-value">{paid_users}</div>
-            <div class="kpi-footer">
-                <div class="kpi-trend">↑ 22%</div>
+            <div class="kpi-bottom">
+                <div class="kpi-badge">↑ 22%</div>
                 <div class="kpi-subtitle">Total paid users</div>
             </div>
+            <div class="kpi-arrow">→</div>
         </div>
         """, unsafe_allow_html=True)
 
