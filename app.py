@@ -1791,11 +1791,6 @@ def generation_ui(label_suffix=""):
                         m3_metric.metric("Duplicates Skipped", duplicates_skipped)
                         progress_bar.progress(min(st.session_state.collected_leads / st.session_state.target_leads, 1.0))
 
-                        with table_placeholder.container():
-                            import pandas as pd
-                            df_view = pd.DataFrame(st.session_state.session_leads).iloc[::-1]
-                            cols = [c for c in ["name", "phone", "email", "sub_region", "validation_status"] if c in df_view.columns]
-                            st.dataframe(df_view[cols] if cols else df_view, hide_index=True)
                     except Exception as e:
                         import logging
                         logging.debug(f"Data parse error: {e}")
@@ -1803,13 +1798,24 @@ def generation_ui(label_suffix=""):
                 elif line.startswith("LOG:"):
                     msg = line.replace("LOG:", "").strip()
                     st.session_state.logs += f"[SYS] {msg}\n"
-                    log_placeholder.markdown(f'<div class="log-box">{st.session_state.logs[-3000:]}</div>', unsafe_allow_html=True)
+                    if len(st.session_state.logs) > 5000:
+                        st.session_state.logs = st.session_state.logs[-5000:]
+                    log_placeholder.markdown(f'<div class="log-box">{st.session_state.logs}</div>', unsafe_allow_html=True)
 
             process.wait()
             
             st.session_state.logs += f"[SYS] Found {leads_found_this_query} | Added {unique_added_this_query} unique | Duplicates {duplicates_this_query}\n"
             st.session_state.logs += f"[SYS] Moving to next phase\n"
-            log_placeholder.markdown(f'<div class="log-box">{st.session_state.logs[-3000:]}</div>', unsafe_allow_html=True)
+            if len(st.session_state.logs) > 5000:
+                st.session_state.logs = st.session_state.logs[-5000:]
+            log_placeholder.markdown(f'<div class="log-box">{st.session_state.logs}</div>', unsafe_allow_html=True)
+            
+            # Update dataframe ONLY once per batch to prevent memory timeout/websocket freeze
+            with table_placeholder.container():
+                import pandas as pd
+                df_view = pd.DataFrame(st.session_state.session_leads).iloc[::-1]
+                cols = [c for c in ["name", "phone", "email", "sub_region", "validation_status"] if c in df_view.columns]
+                st.dataframe(df_view[cols] if cols else df_view, hide_index=True)
             
             import time as _time
             _time.sleep(2)  # Let Render recover memory between batches
