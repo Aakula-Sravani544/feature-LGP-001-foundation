@@ -2205,110 +2205,80 @@ def show_admin_dashboard():
 
     # Top row metrics
     
-    st.markdown("""
+    st.markdown(f"""
     <style>
-    /* Admin KPI Cards */
-    .kpi-card {
-        background: #ffffff;
-        border: 1px solid #f1f5f9;
-        border-radius: 16px;
-        padding: 20px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-        position: relative;
-        overflow: hidden;
-        margin-bottom: 8px;
-    }
-    .kpi-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
-    }
-    .kpi-header {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-    .kpi-icon {
-        width: 40px;
-        height: 40px;
-        border-radius: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 20px;
-    }
-    .icon-purple { background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%); color: #9333ea; }
-    .icon-blue { background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); color: #2563eb; }
-    .icon-green { background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%); color: #16a34a; }
-    .icon-orange { background: linear-gradient(135deg, #ffedd5 0%, #fed7aa 100%); color: #ea580c; }
-    .icon-pink { background: linear-gradient(135deg, #fce7f3 0%, #fbcfe8 100%); color: #db2777; }
-    
-    .kpi-title {
-        font-size: 14px;
-        font-weight: 600;
-        color: #64748b;
-        margin: 0;
-    }
-    .kpi-value {
-        font-size: 28px;
-        font-weight: 700;
-        color: #0f172a;
-        margin: 0;
-        line-height: 1.2;
-    }
-    .kpi-footer {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        margin-top: 4px;
-    }
-    .kpi-subtitle {
-        font-size: 12px;
-        color: #94a3b8;
-        font-weight: 500;
-    }
-    .kpi-trend {
-        font-size: 12px;
-        font-weight: 600;
-        color: #10b981;
-        display: flex;
-        align-items: center;
-        gap: 2px;
-        background: #d1fae5;
-        padding: 2px 6px;
-        border-radius: 4px;
-    }
-    /* Clickable card overlay using absolute positioning over relative column */
-    div[data-testid="stHorizontalBlock"]:first-of-type > div[data-testid="column"] {
-        position: relative !important;
-    }
-
-    div[data-testid="stHorizontalBlock"]:first-of-type > div[data-testid="column"] .stButton,
-    div[data-testid="stHorizontalBlock"]:first-of-type > div[data-testid="column"] .stButton * {
-        position: absolute !important;
-        top: 0 !important;
-        left: 0 !important;
+    /* Native Streamlit Button Styled as KPI Cards */
+    div[title$=" KPI"] button {{
+        background: #ffffff !important;
+        border: 1px solid #e2e8f0 !important;
+        border-radius: 16px !important;
+        padding: 20px !important;
+        height: 140px !important;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05) !important;
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: center !important;
+        align-items: flex-start !important;
+        transition: all 0.2s ease !important;
         width: 100% !important;
-        height: 100% !important;
-        opacity: 0 !important;
-        z-index: 99 !important;
-        cursor: pointer !important;
-        background: transparent !important;
-        color: transparent !important;
-        border: none !important;
-        padding: 0 !important;
-        margin: 0 !important;
-    }
+    }}
+    div[title$=" KPI"] button:hover {{
+        transform: translateY(-4px) !important;
+        box-shadow: 0 12px 20px -3px rgba(0, 0, 0, 0.1) !important;
+        border-color: #cbd5e1 !important;
+    }}
     
-    /* Hover effects triggered on the column but applied to the card */
-    div[data-testid="column"]:hover .kpi-card {
-        transform: translateY(-4px);
-        box-shadow: 0 12px 20px -3px rgba(0, 0, 0, 0.1), 0 8px 10px -4px rgba(0, 0, 0, 0.04);
-        border-color: #cbd5e1;
-    }
+    /* Top Label (::before) */
+    div[title$=" KPI"] button::before {{
+        font-size: 15px !important;
+        font-weight: 600 !important;
+        color: #64748b !important;
+        margin-bottom: 8px !important;
+    }}
+    
+    /* Middle Value (::after) */
+    div[title$=" KPI"] button::after {{
+        font-size: 28px !important;
+        font-weight: 700 !important;
+        color: #0f172a !important;
+        margin-bottom: 12px !important;
+    }}
+    
+    /* Bottom Subtitle Badge (button p) */
+    div[title$=" KPI"] button p {{
+        font-size: 13px !important;
+        font-weight: 600 !important;
+        margin: 0 !important;
+        padding: 4px 8px !important;
+        border-radius: 6px !important;
+        display: inline-block !important;
+        line-height: 1 !important;
+    }}
+
+    /* Card 1: Total Leads */
+    div[title="Total Leads KPI"] button::before {{ content: "👥 Total Leads"; }}
+    div[title="Total Leads KPI"] button::after {{ content: "{total_leads}"; }}
+    div[title="Total Leads KPI"] button p {{ color: #10b981 !important; background: #d1fae5 !important; }}
+
+    /* Card 2: Active Users */
+    div[title="Active Users KPI"] button::before {{ content: "👤 Active Users"; }}
+    div[title="Active Users KPI"] button::after {{ content: "{len(all_users)}"; }}
+    div[title="Active Users KPI"] button p {{ color: #2563eb !important; background: #dbeafe !important; }}
+
+    /* Card 3: Global Quality */
+    div[title="Global Quality KPI"] button::before {{ content: "🛡️ Global Quality"; }}
+    div[title="Global Quality KPI"] button::after {{ content: "{quality_pct}%"; }}
+    div[title="Global Quality KPI"] button p {{ color: #16a34a !important; background: #dcfce7 !important; }}
+
+    /* Card 4: MRR */
+    div[title="MRR KPI"] button::before {{ content: "💰 MRR"; }}
+    div[title="MRR KPI"] button::after {{ content: "${mrr}"; }}
+    div[title="MRR KPI"] button p {{ color: #ea580c !important; background: #ffedd5 !important; }}
+
+    /* Card 5: Paid Users */
+    div[title="Paid Users KPI"] button::before {{ content: "👥 Paid Users"; }}
+    div[title="Paid Users KPI"] button::after {{ content: "{paid_users}"; }}
+    div[title="Paid Users KPI"] button p {{ color: #db2777 !important; background: #fce7f3 !important; }}
     </style>
     """, unsafe_allow_html=True)
 
@@ -2318,85 +2288,20 @@ def show_admin_dashboard():
 
     c1, c2, c3, c4, c5 = st.columns(5)
     with c1:
-        st.markdown(f"""
-        <div class="kpi-card">
-            <div class="kpi-header">
-                <div class="kpi-icon icon-purple">👥</div>
-                <div class="kpi-title">Total Leads</div>
-            </div>
-            <div class="kpi-value">{total_leads}</div>
-            <div class="kpi-footer">
-                <div class="kpi-trend">↑ 8%</div>
-                <div class="kpi-subtitle">All time collected</div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-        if st.button(" ", key="nav_total_leads", use_container_width=True):
+        if st.button("↑ 8% All time collected", help="Total Leads KPI", use_container_width=True):
             nav_to("🚀 Generate")
     with c2:
-        st.markdown(f"""
-        <div class="kpi-card">
-            <div class="kpi-header">
-                <div class="kpi-icon icon-blue">👤</div>
-                <div class="kpi-title">Active Users</div>
-            </div>
-            <div class="kpi-value">{len(all_users)}</div>
-            <div class="kpi-footer">
-                <div class="kpi-trend">↑ 12%</div>
-                <div class="kpi-subtitle">Currently active</div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-        if st.button(" ", key="nav_active_users", use_container_width=True):
+        if st.button("↑ 12% Currently active", help="Active Users KPI", use_container_width=True):
             nav_to("👥 User Management")
     with c3:
-        st.markdown(f"""
-        <div class="kpi-card">
-            <div class="kpi-header">
-                <div class="kpi-icon icon-green">🛡️</div>
-                <div class="kpi-title">Global Quality</div>
-            </div>
-            <div class="kpi-value">{quality_pct}%</div>
-            <div class="kpi-footer">
-                <div class="kpi-trend">↑ 5%</div>
-                <div class="kpi-subtitle">Average quality score</div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-        if st.button(" ", key="nav_global_quality", use_container_width=True):
+        if st.button("↑ 5% Average quality", help="Global Quality KPI", use_container_width=True):
             nav_to("📊 Analytics")
     with c4:
-        st.markdown(f"""
-        <div class="kpi-card">
-            <div class="kpi-header">
-                <div class="kpi-icon icon-orange">💰</div>
-                <div class="kpi-title">MRR</div>
-            </div>
-            <div class="kpi-value">${mrr}</div>
-            <div class="kpi-footer">
-                <div class="kpi-trend">↑ 18%</div>
-                <div class="kpi-subtitle">Monthly recurring</div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-        if st.button(" ", key="nav_mrr", use_container_width=True):
+        if st.button("↑ 18% Monthly recurring", help="MRR KPI", use_container_width=True):
             nav_to("💰 Revenue")
     with c5:
         paid_users = sum(1 for u in all_users if u.get("plan", "Free") != "Free")
-        st.markdown(f"""
-        <div class="kpi-card">
-            <div class="kpi-header">
-                <div class="kpi-icon icon-pink">👥</div>
-                <div class="kpi-title">Paid Users</div>
-            </div>
-            <div class="kpi-value">{paid_users}</div>
-            <div class="kpi-footer">
-                <div class="kpi-trend">↑ 22%</div>
-                <div class="kpi-subtitle">Total paid users</div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-        if st.button(" ", key="nav_paid_users", use_container_width=True):
+        if st.button("↑ 22% Total paid users", help="Paid Users KPI", use_container_width=True):
             nav_to("👥 User Management")
 
     st.markdown("<div style='height: 16px;'></div>", unsafe_allow_html=True)
