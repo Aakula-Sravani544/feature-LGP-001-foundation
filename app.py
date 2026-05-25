@@ -2274,9 +2274,15 @@ def show_admin_dashboard():
         padding: 2px 6px;
         border-radius: 4px;
     }
-    /* Reduce gap below the KPI cards */
+    /* Increase gap between header and cards */
+    .sub-title {
+        margin-bottom: 24px !important;
+    }
+    
+    /* KPI Card Row Spacing */
     div[data-testid="stHorizontalBlock"]:first-of-type {
-        margin-bottom: -16px !important;
+        margin-bottom: 32px !important;
+        gap: 20px !important;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -2364,7 +2370,7 @@ def show_admin_dashboard():
     # ==========================================
     st.markdown("""
     <style>
-    /* Radio Tabs Styling */
+    /* Radio Tabs Container Styling */
     div[data-testid="stRadio"] > div[role="radiogroup"] {
         display: flex;
         flex-direction: row;
@@ -2373,8 +2379,12 @@ def show_admin_dashboard():
         white-space: nowrap !important;
         gap: 24px !important;
         border-bottom: 1px solid #dbe3ef !important;
-        padding-bottom: 0px;
-        margin-bottom: 20px;
+        padding: 18px 20px !important;
+        margin-top: 24px !important;
+        margin-bottom: 24px !important;
+        border-radius: 16px !important;
+        background: #ffffff !important;
+        box-shadow: 0 6px 20px rgba(15,23,42,0.06) !important;
     }
     div[data-testid="stRadio"] > div[role="radiogroup"]::-webkit-scrollbar {
         display: none;
