@@ -2275,30 +2275,26 @@ def show_admin_dashboard():
         padding: 2px 6px;
         border-radius: 4px;
     }
-    /* Clickable card overlay using negative margin (No :has() required) */
-    div[class*="st-key-nav_total_leads"],
-    div[class*="st-key-nav_active_users"],
-    div[class*="st-key-nav_global_quality"],
-    div[class*="st-key-nav_mrr"],
-    div[class*="st-key-nav_paid_users"],
-    div[data-testid="stHorizontalBlock"]:first-of-type > div[data-testid="column"] .stButton {
-        margin-top: -140px !important;
-        height: 140px !important;
-        opacity: 0 !important;
-        z-index: 99 !important;
+    /* Clickable card overlay using absolute positioning over relative column */
+    div[data-testid="stHorizontalBlock"]:first-of-type > div[data-testid="column"] {
         position: relative !important;
-        display: block !important;
     }
 
-    div[class*="st-key-nav_"] button,
-    div[data-testid="stHorizontalBlock"]:first-of-type > div[data-testid="column"] .stButton > button {
+    div[data-testid="stHorizontalBlock"]:first-of-type > div[data-testid="column"] .stButton,
+    div[data-testid="stHorizontalBlock"]:first-of-type > div[data-testid="column"] .stButton * {
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
         width: 100% !important;
         height: 100% !important;
+        opacity: 0 !important;
+        z-index: 99 !important;
         cursor: pointer !important;
         background: transparent !important;
         color: transparent !important;
         border: none !important;
         padding: 0 !important;
+        margin: 0 !important;
     }
     
     /* Hover effects triggered on the column but applied to the card */
