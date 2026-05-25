@@ -2273,6 +2273,7 @@ def show_admin_dashboard():
         background: #d1fae5;
         padding: 2px 6px;
         border-radius: 4px;
+        white-space: nowrap;
     }
     /* Increase gap between header and cards */
     .sub-title {
@@ -2281,7 +2282,7 @@ def show_admin_dashboard():
     
     /* KPI Card Row Spacing */
     div[data-testid="stHorizontalBlock"]:first-of-type {
-        margin-bottom: 32px !important;
+        margin-bottom: 30px !important;
         gap: 20px !important;
     }
     </style>
@@ -2378,13 +2379,13 @@ def show_admin_dashboard():
         overflow-x: auto !important;
         white-space: nowrap !important;
         gap: 24px !important;
-        border-bottom: 1px solid #dbe3ef !important;
-        padding: 18px 20px !important;
-        margin-top: 24px !important;
+        border-bottom: 1px solid #e5e7eb !important;
+        padding-bottom: 10px !important;
+        margin-top: 0px !important;
         margin-bottom: 24px !important;
-        border-radius: 16px !important;
-        background: #ffffff !important;
-        box-shadow: 0 6px 20px rgba(15,23,42,0.06) !important;
+        border-radius: 0px !important;
+        background: transparent !important;
+        box-shadow: none !important;
     }
     div[data-testid="stRadio"] > div[role="radiogroup"]::-webkit-scrollbar {
         display: none;
