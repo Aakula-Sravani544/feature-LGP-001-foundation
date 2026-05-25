@@ -81,7 +81,7 @@ div[data-testid="stSidebar"] .stButton > button {
 </style>
 """, unsafe_allow_html=True)
 
-import pandas as pd
+
 import os
 import subprocess
 import sys
@@ -97,6 +97,7 @@ logger = logging.getLogger("app")
 # Load environment variables
 load_dotenv()
 
+import pandas as pd
 import database
 import google_sheets
 # Import new auth module
@@ -1585,7 +1586,7 @@ def generation_ui(label_suffix=""):
 
             try:
                 from linkedin_scraper import scrape_linkedin
-                import pandas as pd
+
                 profiles = scrape_linkedin(keyword, city, limit=max_leads)
 
                 st.session_state.logs += f"[SYS] LinkedIn returned {len(profiles)} profiles\n"
@@ -1871,7 +1872,7 @@ def generation_ui(label_suffix=""):
             
             # Update dataframe ONLY once per batch to prevent memory timeout/websocket freeze
             with table_placeholder.container():
-                import pandas as pd
+
                 df_view = pd.DataFrame(st.session_state.session_leads).iloc[::-1]
                 cols = [c for c in ["name", "phone", "email", "sub_region", "validation_status"] if c in df_view.columns]
                 st.dataframe(df_view[cols] if cols else df_view, hide_index=True)
@@ -1937,7 +1938,7 @@ def show_user_analytics(username: str) -> None:
     try:
         import plotly.express as px
         import plotly.graph_objects as go
-        import pandas as pd
+
         from datetime import datetime, timedelta
 
         # Load user leads from database
@@ -2197,7 +2198,7 @@ def show_user_dashboard():
         generation_ui()
         if st.session_state.get("session_leads", []):
             st.markdown("### ⚡ Session Preview")
-            import pandas as pd
+
             df_preview = pd.DataFrame(st.session_state.session_leads)
             if "review_count" in df_preview.columns:
                 df_preview = df_preview.rename(columns={"review_count": "reviews"})
@@ -2208,7 +2209,7 @@ def show_user_dashboard():
             st.info("Extraction running in background — progress saved. Return to Generate to view live table.")
         if st.session_state.session_leads:
             st.markdown("### 📋 My Leads Table")
-            import pandas as pd
+
             df = pd.DataFrame(st.session_state.session_leads)
             status_filter = st.multiselect(
                 "Filter by Status",
@@ -2541,7 +2542,7 @@ def show_admin_dashboard():
         generation_ui("(Admin)")
         if st.session_state.get("session_leads", []):
             st.markdown("### ⚡ Session Preview")
-            import pandas as pd
+
             df_preview = pd.DataFrame(st.session_state.session_leads)
             if "review_count" in df_preview.columns:
                 df_preview = df_preview.rename(columns={"review_count": "reviews"})
