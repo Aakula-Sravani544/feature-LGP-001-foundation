@@ -547,10 +547,17 @@ if not st.session_state.get('authenticated', False):
 
 # Check if session is corrupted
 if st.session_state.get('authenticated', False):
-    if not st.session_state.get("username") or not st.session_state.get("role"):
-        st.session_state.clear()
-        st.session_state["authenticated"] = False
-        st.rerun()
+    is_gen = st.session_state.get("is_generating", False) or st.session_state.get("is_extracting", False)
+    if not is_gen:
+        if check_session_expiry():
+            st.session_state.clear()
+            st.session_state["authenticated"] = False
+            st.rerun()
+            
+        if not st.session_state.get("username") or not st.session_state.get("role"):
+            st.session_state.clear()
+            st.session_state["authenticated"] = False
+            st.rerun()
 # ==========================================
 # STARTUP SYNC & SCHEDULER
 # ==========================================
@@ -1591,10 +1598,12 @@ def generation_ui(label_suffix=""):
             return
 
         st.session_state.is_extracting = True
+        st.session_state.is_generating = True
         st.session_state.target_leads = max_leads
         st.session_state.collected_leads = 0
         st.session_state.remaining_leads = max_leads
         st.session_state.session_leads = []
+        st.session_state.generation_progress = 0
         st.session_state.logs = ""
         st.session_state.completed_batches = 0
         
@@ -1620,6 +1629,8 @@ def generation_ui(label_suffix=""):
 
     if btn_resume:
         st.session_state.is_extracting = True
+        st.session_state.is_generating = True
+        st.session_state["stop_generation"] = False
         st.session_state.setdefault("area_duplicates", 0)
         st.rerun()
 
@@ -1634,10 +1645,9 @@ def generation_ui(label_suffix=""):
         with stop_placeholder.container():
             if st.button("⏹️ Stop Extraction", key=f"stop_{label_suffix}_{label_suffix}"):
                 st.session_state.is_extracting = False
+                st.session_state.is_generating = False
+                st.session_state["stop_generation"] = True
                 st.warning("Extraction stopped by user. You can resume later.")
-                import time as _time
-                _time.sleep(2)
-                st.rerun()
 
         with metrics_placeholder.container():
             m1, m2, m3 = st.columns(3)
@@ -1774,6 +1784,7 @@ def generation_ui(label_suffix=""):
                             
                             st.session_state.collected_leads = len(st.session_state.session_leads)
                             st.session_state.remaining_leads = st.session_state.target_leads - st.session_state.collected_leads
+                            st.session_state.generation_progress = min(st.session_state.collected_leads / max(st.session_state.target_leads, 1), 1.0)
                             unique_added_this_query += 1
                             batch_collected += 1
                             
@@ -1847,6 +1858,7 @@ def generation_ui(label_suffix=""):
         # End of extraction
         if st.session_state.get("is_extracting", False):
             st.session_state.is_extracting = False
+            st.session_state.is_generating = False
             st.session_state.remaining_leads = 0
             if st.session_state.collected_leads >= st.session_state.target_leads:
                 st.session_state.logs += f"[SYS] Target reached: {st.session_state.collected_leads}/{st.session_state.target_leads}\n"
