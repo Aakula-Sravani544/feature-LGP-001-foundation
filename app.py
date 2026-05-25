@@ -2188,7 +2188,6 @@ def show_admin_dashboard():
     from subscription import get_plan
 
     if not st.session_state.get("admin_data_loaded", False):
-        import pandas as pd
         all_users = []
         df_master = pd.DataFrame()
         total_leads, valid_leads, quality_pct, mrr, paid_users = 0, 0, 0, 0, 0
