@@ -1108,7 +1108,7 @@ header { visibility: hidden; }
 # ==========================================
 # Shared logout replaced by auth.render_logout_button()
 
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=60, show_spinner=False)
 def get_stats():
     """Always reload fresh stats from database."""
     try:
@@ -2166,12 +2166,12 @@ def show_user_dashboard():
         render_billing_tab()
 
 
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=60, show_spinner=False)
 def get_cached_all_users():
     from auth import get_all_users
     return get_all_users()
 
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=60, show_spinner=False)
 def get_cached_db():
     return database.load_db()
 
@@ -2187,15 +2187,21 @@ def show_admin_dashboard():
     # ==========================================
     from subscription import get_plan
 
-    all_users = get_cached_all_users()
-    df_master = get_cached_db()
-    total_leads = len(df_master)
-    valid_leads = len(df_master[df_master["validation_status"] == "Valid"]) if "validation_status" in df_master.columns else 0
-    quality_pct = int((valid_leads / total_leads * 100)) if total_leads > 0 else 0
+    if not st.session_state.get("admin_data_loaded", False):
+        import pandas as pd
+        all_users = []
+        df_master = pd.DataFrame()
+        total_leads, valid_leads, quality_pct, mrr = 0, 0, 0, 0
+    else:
+        all_users = get_cached_all_users()
+        df_master = get_cached_db()
+        total_leads = len(df_master)
+        valid_leads = len(df_master[df_master["validation_status"] == "Valid"]) if "validation_status" in df_master.columns else 0
+        quality_pct = int((valid_leads / total_leads * 100)) if total_leads > 0 else 0
 
-    # Calculate MRR
-    plan_revenue = {"Free": 0, "Starter": 29, "Pro": 79, "Enterprise": 500}
-    mrr = sum(plan_revenue.get(u.get("plan", "Free"), 0) for u in all_users)
+        # Calculate MRR
+        plan_revenue = {"Free": 0, "Starter": 29, "Pro": 79, "Enterprise": 500}
+        mrr = sum(plan_revenue.get(u.get("plan", "Free"), 0) for u in all_users)
 
     # Top row metrics
     
@@ -2858,5 +2864,15 @@ with st.sidebar:
 
 if st.session_state.role == "admin":
     show_admin_dashboard()
+    
+    # Non-blocking async data preloader for first render
+    if not st.session_state.get("admin_data_loaded", False):
+        st.session_state["admin_data_loaded"] = True
+        import time
+        time.sleep(0.05)  # flush Streamlit UI queue so dashboard renders instantly
+        get_cached_all_users()
+        get_cached_db()
+        get_stats()
+        st.rerun()
 else:
     show_user_dashboard()
