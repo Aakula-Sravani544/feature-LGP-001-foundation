@@ -118,28 +118,40 @@ from scheduler import render_scheduler_ui, start_scheduler
 # Initialize session
 init_session()
 
+# STEP 1 — ADD SESSION LOCK SYSTEM
 if "authenticated" not in st.session_state:
-    st.session_state["authenticated"] = False
-if "username" not in st.session_state:
-    st.session_state["username"] = ""
-if "role" not in st.session_state:
-    st.session_state["role"] = ""
-if "plan" not in st.session_state:
-    st.session_state["plan"] = "Free"
+    st.session_state.authenticated = False
+if "session_initialized" not in st.session_state:
+    st.session_state.session_initialized = True
+if "login_lock" not in st.session_state:
+    st.session_state.login_lock = False
 if "is_extracting" not in st.session_state:
-    st.session_state["is_extracting"] = False
+    st.session_state.is_extracting = False
+if "stop_generation" not in st.session_state:
+    st.session_state.stop_generation = False
+
+if "username" not in st.session_state:
+    st.session_state.username = ""
+if "role" not in st.session_state:
+    st.session_state.role = ""
+if "plan" not in st.session_state:
+    st.session_state.plan = "Free"
 if "session_leads" not in st.session_state:
-    st.session_state["session_leads"] = []
+    st.session_state.session_leads = []
 if "admin_nav" not in st.session_state:
-    st.session_state["admin_nav"] = "Generate"
+    st.session_state.admin_nav = "Generate"
 if "user_nav" not in st.session_state:
-    st.session_state["user_nav"] = "Generate"
+    st.session_state.user_nav = "Generate"
 if "collected_count" not in st.session_state:
-    st.session_state["collected_count"] = 0
+    st.session_state.collected_count = 0
 if "target_leads" not in st.session_state:
-    st.session_state["target_leads"] = 0
+    st.session_state.target_leads = 0
 if "current_query" not in st.session_state:
-    st.session_state["current_query"] = ""
+    st.session_state.current_query = ""
+
+# STEP 10 — KEEP SESSION ALIVE
+if st.session_state.get("authenticated", False):
+    st.session_state.login_lock = True
 
 
 
@@ -519,11 +531,14 @@ div[role="radiogroup"] label[data-checked="true"] {
                 
                 if portal == "Admin Portal":
                     if success and role == "admin":
-                        st.session_state["authenticated"] = True
-                        st.session_state["username"] = username
-                        st.session_state["role"] = role
-                        st.session_state["plan"] = plan
-                        st.session_state["login_time"] = datetime.now()
+                        st.session_state.authenticated = True
+                        st.session_state.username = username
+                        st.session_state.role = role
+                        st.session_state.plan = plan
+                        st.session_state.login_time = datetime.now()
+                        st.session_state.login_lock = True
+                        import time
+                        time.sleep(0.3)
                         st.rerun()
                     elif success and role != "admin":
                         st.error("This account does not have admin access")
@@ -531,33 +546,52 @@ div[role="radiogroup"] label[data-checked="true"] {
                         st.error("Invalid admin credentials")
                 else:  # User Workspace
                     if success:
-                        st.session_state["authenticated"] = True
-                        st.session_state["username"] = username
-                        st.session_state["role"] = role
-                        st.session_state["plan"] = plan
-                        st.session_state["login_time"] = datetime.now()
+                        st.session_state.authenticated = True
+                        st.session_state.username = username
+                        st.session_state.role = role
+                        st.session_state.plan = plan
+                        st.session_state.login_time = datetime.now()
+                        st.session_state.login_lock = True
+                        import time
+                        time.sleep(0.3)
                         st.rerun()
                     else:
                         st.error("Invalid credentials")
 
-# Show login if not authenticated
-if not st.session_state.get('authenticated', False):
+# ==========================================
+# SAFE LOGOUT & AUTH CHECKS
+# ==========================================
+def safe_logout():
+    preserve = {
+        "session_initialized": True
+    }
+    st.session_state.clear()
+    for k, v in preserve.items():
+        st.session_state[k] = v
+    st.session_state.authenticated = False
+    st.session_state.login_lock = False
+    st.rerun()
+
+def check_auth():
+    if st.session_state.get("authenticated", False):
+        return True
+    if st.session_state.get("login_lock", False):
+        return True
+    return False
+
+if not check_auth():
+    if st.session_state.get("is_extracting", False):
+        st.stop()
     render_login_page()
     st.stop()
 
-# Check if session is corrupted
-if st.session_state.get('authenticated', False):
-    is_gen = st.session_state.get("is_generating", False) or st.session_state.get("is_extracting", False)
-    if not is_gen:
-        if check_session_expiry():
-            st.session_state.clear()
-            st.session_state["authenticated"] = False
-            st.rerun()
-            
-        if not st.session_state.get("username") or not st.session_state.get("role"):
-            st.session_state.clear()
-            st.session_state["authenticated"] = False
-            st.rerun()
+if (
+    st.session_state.get("authenticated")
+    and not st.session_state.get("is_extracting", False)
+):
+    expired = check_session_expiry()
+    if expired:
+        safe_logout()
 # ==========================================
 # STARTUP SYNC & SCHEDULER
 # ==========================================
@@ -1735,8 +1769,8 @@ def generation_ui(label_suffix=""):
             
             ai_flag = "1" if st.session_state.use_ai else "0"
             deep_flag = "1" if deep_enrich else "0"
-            sub_batch_target = 10
-            target_unique_per_phase = 5
+            sub_batch_target = 30
+            target_unique_per_phase = 15
             
             import subprocess
             import sys
@@ -2862,8 +2896,7 @@ with st.sidebar:
                  key="admin_signout",
                  type="primary",
                  use_container_width=True):
-        st.session_state.clear()
-        st.rerun()
+        safe_logout()
 
 if st.session_state.role == "admin":
     show_admin_dashboard()
