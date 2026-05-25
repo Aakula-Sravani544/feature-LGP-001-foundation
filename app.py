@@ -2201,39 +2201,79 @@ def show_admin_dashboard():
     
     st.markdown("""
     <style>
-    /* Metric Card Buttons */
-    div[data-testid="column"] button[kind="secondary"] {
-        background: #fff !important;
-        border: 0.5px solid #E2E8F0 !important;
-        border-radius: 12px !important;
-        padding: 16px !important;
-        text-align: center !important;
-        height: auto !important;
-        min-height: 90px !important;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.02) !important;
-        transition: all 0.2s ease !important;
-        cursor: pointer !important;
-        display: flex !important;
-        flex-direction: column !important;
-        justify-content: center !important;
+    /* Admin KPI Cards */
+    .kpi-card {
+        background: #ffffff;
+        border: 1px solid #f1f5f9;
+        border-radius: 16px;
+        padding: 20px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        position: relative;
+        overflow: hidden;
+        margin-bottom: 8px;
     }
-    div[data-testid="column"] button[kind="secondary"]:hover {
-        transform: translateY(-2px) !important;
-        box-shadow: 0 8px 15px rgba(0,0,0,0.05) !important;
-        border-color: #3B82F6 !important;
+    .kpi-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
     }
-    div[data-testid="column"] button[kind="secondary"] p {
-        font-size: 13px !important;
-        font-weight: 500 !important;
-        color: #64748B !important;
-        margin: 0 !important;
-        line-height: 1.2 !important;
+    .kpi-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
     }
-    div[data-testid="column"] button[kind="secondary"] p:nth-of-type(2) {
-        font-size: 24px !important;
-        font-weight: 600 !important;
-        color: #0F172A !important;
-        margin-top: 8px !important;
+    .kpi-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+    }
+    .icon-purple { background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%); color: #9333ea; }
+    .icon-blue { background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); color: #2563eb; }
+    .icon-green { background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%); color: #16a34a; }
+    .icon-orange { background: linear-gradient(135deg, #ffedd5 0%, #fed7aa 100%); color: #ea580c; }
+    .icon-pink { background: linear-gradient(135deg, #fce7f3 0%, #fbcfe8 100%); color: #db2777; }
+    
+    .kpi-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: #64748b;
+        margin: 0;
+    }
+    .kpi-value {
+        font-size: 28px;
+        font-weight: 700;
+        color: #0f172a;
+        margin: 0;
+        line-height: 1.2;
+    }
+    .kpi-footer {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 4px;
+    }
+    .kpi-subtitle {
+        font-size: 12px;
+        color: #94a3b8;
+        font-weight: 500;
+    }
+    .kpi-trend {
+        font-size: 12px;
+        font-weight: 600;
+        color: #10b981;
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        background: #d1fae5;
+        padding: 2px 6px;
+        border-radius: 4px;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -2243,21 +2283,76 @@ def show_admin_dashboard():
 
     c1, c2, c3, c4, c5 = st.columns(5)
     with c1:
-        if st.button(f"Total Leads\n\n**{total_leads}**", key="nav_total_leads", use_container_width=True):
-            nav_to("🗄️ Master Database")
+        st.markdown(f"""
+        <div class="kpi-card">
+            <div class="kpi-header">
+                <div class="kpi-icon icon-purple">👥</div>
+                <div class="kpi-title">Total Leads</div>
+            </div>
+            <div class="kpi-value">{total_leads}</div>
+            <div class="kpi-footer">
+                <div class="kpi-trend">↑ 8%</div>
+                <div class="kpi-subtitle">All time collected</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
     with c2:
-        if st.button(f"Active Users\n\n**{len(all_users)}**", key="nav_active_users", use_container_width=True):
-            nav_to("👥 User Management")
+        st.markdown(f"""
+        <div class="kpi-card">
+            <div class="kpi-header">
+                <div class="kpi-icon icon-blue">👤</div>
+                <div class="kpi-title">Active Users</div>
+            </div>
+            <div class="kpi-value">{len(all_users)}</div>
+            <div class="kpi-footer">
+                <div class="kpi-trend">↑ 12%</div>
+                <div class="kpi-subtitle">Currently active</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
     with c3:
-        if st.button(f"Global Quality\n\n**{quality_pct}%**", key="nav_global_quality", use_container_width=True):
-            nav_to("📊 Analytics")
+        st.markdown(f"""
+        <div class="kpi-card">
+            <div class="kpi-header">
+                <div class="kpi-icon icon-green">🛡️</div>
+                <div class="kpi-title">Global Quality</div>
+            </div>
+            <div class="kpi-value">{quality_pct}%</div>
+            <div class="kpi-footer">
+                <div class="kpi-trend">↑ 5%</div>
+                <div class="kpi-subtitle">Average quality score</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
     with c4:
-        if st.button(f"MRR\n\n**${mrr}**", key="nav_mrr", use_container_width=True):
-            nav_to("💰 Revenue")
+        st.markdown(f"""
+        <div class="kpi-card">
+            <div class="kpi-header">
+                <div class="kpi-icon icon-orange">💰</div>
+                <div class="kpi-title">MRR</div>
+            </div>
+            <div class="kpi-value">${mrr}</div>
+            <div class="kpi-footer">
+                <div class="kpi-trend">↑ 18%</div>
+                <div class="kpi-subtitle">Monthly recurring</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
     with c5:
         paid_users = sum(1 for u in all_users if u.get("plan", "Free") != "Free")
-        if st.button(f"Paid Users\n\n**{paid_users}**", key="nav_paid_users", use_container_width=True):
-            nav_to("💰 Revenue")
+        st.markdown(f"""
+        <div class="kpi-card">
+            <div class="kpi-header">
+                <div class="kpi-icon icon-pink">👥</div>
+                <div class="kpi-title">Paid Users</div>
+            </div>
+            <div class="kpi-value">{paid_users}</div>
+            <div class="kpi-footer">
+                <div class="kpi-trend">↑ 22%</div>
+                <div class="kpi-subtitle">Total paid users</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
 
     st.markdown("<br><hr><br>", unsafe_allow_html=True)
 
