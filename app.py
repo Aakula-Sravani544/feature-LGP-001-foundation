@@ -298,7 +298,7 @@ div:has(> div > div > div > div > .login-card-marker) {
     opacity: 1 !important;
 }
 
-.stButton > button {
+.stButton > button[kind="secondary"] {
     background: linear-gradient(135deg, #7c3aed, #9333ea) !important;
     color: #ffffff !important;
     border: none !important;
@@ -311,10 +311,29 @@ div:has(> div > div > div > div > .login-card-marker) {
     box-shadow: 0 10px 30px rgba(124, 58, 237, 0.35) !important;
     transition: all 0.2s ease !important;
 }
-.stButton > button:hover {
+.stButton > button[kind="secondary"]:hover {
     transform: translateY(-2px) !important;
     background: linear-gradient(135deg, #6d28d9 0%, #5b21b6 100%) !important;
     box-shadow: 0 12px 32px rgba(124, 58, 237, 0.45) !important;
+}
+.stButton > button[kind="tertiary"] {
+    background: transparent !important;
+    color: #6d28d9 !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    height: auto !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    width: auto !important;
+    margin-top: 5px !important;
+}
+.stButton > button[kind="tertiary"]:hover {
+    background: transparent !important;
+    color: #5b21b6 !important;
+    box-shadow: none !important;
+    transform: none !important;
+    text-decoration: underline !important;
 }
 
 div[role="radiogroup"] {
@@ -393,66 +412,133 @@ div[role="radiogroup"] label[data-checked="true"] {
         st.markdown('<div style="text-align:center; font-size:48px; font-weight:800; color:#0f172a; margin-bottom:6px; letter-spacing:-0.5px;">Welcome Back</div>', unsafe_allow_html=True)
         st.markdown('<div style="text-align:center; font-size:15px; color:#6b7280; margin-bottom:32px; font-weight:400;">Sign in to access your account</div>', unsafe_allow_html=True)
 
-        portal = st.radio(
-            "Portal",
-            ["Admin Portal", "User Workspace"],
-            horizontal=True,
-            key="portal_select",
-            label_visibility="collapsed"
-        )
+        if "show_forgot_password" not in st.session_state:
+            st.session_state["show_forgot_password"] = False
+        if "show_register_form" not in st.session_state:
+            st.session_state["show_register_form"] = False
 
-        username = st.text_input(
-            "Username",
-            placeholder="Enter your username",
-            key="login_username"
-        )
-        password = st.text_input(
-            "Password",
-            placeholder="Enter your password",
-            type="password",
-            key="login_password"
-        )
-        
-        c1, c2 = st.columns(2)
-        with c1:
-            st.checkbox("Remember me")
-        with c2:
-            st.markdown('<div style="text-align:right; font-size:14px; color:#6d28d9; cursor:pointer; margin-top:10px; font-weight:500;">Forgot Password?</div>', unsafe_allow_html=True)
-
-        login_btn = st.button("➜ Login", key="login_btn", use_container_width=True)
-        
-        st.markdown('''
-        <div style="text-align:center; color:#9ca3af; font-size:14px; margin: 20px 0; font-weight:500;">or</div>
-        <div style="text-align:center; font-size:14px; color:#4b5563; font-weight:500;">
-            Don't have an account? <a href="#" style="color:#6d28d9; font-weight:600; text-decoration:none;">Register now</a>
-        </div>
-        ''', unsafe_allow_html=True)
-
-        if login_btn:
-            success, role, plan = login(username, password)
+        if st.session_state["show_forgot_password"]:
+            st.markdown('<div style="text-align:center; font-size:24px; font-weight:700; color:#0f172a; margin-bottom:24px;">Reset Password</div>', unsafe_allow_html=True)
+            f_user = st.text_input("Username", key="f_user")
+            f_pass = st.text_input("New Password", type="password", key="f_pass")
+            f_conf = st.text_input("Confirm Password", type="password", key="f_conf")
             
-            if portal == "Admin Portal":
-                if success and role == "admin":
-                    st.session_state["authenticated"] = True
-                    st.session_state["username"] = username
-                    st.session_state["role"] = role
-                    st.session_state["plan"] = plan
-                    st.session_state["login_time"] = datetime.now()
-                    st.rerun()
-                elif success and role != "admin":
-                    st.error("This account does not have admin access")
+            if st.button("Reset Password", key="f_reset_btn", use_container_width=True):
+                from auth import update_password
+                if not f_user or not f_pass:
+                    st.error("Please fill all fields")
+                elif f_pass == f_conf and len(f_pass) >= 4:
+                    if update_password(f_user, f_pass):
+                        st.success("Password reset successfully. Please login.")
+                        st.session_state["show_forgot_password"] = False
+                    else:
+                        st.error("Failed to reset password. User may not exist.")
                 else:
-                    st.error("Invalid admin credentials")
-            else:  # User Workspace
-                if success:
-                    st.session_state["authenticated"] = True
-                    st.session_state["username"] = username
-                    st.session_state["role"] = role
-                    st.session_state["plan"] = plan
-                    st.session_state["login_time"] = datetime.now()
+                    st.error("Passwords must match and be at least 4 characters.")
+            
+            st.markdown('<br>', unsafe_allow_html=True)
+            _, c_back, _ = st.columns([1, 1, 1])
+            with c_back:
+                if st.button("Back to Login", key="f_back_btn", type="tertiary", use_container_width=True):
+                    st.session_state["show_forgot_password"] = False
                     st.rerun()
+
+        elif st.session_state["show_register_form"]:
+            st.markdown('<div style="text-align:center; font-size:24px; font-weight:700; color:#0f172a; margin-bottom:24px;">Register Account</div>', unsafe_allow_html=True)
+            r_user = st.text_input("Username", key="r_user")
+            r_pass = st.text_input("Password", type="password", key="r_pass")
+            r_name = st.text_input("Full Name", key="r_name")
+            r_email = st.text_input("Email", key="r_email")
+            
+            if st.button("Create Account", key="r_create_btn", use_container_width=True):
+                from auth import register_user
+                if not r_user or not r_pass or not r_name or not r_email:
+                    st.error("Please fill all fields")
+                elif register_user(r_user, r_pass, r_name, r_email, role="user", plan="Free"):
+                    st.success("Account created successfully. Please login.")
+                    st.session_state["show_register_form"] = False
                 else:
-                    st.error("Invalid credentials")
+                    st.error("Username or email may already exist.")
+            
+            st.markdown('<br>', unsafe_allow_html=True)
+            _, c_back_r, _ = st.columns([1, 1, 1])
+            with c_back_r:
+                if st.button("Back to Login", key="r_back_btn", type="tertiary", use_container_width=True):
+                    st.session_state["show_register_form"] = False
+                    st.rerun()
+
+        else:
+            portal = st.radio(
+                "Portal",
+                ["Admin Portal", "User Workspace"],
+                horizontal=True,
+                key="portal_select",
+                label_visibility="collapsed"
+            )
+
+            username = st.text_input(
+                "Username",
+                placeholder="Enter your username",
+                key="login_username"
+            )
+            password = st.text_input(
+                "Password",
+                placeholder="Enter your password",
+                type="password",
+                key="login_password"
+            )
+            
+            c1, c2 = st.columns(2)
+            with c1:
+                st.checkbox("Remember me")
+            with c2:
+                # To push the tertiary button to the right, we use another sub-column
+                _, c2_right = st.columns([1, 2])
+                with c2_right:
+                    if st.button("Forgot Password?", key="forgot_password_btn", type="tertiary", use_container_width=True):
+                        st.session_state["show_forgot_password"] = True
+                        st.rerun()
+
+            login_btn = st.button("➜ Login", key="login_btn", use_container_width=True)
+            
+            st.markdown('''
+            <div style="text-align:center; color:#9ca3af; font-size:14px; margin-top: 20px; margin-bottom: 10px; font-weight:500;">or</div>
+            <div style="text-align:center; font-size:14px; color:#4b5563; font-weight:500;">
+                Don't have an account? 
+            </div>
+            ''', unsafe_allow_html=True)
+            
+            _, col_reg, _ = st.columns([1, 1.5, 1])
+            with col_reg:
+                if st.button("Register now", key="register_now_btn", type="tertiary", use_container_width=True):
+                    st.session_state["show_register_form"] = True
+                    st.rerun()
+
+            if login_btn:
+                success, role, plan = login(username, password)
+                
+                if portal == "Admin Portal":
+                    if success and role == "admin":
+                        st.session_state["authenticated"] = True
+                        st.session_state["username"] = username
+                        st.session_state["role"] = role
+                        st.session_state["plan"] = plan
+                        st.session_state["login_time"] = datetime.now()
+                        st.rerun()
+                    elif success and role != "admin":
+                        st.error("This account does not have admin access")
+                    else:
+                        st.error("Invalid admin credentials")
+                else:  # User Workspace
+                    if success:
+                        st.session_state["authenticated"] = True
+                        st.session_state["username"] = username
+                        st.session_state["role"] = role
+                        st.session_state["plan"] = plan
+                        st.session_state["login_time"] = datetime.now()
+                        st.rerun()
+                    else:
+                        st.error("Invalid credentials")
 
 # Show login if not authenticated
 if not st.session_state.get('authenticated', False):
