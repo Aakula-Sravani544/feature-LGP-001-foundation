@@ -178,13 +178,27 @@ def render_login_page():
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
-#MainMenu,footer,header{visibility:hidden !important;}
+#MainMenu,footer,header{visibility:hidden !important; display:none !important;}
 [data-testid="collapsedControl"]{display:none !important;}
 [data-testid="stSidebar"]{display:none !important;}
+
+::-webkit-scrollbar { display: none !important; }
+html, body {
+    -ms-overflow-style: none !important;
+    scrollbar-width: none !important;
+    overflow: hidden !important;
+    height: 100vh !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
 .main .block-container {
     padding: 0 !important;
     overflow: hidden !important;
     max-width: 100% !important;
+}
+[data-testid="stAppViewContainer"] > section > div > div > div {
+    padding: 0 !important;
 }
 
 /* Background with radial glow */
@@ -207,16 +221,16 @@ def render_login_page():
 
 /* Left Column Styling */
 div[data-testid="column"]:nth-of-type(1) {
-    padding: 2vw 4vw 0 6vw !important;
+    padding: 0 4vw 0 6vw !important;
 }
 
 /* Right Column (Card) Styling */
 div:has(> div > div > div > div > .login-card-marker) {
-    background: #f8f8fb !important;
+    background: #ffffff !important;
     border-radius: 28px !important;
     padding: 48px 40px !important;
-    box-shadow: 0 25px 60px rgba(0,0,0,0.35), 0 8px 20px rgba(91,33,182,0.12) !important;
-    max-width: 480px !important;
+    box-shadow: 0 25px 60px rgba(0,0,0,0.1), 0 8px 20px rgba(91,33,182,0.05) !important;
+    max-width: 460px !important;
     margin: 0 auto !important;
 }
 .login-card-marker { display: none; }
@@ -421,7 +435,7 @@ div[role="radiogroup"] label[data-checked="true"] {
         # Marker for CSS styling
         st.markdown('<div class="login-card-marker"></div>', unsafe_allow_html=True)
         
-        st.markdown('<div style="text-align:center; font-size:48px; font-weight:800; color:#0f172a; margin-bottom:6px; letter-spacing:-0.5px;">Welcome Back</div>', unsafe_allow_html=True)
+        st.markdown('<div style="text-align:center; font-size:38px; font-weight:800; color:#0f172a; margin-bottom:6px; letter-spacing:-0.5px;">Welcome Back</div>', unsafe_allow_html=True)
         st.markdown('<div style="text-align:center; font-size:15px; color:#6b7280; margin-bottom:32px; font-weight:400;">Sign in to access your account</div>', unsafe_allow_html=True)
 
         if "show_forgot_password" not in st.session_state:
