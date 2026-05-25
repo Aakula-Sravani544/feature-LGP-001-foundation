@@ -2275,29 +2275,34 @@ def show_admin_dashboard():
         padding: 2px 6px;
         border-radius: 4px;
     }
-    /* Streamlit structural overrides for clickable cards */
-    div[data-testid="column"]:has(.kpi-card) {
+    /* Clickable card overlay using negative margin (No :has() required) */
+    div[class*="st-key-nav_total_leads"],
+    div[class*="st-key-nav_active_users"],
+    div[class*="st-key-nav_global_quality"],
+    div[class*="st-key-nav_mrr"],
+    div[class*="st-key-nav_paid_users"],
+    div[data-testid="stHorizontalBlock"]:first-of-type > div[data-testid="column"] .stButton {
+        margin-top: -140px !important;
+        height: 140px !important;
+        opacity: 0 !important;
+        z-index: 99 !important;
         position: relative !important;
+        display: block !important;
     }
-    
-    div[data-testid="column"]:has(.kpi-card) .stButton > button {
-        position: absolute !important;
-        top: 0 !important;
-        left: 0 !important;
+
+    div[class*="st-key-nav_"] button,
+    div[data-testid="stHorizontalBlock"]:first-of-type > div[data-testid="column"] .stButton > button {
         width: 100% !important;
         height: 100% !important;
-        opacity: 0 !important;
-        z-index: 10 !important;
         cursor: pointer !important;
-        margin: 0 !important;
-        padding: 0 !important;
         background: transparent !important;
         color: transparent !important;
         border: none !important;
+        padding: 0 !important;
     }
     
     /* Hover effects triggered on the column but applied to the card */
-    div[data-testid="column"]:has(.kpi-card):hover .kpi-card {
+    div[data-testid="column"]:hover .kpi-card {
         transform: translateY(-4px);
         box-shadow: 0 12px 20px -3px rgba(0, 0, 0, 0.1), 0 8px 10px -4px rgba(0, 0, 0, 0.04);
         border-color: #cbd5e1;
@@ -2324,7 +2329,7 @@ def show_admin_dashboard():
             </div>
         </div>
         """, unsafe_allow_html=True)
-        if st.button("\u200b"*1, key="nav_total_leads", use_container_width=True):
+        if st.button(" ", key="nav_total_leads", use_container_width=True):
             nav_to("🚀 Generate")
     with c2:
         st.markdown(f"""
@@ -2340,7 +2345,7 @@ def show_admin_dashboard():
             </div>
         </div>
         """, unsafe_allow_html=True)
-        if st.button("\u200b"*2, key="nav_active_users", use_container_width=True):
+        if st.button(" ", key="nav_active_users", use_container_width=True):
             nav_to("👥 User Management")
     with c3:
         st.markdown(f"""
@@ -2356,7 +2361,7 @@ def show_admin_dashboard():
             </div>
         </div>
         """, unsafe_allow_html=True)
-        if st.button("\u200b"*3, key="nav_global_quality", use_container_width=True):
+        if st.button(" ", key="nav_global_quality", use_container_width=True):
             nav_to("📊 Analytics")
     with c4:
         st.markdown(f"""
@@ -2372,7 +2377,7 @@ def show_admin_dashboard():
             </div>
         </div>
         """, unsafe_allow_html=True)
-        if st.button("\u200b"*4, key="nav_mrr", use_container_width=True):
+        if st.button(" ", key="nav_mrr", use_container_width=True):
             nav_to("💰 Revenue")
     with c5:
         paid_users = sum(1 for u in all_users if u.get("plan", "Free") != "Free")
@@ -2389,7 +2394,7 @@ def show_admin_dashboard():
             </div>
         </div>
         """, unsafe_allow_html=True)
-        if st.button("\u200b"*5, key="nav_paid_users", use_container_width=True):
+        if st.button(" ", key="nav_paid_users", use_container_width=True):
             nav_to("👥 User Management")
 
     st.markdown("<div style='height: 16px;'></div>", unsafe_allow_html=True)
