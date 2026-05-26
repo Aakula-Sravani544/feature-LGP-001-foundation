@@ -1,8 +1,8 @@
-﻿import streamlit as st
+import streamlit as st
 from scheduler import render_scheduler_ui, start_scheduler
 st.set_page_config(
     page_title="LeadPulse Pro",
-    page_icon="ðŸš€",
+    page_icon="🚀",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
@@ -393,43 +393,43 @@ div[role="radiogroup"] label[data-checked="true"] {
     with left:
         st.markdown('''
 <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 48px;">
-    <div style="width: 42px; height: 42px; background: #6d28d9; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 22px;">ðŸ“Š</div>
+    <div style="width: 42px; height: 42px; background: #6d28d9; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 22px;">📊</div>
     <div style="font-size: 22px; font-weight: 800; color: #ffffff;">LeadPulse <span style="color: #c084fc;">Pro</span></div>
 </div>
 <div class="brand-title">AI-Powered<br>Lead Generation<br>Platform</div>
 <div class="brand-subtitle">Generate verified leads faster with AI-powered enrichment.<br>Designed for modern revenue teams.</div>
 <div class="feat-row">
-    <div class="feat-icon-box">ðŸ‘¥</div>
+    <div class="feat-icon-box">👥</div>
     <div>
         <div class="feat-text-title">Smart Lead Discovery</div>
         <div class="feat-text-sub">Find high-quality leads in seconds without manual searching.</div>
     </div>
 </div>
 <div class="feat-row">
-    <div class="feat-icon-box">ðŸ“ˆ</div>
+    <div class="feat-icon-box">📈</div>
     <div>
         <div class="feat-text-title">AI Enrichment</div>
         <div class="feat-text-sub">Get enriched data and actionable insights automatically.</div>
     </div>
 </div>
 <div class="feat-row">
-    <div class="feat-icon-box">ðŸ›¡ï¸</div>
+    <div class="feat-icon-box">🛡️</div>
     <div>
         <div class="feat-text-title">Data Verification</div>
         <div class="feat-text-sub">Ensure accuracy and reliability across your entire CRM.</div>
     </div>
 </div>
 <div class="feat-row">
-    <div class="feat-icon-box">ðŸ”’</div>
+    <div class="feat-icon-box">🔒</div>
     <div>
         <div class="feat-text-title">Secure & Reliable</div>
         <div class="feat-text-sub">Enterprise-grade security trusted by top organizations.</div>
     </div>
 </div>
 <div class="trust-bar-bottom">
-    <span>ðŸ›¡ï¸ Secure Access</span>
-    <span>ðŸ”’ Encrypted Data</span>
-    <span>â˜ï¸ 99.9% Uptime</span>
+    <span>🛡️ Secure Access</span>
+    <span>🔒 Encrypted Data</span>
+    <span>☁️ 99.9% Uptime</span>
 </div>''', unsafe_allow_html=True)
 
     with right:
@@ -526,7 +526,7 @@ div[role="radiogroup"] label[data-checked="true"] {
                         st.session_state["show_forgot_password"] = True
                         st.rerun()
 
-            login_btn = st.button("âžœ Login", key="login_btn", use_container_width=True)
+            login_btn = st.button("➜ Login", key="login_btn", use_container_width=True)
             
             st.markdown('''
             <div style="text-align:center; color:#9ca3af; font-size:14px; margin-top: 20px; margin-bottom: 10px; font-weight:500;">or</div>
@@ -1402,7 +1402,7 @@ def generation_ui(label_suffix=""):
     current_plan = st.session_state.get("plan", "Free")
     max_allowed = get_max_leads(current_plan)
 
-    st.markdown(f"### ðŸ” Start New Extraction {label_suffix}")
+    st.markdown(f"### 🔍 Start New Extraction {label_suffix}")
 
     with st.container():
         # Row 1 â€” Category and Business Type
@@ -1436,7 +1436,7 @@ def generation_ui(label_suffix=""):
             if linkedin_allowed:
                 source_options.append("LinkedIn")
             else:
-                source_options.append("LinkedIn ðŸ”’ (Starter+)")
+                source_options.append("LinkedIn 🔍 (Starter+)")
 
             source = st.selectbox(
                 "Source",
@@ -1445,8 +1445,8 @@ def generation_ui(label_suffix=""):
             )
 
             # Block LinkedIn if not allowed
-            if "LinkedIn ðŸ”’" in source:
-                st.warning(f"ðŸ”’ LinkedIn requires Starter plan. You are on {current_plan}.")
+            if "LinkedIn 🔍" in source:
+                st.warning(f"🔒 LinkedIn requires Starter plan. You are on {current_plan}.")
                 source = "Google Maps"
 
         # Row 2 â€” City and Region
@@ -1506,17 +1506,17 @@ def generation_ui(label_suffix=""):
             st.markdown("<br>", unsafe_allow_html=True)
             ai_allowed = can_use_ai(current_plan)
             use_ai = st.toggle(
-                "ðŸ¤– Enable AI Scoring",
+                "🧠 Enable AI Scoring",
                 value=False,
                 disabled=not ai_allowed,
                 help=get_upgrade_message(current_plan, "ai_scoring") if not ai_allowed else "Enable AI lead scoring",
                 key=f"ai_{label_suffix}"
             )
             # Add Deep Enrichment toggle
-            deep_enrich = st.toggle("ðŸ§ª Deep Enrichment", value=False, help="Deep search contact info (10x slower)", key=f"deep_{label_suffix}")
+            deep_enrich = st.toggle("🔍 Deep Enrichment", value=False, help="Deep search contact info (10x slower)", key=f"deep_{label_suffix}")
             
             if not ai_allowed:
-                st.caption(f"ðŸ”’ AI Scoring requires Starter plan. You are on {current_plan}.")
+                st.caption(f"🔒 AI Scoring requires Starter plan. You are on {current_plan}.")
         with c7:
             st.markdown("<br>", unsafe_allow_html=True)
             btn_generate = False
@@ -1531,7 +1531,7 @@ def generation_ui(label_suffix=""):
                 )
             else:
                 btn_generate = st.button(
-                    "ðŸš€ Generate Leads",
+                    "🚀 Generate Leads",
                     disabled=st.session_state.get("is_extracting", False),
                     key=f"btn_{label_suffix}",
                     use_container_width=True
@@ -1544,7 +1544,7 @@ def generation_ui(label_suffix=""):
             return
 
         # Handle LinkedIn source
-        if "LinkedIn" in source and "ðŸ”’" not in source:
+        if "LinkedIn" in source and "🔍" not in source:
             if not can_use_linkedin(current_plan):
                 st.error(get_upgrade_message(current_plan, "linkedin"))
                 render_upgrade_banner(current_plan)
@@ -1572,7 +1572,7 @@ def generation_ui(label_suffix=""):
                 m2 = mc2.empty()
                 m3 = mc3.empty()
 
-            status_text.text(f"ðŸ” Searching LinkedIn: {keyword} in {city}...")
+            status_text.text(f"🔍 Searching LinkedIn: {keyword} in {city}...")
             st.session_state.logs += f"[SYS] Starting LinkedIn scraper...\n"
             log_placeholder.markdown(
                 f'<div class="log-box">{st.session_state.logs}</div>',
@@ -1659,7 +1659,7 @@ def generation_ui(label_suffix=""):
         st.session_state.deep_enrich = deep_enrich
         
         status_text = st.empty()
-        status_text.text(f"ðŸ¤– AI analyzing sub-regions for {region or city}...")
+        status_text.text(f"🧠 AI analyzing sub-regions for {region or city}...")
         st.session_state.specific_sub_regions, st.session_state.fallback_areas = get_sub_regions_ai(keyword, region or city, city)
         
         st.session_state.phase = 1
@@ -1774,7 +1774,7 @@ def generation_ui(label_suffix=""):
             else:
                 break
                 
-            status_text.text(f"ðŸ”„ Scraping: {query} ({st.session_state.collected_leads}/{st.session_state.target_leads})")
+            status_text.text(f"📥 Scraping: {query} ({st.session_state.collected_leads}/{st.session_state.target_leads})")
             log_placeholder.markdown(f'<div class="log-box">{st.session_state.logs[-3000:]}</div>', unsafe_allow_html=True)
             
             ai_flag = "1" if st.session_state.use_ai else "0"
@@ -1946,7 +1946,7 @@ def show_user_analytics(username: str) -> None:
         # ==========================================
         # METRIC 1 â€” Leads This Month Counter
         # ==========================================
-        st.markdown("### ðŸ“Š Your Analytics Dashboard")
+        st.markdown("### 📊 Your Analytics Dashboard")
 
         today = datetime.now()
         current_month = today.strftime("%Y-%m")
@@ -2127,7 +2127,7 @@ def show_user_analytics(username: str) -> None:
         # ==========================================
         # CHART 5 â€” Session History Table
         # ==========================================
-        st.markdown("**ðŸ“‹ Session History**")
+        st.markdown("**📜 Session History**")
         try:
             df_hist = database.load_db()
             if not df_hist.empty and "scraped_date" in df_hist.columns:
@@ -2159,8 +2159,7 @@ def show_user_analytics(username: str) -> None:
 def show_user_dashboard():
     # Privacy bar
     st.markdown('''
-        <div class="privacy-bar">
-            ðŸ›¡ï¸ Your lead data is protected â€” stored securely and never shared with third parties.
+        <🛡️ Your lead data is protected — stored securely and never shared with third parties.
         </div>
     ''', unsafe_allow_html=True)
 
@@ -2183,16 +2182,16 @@ def show_user_dashboard():
 
     # 4 horizontal tabs matching My Leads etc.
     tab1, tab2, tab3, tab4 = st.tabs([
-        "ðŸš€ Generate",
-        "ðŸ“‹ My Leads",
-        "ðŸ“Š Analytics",
-        "ðŸ’° Billing"
+        "🚀 Generate",
+        "📋 My Leads",
+        "📊 Analytics",
+        "💳 Billing"
     ])
 
     with tab1:
         generation_ui()
         if st.session_state.get("session_leads", []):
-            st.markdown("### âš¡ Session Preview")
+            st.markdown("### ⚡ Session Preview")
 
             df_preview = pd.DataFrame(st.session_state.session_leads)
             if "review_count" in df_preview.columns:
@@ -2203,7 +2202,7 @@ def show_user_dashboard():
         if st.session_state.get("is_extracting", False):
             st.info("Extraction running in background â€” progress saved. Return to Generate to view live table.")
         if st.session_state.session_leads:
-            st.markdown("### ðŸ“‹ My Leads Table")
+            st.markdown("### 📋 My Leads Table")
 
             df = pd.DataFrame(st.session_state.session_leads)
             status_filter = st.multiselect(
@@ -2221,9 +2220,9 @@ def show_user_dashboard():
             user_cols = ["name", "address", "phone", "email", "rating", "reviews", "category", "validation_status"]
             st.dataframe(df[[c for c in user_cols if c in df.columns]], hide_index=True)
             st.markdown("---")
-            render_export_ui(df, "Export My Leads")
+            render_export_ui(df, "📋 My Leads")
         else:
-            st.info("ðŸ’¡ Generate leads first to see your leads table.")
+            st.info("🚀 Generate leads first to see your leads table.")
 
     with tab3:
         if st.session_state.get("is_extracting", False):
@@ -2367,15 +2366,15 @@ def show_admin_dashboard():
         st.markdown(f"""
         <div class="kpi-card">
             <div class="kpi-top">
-                <div class="kpi-icon icon-purple">ðŸ‘¥</div>
+                <div class="kpi-icon icon-purple">👥</div>
                 <div class="kpi-title">Total Leads</div>
             </div>
             <div class="kpi-value">{total_leads}</div>
             <div class="kpi-bottom">
-                <div class="kpi-badge">â†‘ 8%</div>
+                <div class="kpi-badge">↑ 8%</div>
                 <div class="kpi-subtitle">All time collected</div>
             </div>
-            <div class="kpi-arrow">â†’</div>
+            <div class="kpi-arrow">→</div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -2383,15 +2382,15 @@ def show_admin_dashboard():
         st.markdown(f"""
         <div class="kpi-card">
             <div class="kpi-top">
-                <div class="kpi-icon icon-blue">ðŸ‘¤</div>
+                <div class="kpi-icon icon-blue">👤</div>
                 <div class="kpi-title">Active Users</div>
             </div>
             <div class="kpi-value">{len(all_users)}</div>
             <div class="kpi-bottom">
-                <div class="kpi-badge">â†‘ 12%</div>
+                <div class="kpi-badge">↑ 12%</div>
                 <div class="kpi-subtitle">Currently active</div>
             </div>
-            <div class="kpi-arrow">â†’</div>
+            <div class="kpi-arrow">→</div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -2399,15 +2398,15 @@ def show_admin_dashboard():
         st.markdown(f"""
         <div class="kpi-card">
             <div class="kpi-top">
-                <div class="kpi-icon icon-green">ðŸ›¡ï¸</div>
+                <div class="kpi-icon icon-green">🛡️</div>
                 <div class="kpi-title">Global Quality</div>
             </div>
             <div class="kpi-value">{quality_pct}%</div>
             <div class="kpi-bottom">
-                <div class="kpi-badge">â†‘ 5%</div>
+                <div class="kpi-badge">↑ 5%</div>
                 <div class="kpi-subtitle">Average quality score</div>
             </div>
-            <div class="kpi-arrow">â†’</div>
+            <div class="kpi-arrow">→</div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -2415,15 +2414,15 @@ def show_admin_dashboard():
         st.markdown(f"""
         <div class="kpi-card">
             <div class="kpi-top">
-                <div class="kpi-icon icon-orange">ðŸ’°</div>
+                <div class="kpi-icon icon-orange">💰</div>
                 <div class="kpi-title">MRR</div>
             </div>
             <div class="kpi-value">${mrr}</div>
             <div class="kpi-bottom">
-                <div class="kpi-badge">â†‘ 18%</div>
+                <div class="kpi-badge">↑ 18%</div>
                 <div class="kpi-subtitle">Monthly recurring</div>
             </div>
-            <div class="kpi-arrow">â†’</div>
+            <div class="kpi-arrow">→</div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -2431,15 +2430,15 @@ def show_admin_dashboard():
         st.markdown(f"""
         <div class="kpi-card">
             <div class="kpi-top">
-                <div class="kpi-icon icon-pink">ðŸ‘¥</div>
+                <div class="kpi-icon icon-pink">👥</div>
                 <div class="kpi-title">Paid Users</div>
             </div>
             <div class="kpi-value">{paid_users}</div>
             <div class="kpi-bottom">
-                <div class="kpi-badge">â†‘ 22%</div>
+                <div class="kpi-badge">↑ 22%</div>
                 <div class="kpi-subtitle">Total paid users</div>
             </div>
-            <div class="kpi-arrow">â†’</div>
+            <div class="kpi-arrow">→</div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -2507,14 +2506,14 @@ def show_admin_dashboard():
     """, unsafe_allow_html=True)
 
     tabs = [
-        "ðŸš€ Generate",
-        "ðŸ—„ï¸ Master Database",
-        "ðŸ‘¥ User Management",
-        "ðŸ“œ Activity Logs",
-        "ðŸ“Š Analytics",
-        "ðŸ’° Revenue",
-        "â° Scheduler",
-        "ðŸ› ï¸ System Settings"
+        "🚀 Generate",
+        "🗄️ Master Database",
+        "👥 User Management",
+        "📜 Activity Logs",
+        "📊 Analytics",
+        "💰 Revenue",
+        "⏰ Scheduler",
+        "🛠️ System Settings"
     ]
     
     selected_tab = st.radio("Navigation", tabs, horizontal=True, label_visibility="collapsed", key="admin_nav")
@@ -2528,7 +2527,7 @@ def show_admin_dashboard():
     if selected_tab == tabs[0]:
         generation_ui("(Admin)")
         if st.session_state.get("session_leads", []):
-            st.markdown("### âš¡ Session Preview")
+            st.markdown("### ⚡ Session Preview")
 
             df_preview = pd.DataFrame(st.session_state.session_leads)
             if "review_count" in df_preview.columns:
@@ -2539,7 +2538,7 @@ def show_admin_dashboard():
     # TAB 2 â€” Master Database
     # ==========================================
     if selected_tab == tabs[1]:
-        st.markdown("### ðŸ—„ï¸ Master Lead Repository")
+        st.markdown("### 🗄️ Master Lead Repository")
         df_master = get_cached_db()
         if df_master.empty:
             st.info("No leads in database yet. Generate leads first.")
@@ -2583,21 +2582,21 @@ def show_admin_dashboard():
             col4, col5 = st.columns(2)
             with col4:
                 csv = filtered.to_csv(index=False).encode("utf-8")
-                st.download_button("ðŸ“¥ Export CSV (Quick Download)", csv, "master_leads.csv", "text/csv", use_container_width=True)
+                st.download_button("📥 Export CSV (Quick Download)", csv, "master_leads.csv", "text/csv", use_container_width=True)
             with col5:
                 json_data = filtered.to_json(orient="records").encode("utf-8")
-                st.download_button("ðŸ“¥ Export JSON (Quick Download)", json_data, "master_leads.json", "application/json", use_container_width=True)
+                st.download_button("📥 Export JSON (Quick Download)", json_data, "master_leads.json", "application/json", use_container_width=True)
 
             st.markdown("---")
-            with st.expander("ðŸ“¥ Advanced Export Tools (Excel, PDF, Google Sheets)", expanded=True):
+            with st.expander("🛠️ Advanced Export Tools (Excel, PDF, Google Sheets)", expanded=True):
                 from export_module import render_export_ui
-                render_export_ui(filtered, "Export Master Database")
+                render_export_ui(filtered, "🗄️ Master Database")
 
     # ==========================================
     # TAB 3 â€” User Management (CRUD)
     # ==========================================
     if selected_tab == tabs[2]:
-        st.markdown("### ðŸ‘¥ User Management")
+        st.markdown("👥 User Management")
         from auth import register_user, delete_user, update_user_plan, update_password
 
         # Use cached list (except when mutating)
@@ -2614,7 +2613,7 @@ def show_admin_dashboard():
         st.markdown("---")
 
         # CRUD operations
-        st.markdown("#### ðŸ› ï¸ Account Actions")
+        st.markdown("#### 🛠️ Account Actions")
 
         with st.expander("âž• Create New User", expanded=False):
             u_name = st.text_input("Username", key="crud_u_name")
@@ -2638,7 +2637,7 @@ def show_admin_dashboard():
                 else:
                     st.error("User not found")
 
-        with st.expander("ðŸ”‘ Reset Password", expanded=False):
+        with st.expander("🔑 Reset Password", expanded=False):
             reset_user = st.text_input("Username", key="crud_reset_name")
             reset_pass = st.text_input("New Password", type="password", key="crud_reset_pass")
             if st.button("Reset Password", key="crud_reset"):
@@ -2647,7 +2646,7 @@ def show_admin_dashboard():
                 else:
                     st.error("User not found")
 
-        with st.expander("ðŸš« Suspend / Delete User", expanded=False):
+        with st.expander("🚫 Suspend / Delete User", expanded=False):
             del_user = st.text_input("Username to delete", key="crud_del_name")
             st.warning("âš ï¸ This action is permanent")
             if st.button("Delete User", key="crud_delete", type="primary"):
@@ -2661,7 +2660,7 @@ def show_admin_dashboard():
     # TAB 4 â€” Activity Logs
     # ==========================================
     if selected_tab == tabs[3]:
-        st.markdown("### ðŸ“œ System Activity Logs")
+        st.markdown("📜 Activity Logs")
         try:
             logs_df = database.get_logs()
             if not logs_df.empty:
@@ -2675,7 +2674,7 @@ def show_admin_dashboard():
     # TAB 5 â€” Analytics
     # ==========================================
     if selected_tab == tabs[4]:
-        st.markdown("### ðŸ“Š Platform Analytics")
+        st.markdown("📊 Analytics")
         if not df_master.empty:
             import plotly.express as px
 
@@ -2742,7 +2741,7 @@ def show_admin_dashboard():
     # TAB 6 â€” Revenue
     # ==========================================
     if selected_tab == tabs[5]:
-        st.markdown("### ðŸ’° Revenue Dashboard")
+        st.markdown("### 💰 Revenue Dashboard")
         from auth import get_all_users
         all_users_rev = get_all_users()
         plan_revenue = {"Free": 0, "Starter": 29, "Pro": 79, "Enterprise": 500}
@@ -2762,7 +2761,7 @@ def show_admin_dashboard():
         st.markdown("---")
         st.markdown("**Users by Plan:**")
         plan_df = pd.DataFrame([
-            {"Plan": k, "Users": v, "Monthly Revenue": f"${v * plan_revenue.get(k,0)}"}
+            {"💰 Revenue": f"${v * plan_revenue.get(k,0)}"}
             for k, v in plan_counts.items()
         ])
         st.dataframe(plan_df, hide_index=True, use_container_width=True)
@@ -2777,12 +2776,12 @@ def show_admin_dashboard():
     # TAB 8 â€” System Settings
     # ==========================================
     if selected_tab == tabs[7]:
-        st.markdown("### âš™ï¸ System Settings")
+        st.markdown("🛠️ System Settings")
 
         st.markdown("#### â˜ï¸ Google Sheets Sync")
         col1, col2 = st.columns(2)
         with col1:
-            if st.button("ðŸ”„ Force Cloud Sync", use_container_width=True, type="primary"):
+            if st.button("☁️ Force Cloud Sync", use_container_width=True, type="primary"):
                 with st.spinner("Syncing..."):
                     df_local = get_cached_db()
                     if not df_local.empty:
@@ -2795,7 +2794,7 @@ def show_admin_dashboard():
             st.info(f"Google Sheets: {gs_status}")
 
         st.markdown("---")
-        st.markdown("#### ðŸ”‘ API Keys Status")
+        st.markdown("#### 🔑 API Keys Status")
         api_keys = {
             "SERPER_API_KEY": os.environ.get("SERPER_API_KEY", ""),
             "GEMINI_API_KEY": os.environ.get("GEMINI_API_KEY", ""),
@@ -2813,7 +2812,7 @@ def show_admin_dashboard():
                     st.error(f"âŒ {key}: Not configured")
 
         st.markdown("---")
-        st.markdown("#### ðŸ’¾ Database Info")
+        st.markdown("#### 🗄️ Database Info")
         db_col1, db_col2, db_col3 = st.columns(3)
         db_type = "PostgreSQL (Render)" if os.environ.get("DATABASE_URL") else "SQLite (Local)"
         with db_col1:
@@ -2824,16 +2823,16 @@ def show_admin_dashboard():
             st.metric("Valid Leads", valid_leads)
 
         st.markdown("---")
-        st.markdown("#### ðŸ—‘ï¸ Data Management")
+        st.markdown("#### 🛠️ Data Management")
         dm_col1, dm_col2, dm_col3 = st.columns(3)
         with dm_col1:
             csv_master = df_master.to_csv(index=False).encode("utf-8")
-            st.download_button("ðŸ“¥ Master CSV", csv_master, "master.csv", "text/csv", use_container_width=True)
+            st.download_button("📥 Master CSV", csv_master, "master.csv", "text/csv", use_container_width=True)
         with dm_col2:
             json_master = df_master.to_json(orient="records").encode("utf-8")
-            st.download_button("ðŸ“¥ Master JSON", json_master, "master.json", "application/json", use_container_width=True)
+            st.download_button("📥 Master JSON", json_master, "master.json", "application/json", use_container_width=True)
         with dm_col3:
-            if st.button("ðŸš¨ Wipe System", use_container_width=True, type="primary"):
+            if st.button("🗑️ Wipe System", use_container_width=True, type="primary"):
                 database.clear_all_leads()
                 google_sheets.clear_sheet_data()
                 st.success("âœ… System wiped")
@@ -2841,7 +2840,7 @@ def show_admin_dashboard():
                 st.rerun()
 
         st.markdown("---")
-        st.markdown("#### â„¹ï¸ About LeadPulse Pro")
+        st.markdown("#### 🚀 About LeadPulse Pro")
         st.markdown("""
         | Item | Detail |
         |---|---|
@@ -2857,9 +2856,7 @@ def show_admin_dashboard():
 with st.sidebar:
     st.markdown("""
     <div style="color:white; font-size:20px; 
-                font-weight:700; margin-bottom:20px;">
-        ðŸš€ LeadPulse  Pro
-    </div>
+                font-weight:700; margin-bottom:20px;"> 🚀 LeadPulse Pro </div>
     """, unsafe_allow_html=True)
     
     # Show plan badge in sidebar
@@ -2890,7 +2887,7 @@ with st.sidebar:
     except:
         pass
     
-    if st.button("ðŸ   Admin Workspace", 
+    if st.button("🏠 Admin Workspace", 
                  key="nav_admin_workspace"):
         st.session_state.admin_page = "Generate"
         st.rerun()
@@ -2904,7 +2901,7 @@ with st.sidebar:
     </div>
     <div style="color:#4ade80; font-size:13px; 
                 font-weight:600; margin-bottom:24px;">
-        â— IDLE
+        ● IDLE
     </div>
     """, unsafe_allow_html=True)
     
