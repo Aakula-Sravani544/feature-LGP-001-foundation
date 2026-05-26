@@ -2761,7 +2761,7 @@ def show_admin_dashboard():
         st.markdown("---")
         st.markdown("**Users by Plan:**")
         plan_df = pd.DataFrame([
-            {"💰 Revenue": f"${v * plan_revenue.get(k,0)}"}
+            {"Plan": k, "Users": v, "Revenue": f"${v * plan_revenue.get(k,0)}"}
             for k, v in plan_counts.items()
         ])
         st.dataframe(plan_df, hide_index=True, use_container_width=True)
@@ -2773,12 +2773,12 @@ def show_admin_dashboard():
         render_scheduler_ui(st.session_state.get("plan", "Free"))
 
     # ==========================================
-    # TAB 8 â€” System Settings
+    # TAB 8 — System Settings
     # ==========================================
     if selected_tab == tabs[7]:
         st.markdown("🛠️ System Settings")
 
-        st.markdown("#### â˜ï¸ Google Sheets Sync")
+        st.markdown("#### ☁️ Google Sheets Sync")
         col1, col2 = st.columns(2)
         with col1:
             if st.button("☁️ Force Cloud Sync", use_container_width=True, type="primary"):
@@ -2786,11 +2786,11 @@ def show_admin_dashboard():
                     df_local = get_cached_db()
                     if not df_local.empty:
                         success, msg = google_sheets.save_to_google_sheets(df_local.to_dict("records"))
-                        st.success(f"âœ… {msg}") if success else st.error(f"âŒ {msg}")
+                        st.success(f"✅ {msg}") if success else st.error(f"❌ {msg}")
                     else:
                         st.warning("No leads to sync")
         with col2:
-            gs_status = "âœ… Connected" if google_sheets.check_connection() else "âŒ Offline"
+            gs_status = "✅ Connected" if google_sheets.check_connection() else "❌ Offline"
             st.info(f"Google Sheets: {gs_status}")
 
         st.markdown("---")
@@ -2807,9 +2807,9 @@ def show_admin_dashboard():
             with col3 if i % 2 == 0 else col4:
                 if value:
                     masked = value[:8] + "..." + value[-4:]
-                    st.success(f"âœ… {key}: {masked}")
+                    st.success(f"✅ {key}: {masked}")
                 else:
-                    st.error(f"âŒ {key}: Not configured")
+                    st.error(f"❌ {key}: Not configured")
 
         st.markdown("---")
         st.markdown("#### 🗄️ Database Info")
@@ -2835,7 +2835,7 @@ def show_admin_dashboard():
             if st.button("🗑️ Wipe System", use_container_width=True, type="primary"):
                 database.clear_all_leads()
                 google_sheets.clear_sheet_data()
-                st.success("âœ… System wiped")
+                st.success("✅ System wiped")
                 time.sleep(1)
                 st.rerun()
 
