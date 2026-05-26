@@ -119,7 +119,7 @@ from scheduler import render_scheduler_ui, start_scheduler
 # Initialize session
 init_session()
 
-# STEP 1 â€” ADD SESSION LOCK SYSTEM
+# STEP 1 - ADD SESSION LOCK SYSTEM
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 if "session_initialized" not in st.session_state:
@@ -150,7 +150,7 @@ if "target_leads" not in st.session_state:
 if "current_query" not in st.session_state:
     st.session_state.current_query = ""
 
-# STEP 10 â€” KEEP SESSION ALIVE
+# STEP 10 - KEEP SESSION ALIVE
 if st.session_state.get("authenticated", False):
     st.session_state.login_lock = True
 
@@ -1290,7 +1290,7 @@ def get_sub_regions_ai(keyword: str, region: str, city: str) -> list:
             genai.configure(api_key=gemini_key)
             prompt = f"""You are a local area expert for {city}, India.
 For the area "{region}" in {city}, list all specific sub-areas, phases, road numbers, sectors, and localities where {keyword} businesses might be found.
-Be very specific â€” include road numbers, phase numbers, colony names, sector numbers.
+Be very specific - include road numbers, phase numbers, colony names, sector numbers.
 Return ONLY a JSON array of strings. No other text. No markdown."""
 
             models_to_try = ["gemini-2.0-flash", "gemini-1.5-flash-latest", "gemini-pro"]
@@ -1405,7 +1405,7 @@ def generation_ui(label_suffix=""):
     st.markdown(f"### 🔍 Start New Extraction {label_suffix}")
 
     with st.container():
-        # Row 1 â€” Category and Business Type
+        # Row 1 - Category and Business Type
         c1, c2, c3 = st.columns([2, 2, 1])
         with c1:
             category = st.selectbox(
@@ -1449,7 +1449,7 @@ def generation_ui(label_suffix=""):
                 st.warning(f"🔒 LinkedIn requires Starter plan. You are on {current_plan}.")
                 source = "Google Maps"
 
-        # Row 2 â€” City and Region
+        # Row 2 - City and Region
         c3_col, c4_col = st.columns(2)
         with c3_col:
             city = st.text_input(
@@ -1464,10 +1464,10 @@ def generation_ui(label_suffix=""):
                 key=f"region_{label_suffix}"
             )
 
-        # Row 3 â€” Max leads, AI toggle, Source
+        # Row 3 - Max leads, AI toggle, Source
         c5, c6, c7 = st.columns([2, 1, 1])
         with c5:
-            # Slider limits per plan â€” exact values from Day 12 subscription
+            # Slider limits per plan - exact values from Day 12 subscription
             plan_slider_limits = {
                 "Free": 50,
                 "Starter": 200,
@@ -1525,7 +1525,7 @@ def generation_ui(label_suffix=""):
             # Show Resume if extraction stopped mid-way
             if not st.session_state.get("is_extracting", False) and st.session_state.get("remaining_leads", 0) > 0 and len(st.session_state.get("session_leads", [])) > 0:
                 btn_resume = st.button(
-                    f"â–¶ï¸ Resume Extraction ({st.session_state.get('collected_leads', 0)}/{st.session_state.get('target_leads', 0)})",
+                    f"[Resume] Resume Extraction ({st.session_state.get('collected_leads', 0)}/{st.session_state.get('target_leads', 0)})",
                     key=f"btn_resume_{label_suffix}",
                     use_container_width=True
                 )
@@ -1597,7 +1597,7 @@ def generation_ui(label_suffix=""):
                     m1.metric("Total Scraped", i+1)
                     m2.metric("Valid Leads", i+1)
                     m3.metric("Duplicates Skipped", 0)
-                    st.session_state.logs += f"[SYS] âœ… {profile.get('name','')[:40]}\n"
+                    st.session_state.logs += f"[SYS] ✅ {profile.get('name','')[:40]}\n"
 
                     with table_placeholder.container():
                         df_view = pd.DataFrame(st.session_state.session_leads)
@@ -1618,7 +1618,7 @@ def generation_ui(label_suffix=""):
                             st.session_state.session_leads
                         )
                         if success:
-                            st.success(f"âœ… {len(profiles)} LinkedIn profiles saved!")
+                            st.success(f"✅ {len(profiles)} LinkedIn profiles saved!")
                         else:
                             st.warning(f"Saved locally. Sheets: {msg}")
                     except Exception as e:
@@ -1687,7 +1687,7 @@ def generation_ui(label_suffix=""):
         table_placeholder = st.empty()
 
         with stop_placeholder.container():
-            if st.button("â¹ï¸ Stop Extraction", key=f"stop_{label_suffix}_{label_suffix}"):
+            if st.button("[Stop] Stop Extraction", key=f"stop_{label_suffix}_{label_suffix}"):
                 st.session_state.is_extracting = False
                 st.session_state.is_generating = False
                 st.session_state["stop_generation"] = True
@@ -1906,12 +1906,12 @@ def generation_ui(label_suffix=""):
             st.session_state.remaining_leads = 0
             if st.session_state.collected_leads >= st.session_state.target_leads:
                 st.session_state.logs += f"[SYS] Target reached: {st.session_state.collected_leads}/{st.session_state.target_leads}\n"
-                st.success("âœ… 100 leads generated successfully.")
+                st.success("✅ 100 leads generated successfully.")
             else:
                 st.session_state.logs += f"[SYS] All fallback areas exhausted. Final total: {st.session_state.collected_leads}/{st.session_state.target_leads}\n"
             
             log_placeholder.markdown(f'<div class="log-box">{st.session_state.logs[-3000:]}</div>', unsafe_allow_html=True)
-            status_text.text("âœ… Extraction Complete! Syncing to Cloud...")
+            status_text.text("✅ Extraction Complete! Syncing to Cloud...")
             success, msg = google_sheets.save_to_google_sheets(st.session_state.session_leads)
             import time as _time
             _time.sleep(2)
@@ -1922,7 +1922,7 @@ def generation_ui(label_suffix=""):
 # ==========================================
 def show_user_analytics(username: str) -> None:
     """
-    Day 15 â€” User Dashboard Analytics
+    Day 15 - User Dashboard Analytics
     5 charts using plotly:
     1. Leads this month counter
     2. Valid/Invalid donut chart
@@ -1944,7 +1944,7 @@ def show_user_analytics(username: str) -> None:
             return
 
         # ==========================================
-        # METRIC 1 â€” Leads This Month Counter
+        # METRIC 1 - Leads This Month Counter
         # ==========================================
         st.markdown("### 📊 Your Analytics Dashboard")
 
@@ -1987,7 +1987,7 @@ def show_user_analytics(username: str) -> None:
         st.markdown("---")
 
         # ==========================================
-        # CHART 1 â€” Valid/Invalid Donut Chart
+        # CHART 1 - Valid/Invalid Donut Chart
         # ==========================================
         col1, col2 = st.columns(2)
 
@@ -2020,7 +2020,7 @@ def show_user_analytics(username: str) -> None:
                 st.info("No validation data available")
 
         # ==========================================
-        # CHART 2 â€” Top Categories Bar Chart
+        # CHART 2 - Top Categories Bar Chart
         # ==========================================
         with col2:
             st.markdown("**Top 10 Business Categories**")
@@ -2052,7 +2052,7 @@ def show_user_analytics(username: str) -> None:
         st.markdown("---")
 
         # ==========================================
-        # CHART 3 â€” Leads by Sub-Region Chart
+        # CHART 3 - Leads by Sub-Region Chart
         # ==========================================
         col3, col4 = st.columns(2)
 
@@ -2087,7 +2087,7 @@ def show_user_analytics(username: str) -> None:
                 st.info("No sub-region data available")
 
         # ==========================================
-        # CHART 4 â€” Leads Over Time Line Chart
+        # CHART 4 - Leads Over Time Line Chart
         # ==========================================
         with col4:
             st.markdown("**Leads Collected Over Time**")
@@ -2125,7 +2125,7 @@ def show_user_analytics(username: str) -> None:
         st.markdown("---")
 
         # ==========================================
-        # CHART 5 â€” Session History Table
+        # CHART 5 - Session History Table
         # ==========================================
         st.markdown("**📜 Session History**")
         try:
@@ -2182,10 +2182,10 @@ def show_user_dashboard():
 
     # 4 horizontal tabs matching My Leads etc.
     tab1, tab2, tab3, tab4 = st.tabs([
-        "🚀 Generate",
-        "📋 My Leads",
-        "📊 Analytics",
-        "💳 Billing"
+        "[Generate] Generate",
+        "[Leads] My Leads",
+        "[Analytics] Analytics",
+        "[Billing] Billing"
     ])
 
     with tab1:
@@ -2200,7 +2200,7 @@ def show_user_dashboard():
 
     with tab2:
         if st.session_state.get("is_extracting", False):
-            st.info("Extraction running in background â€” progress saved. Return to Generate to view live table.")
+            st.info("Extraction running in background - progress saved. Return to Generate to view live table.")
         if st.session_state.session_leads:
             st.markdown("### 📋 My Leads Table")
 
@@ -2220,18 +2220,18 @@ def show_user_dashboard():
             user_cols = ["name", "address", "phone", "email", "rating", "reviews", "category", "validation_status"]
             st.dataframe(df[[c for c in user_cols if c in df.columns]], hide_index=True)
             st.markdown("---")
-            render_export_ui(df, "📋 My Leads")
+            render_export_ui(df, "[Leads] My Leads")
         else:
             st.info("🚀 Generate leads first to see your leads table.")
 
     with tab3:
         if st.session_state.get("is_extracting", False):
-            st.info("Extraction running in background â€” progress saved. Return to Generate to view live table.")
+            st.info("Extraction running in background - progress saved. Return to Generate to view live table.")
         show_user_analytics(st.session_state.get("username", ""))
 
     with tab4:
         if st.session_state.get("is_extracting", False):
-            st.info("Extraction running in background â€” progress saved. Return to Generate to view live table.")
+            st.info("Extraction running in background - progress saved. Return to Generate to view live table.")
         render_billing_tab()
 
 
@@ -2506,23 +2506,23 @@ def show_admin_dashboard():
     """, unsafe_allow_html=True)
 
     tabs = [
-        "🚀 Generate",
-        "🗄️ Master Database",
-        "👥 User Management",
-        "📜 Activity Logs",
-        "📊 Analytics",
-        "💰 Revenue",
-        "⏰ Scheduler",
-        "🛠️ System Settings"
+        "[Generate] Generate",
+        "[DB] Master Database",
+        "[Users] User Management",
+        "[Logs] Activity Logs",
+        "[Analytics] Analytics",
+        "[Revenue] Revenue",
+        "[Scheduler] Scheduler",
+        "[System] System Settings"
     ]
     
     selected_tab = st.radio("Navigation", tabs, horizontal=True, label_visibility="collapsed", key="admin_nav")
     
     if st.session_state.get("is_extracting", False) and selected_tab != tabs[0]:
-        st.info("Extraction running in background â€” progress saved. Return to Generate to view live table.")
+        st.info("Extraction running in background - progress saved. Return to Generate to view live table.")
 
     # ==========================================
-    # TAB 1 â€” Generate
+    # TAB 1 - Generate
     # ==========================================
     if selected_tab == tabs[0]:
         generation_ui("(Admin)")
@@ -2535,7 +2535,7 @@ def show_admin_dashboard():
             st.dataframe(df_preview, hide_index=True)
 
     # ==========================================
-    # TAB 2 â€” Master Database
+    # TAB 2 - Master Database
     # ==========================================
     if selected_tab == tabs[1]:
         st.markdown("### 🗄️ Master Lead Repository")
@@ -2590,13 +2590,13 @@ def show_admin_dashboard():
             st.markdown("---")
             with st.expander("🛠️ Advanced Export Tools (Excel, PDF, Google Sheets)", expanded=True):
                 from export_module import render_export_ui
-                render_export_ui(filtered, "🗄️ Master Database")
+                render_export_ui(filtered, "[DB] Master Database")
 
     # ==========================================
-    # TAB 3 â€” User Management (CRUD)
+    # TAB 3 - User Management (CRUD)
     # ==========================================
     if selected_tab == tabs[2]:
-        st.markdown("👥 User Management")
+        st.markdown("[Users] User Management")
         from auth import register_user, delete_user, update_user_plan, update_password
 
         # Use cached list (except when mutating)
@@ -2615,7 +2615,7 @@ def show_admin_dashboard():
         # CRUD operations
         st.markdown("#### 🛠️ Account Actions")
 
-        with st.expander("âž• Create New User", expanded=False):
+        with st.expander("[Add] Create New User", expanded=False):
             u_name = st.text_input("Username", key="crud_u_name")
             u_pass = st.text_input("Password", type="password", key="crud_u_pass")
             u_role = st.selectbox("Role", ["user", "admin"], key="crud_u_role")
@@ -2627,7 +2627,7 @@ def show_admin_dashboard():
                 if success:
                     st.rerun()
 
-        with st.expander("âœï¸ Edit User Plan", expanded=False):
+        with st.expander("[Edit] Edit User Plan", expanded=False):
             edit_username = st.text_input("Username to edit", key="crud_edit_name")
             new_plan = st.selectbox("New Plan", ["Free", "Starter", "Pro", "Enterprise"], key="crud_edit_plan")
             if st.button("Update Plan", key="crud_update"):
@@ -2637,7 +2637,7 @@ def show_admin_dashboard():
                 else:
                     st.error("User not found")
 
-        with st.expander("🔑 Reset Password", expanded=False):
+        with st.expander("[Reset] Reset Password", expanded=False):
             reset_user = st.text_input("Username", key="crud_reset_name")
             reset_pass = st.text_input("New Password", type="password", key="crud_reset_pass")
             if st.button("Reset Password", key="crud_reset"):
@@ -2646,9 +2646,9 @@ def show_admin_dashboard():
                 else:
                     st.error("User not found")
 
-        with st.expander("🚫 Suspend / Delete User", expanded=False):
+        with st.expander("[Delete] Suspend / Delete User", expanded=False):
             del_user = st.text_input("Username to delete", key="crud_del_name")
-            st.warning("âš ï¸ This action is permanent")
+            st.warning("⚠️ This action is permanent")
             if st.button("Delete User", key="crud_delete", type="primary"):
                 if delete_user(del_user):
                     st.success(f"User {del_user} deleted")
@@ -2657,10 +2657,10 @@ def show_admin_dashboard():
                     st.error("Cannot delete user or user not found")
 
     # ==========================================
-    # TAB 4 â€” Activity Logs
+    # TAB 4 - Activity Logs
     # ==========================================
     if selected_tab == tabs[3]:
-        st.markdown("📜 Activity Logs")
+        st.markdown("[Logs] Activity Logs")
         try:
             logs_df = database.get_logs()
             if not logs_df.empty:
@@ -2671,10 +2671,10 @@ def show_admin_dashboard():
             st.info(f"Logs unavailable: {e}")
 
     # ==========================================
-    # TAB 5 â€” Analytics
+    # TAB 5 - Analytics
     # ==========================================
     if selected_tab == tabs[4]:
-        st.markdown("📊 Analytics")
+        st.markdown("[Analytics] Analytics")
         if not df_master.empty:
             import plotly.express as px
 
@@ -2738,7 +2738,7 @@ def show_admin_dashboard():
             st.info("Generate leads to see analytics")
 
     # ==========================================
-    # TAB 6 â€” Revenue
+    # TAB 6 - Revenue
     # ==========================================
     if selected_tab == tabs[5]:
         st.markdown("### 💰 Revenue Dashboard")
@@ -2767,7 +2767,7 @@ def show_admin_dashboard():
         st.dataframe(plan_df, hide_index=True, use_container_width=True)
 
     # ==========================================
-    # TAB 7 â€” Scheduler
+    # TAB 7 - Scheduler
     # ==========================================
     if selected_tab == tabs[6]:
         render_scheduler_ui(st.session_state.get("plan", "Free"))
@@ -2776,7 +2776,7 @@ def show_admin_dashboard():
     # TAB 8 — System Settings
     # ==========================================
     if selected_tab == tabs[7]:
-        st.markdown("🛠️ System Settings")
+        st.markdown("[System] System Settings")
 
         st.markdown("#### ☁️ Google Sheets Sync")
         col1, col2 = st.columns(2)
@@ -2844,7 +2844,7 @@ def show_admin_dashboard():
         st.markdown("""
         | Item | Detail |
         |---|---|
-        | **Version** | v1.0 â€” Phase 2 Complete |
+        | **Version** | v1.0 - Phase 2 Complete |
         | **Project Code** | LGP-2025-001 |
         | **Build Days** | 16 of 21 complete |
         | **Stack** | Streamlit + Serper + Gemini + Stripe |
@@ -2887,7 +2887,7 @@ with st.sidebar:
     except:
         pass
     
-    if st.button("🏠 Admin Workspace", 
+    if st.button("[Admin] Admin Workspace", 
                  key="nav_admin_workspace"):
         st.session_state.admin_page = "Generate"
         st.rerun()
