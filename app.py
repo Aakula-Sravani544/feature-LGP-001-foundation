@@ -2200,19 +2200,103 @@ def show_user_dashboard():
     ''', unsafe_allow_html=True)
 
     # Metric cards at top
+    st.markdown('''
+    <style>
+    /* KPI Cards Styling for User Dashboard */
+    .kpi-card {
+        height: 170px;
+        min-height: 170px;
+        overflow: hidden;
+        position: relative;
+        padding: 20px 22px;
+        border-radius: 18px;
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        box-shadow: 0 8px 24px rgba(15,23,42,0.08);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+    }
+    .kpi-top { display: flex; align-items: center; gap: 14px; }
+    .kpi-icon { width: 46px; height: 46px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 20px; }
+    .icon-purple { background: #f3e8ff; color: #9333ea; }
+    .icon-blue { background: #dbeafe; color: #2563eb; }
+    .icon-green { background: #dcfce7; color: #16a34a; }
+    .icon-orange { background: #ffedd5; color: #ea580c; }
+    .kpi-title { font-size: 14px; font-weight: 600; color: #6b7280; margin: 0; }
+    .kpi-value { font-size: 30px; font-weight: 800; color: #0f172a; margin: 12px 0 8px 0; line-height: 1; }
+    .kpi-bottom { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .kpi-subtitle { font-size: 12px; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .kpi-badge { white-space: nowrap; flex-shrink: 0; font-size: 12px; font-weight: 600; color: #10b981; background: #ecfdf5; padding: 4px 8px; border-radius: 6px; display: flex; align-items: center; gap: 4px; }
+    .kpi-arrow { position: absolute; top: 24px; right: 22px; color: #cbd5e1; font-size: 18px; }
+    </style>
+    ''', unsafe_allow_html=True)
+
     total_db, today_db, quality_pct = get_stats()
     c1, c2, c3, c4 = st.columns(4)
     with c1:
-        st.markdown(f'<div class="metric-card"><div class="metric-label">Session Leads</div><div class="metric-value">{len(st.session_state.session_leads)}</div></div>', unsafe_allow_html=True)
+        st.markdown(f'''
+        <div class="kpi-card">
+            <div class="kpi-top">
+                <div class="kpi-icon icon-purple">📊</div>
+                <div class="kpi-title">Session Leads</div>
+            </div>
+            <div class="kpi-value">{len(st.session_state.session_leads)}</div>
+            <div class="kpi-bottom">
+                <div class="kpi-badge">Active</div>
+                <div class="kpi-subtitle">Current session</div>
+            </div>
+            <div class="kpi-arrow"> </div>
+        </div>
+        ''', unsafe_allow_html=True)
     with c2:
-        st.markdown(f'<div class="metric-card"><div class="metric-label">Data Accuracy</div><div class="metric-value">{quality_pct}%</div></div>', unsafe_allow_html=True)
+        st.markdown(f'''
+        <div class="kpi-card">
+            <div class="kpi-top">
+                <div class="kpi-icon icon-green">🛡️</div>
+                <div class="kpi-title">Data Accuracy</div>
+            </div>
+            <div class="kpi-value">{quality_pct}%</div>
+            <div class="kpi-bottom">
+                <div class="kpi-badge">Valid</div>
+                <div class="kpi-subtitle">Average score</div>
+            </div>
+            <div class="kpi-arrow"> </div>
+        </div>
+        ''', unsafe_allow_html=True)
     with c3:
         status_text = "ACTIVE" if st.session_state.get("is_extracting", False) else "IDLE"
-        st.markdown(f'<div class="metric-card"><div class="metric-label">Engine Status</div><div class="metric-value">{status_text}</div></div>', unsafe_allow_html=True)
+        st.markdown(f'''
+        <div class="kpi-card">
+            <div class="kpi-top">
+                <div class="kpi-icon icon-orange">⚙️</div>
+                <div class="kpi-title">Engine Status</div>
+            </div>
+            <div class="kpi-value">{status_text}</div>
+            <div class="kpi-bottom">
+                <div class="kpi-badge" style="color:#f59e0b; background:#fffbeb;">System</div>
+                <div class="kpi-subtitle">Extraction state</div>
+            </div>
+            <div class="kpi-arrow"> </div>
+        </div>
+        ''', unsafe_allow_html=True)
     with c4:
         gs_connected = google_sheets.check_connection()
         gs_text = "Connected" if gs_connected else "Offline"
-        st.markdown(f'<div class="metric-card"><div class="metric-label">Cloud Sync</div><div class="metric-value">{gs_text}</div></div>', unsafe_allow_html=True)
+        st.markdown(f'''
+        <div class="kpi-card">
+            <div class="kpi-top">
+                <div class="kpi-icon icon-blue">☁️</div>
+                <div class="kpi-title">Cloud Sync</div>
+            </div>
+            <div class="kpi-value">{gs_text}</div>
+            <div class="kpi-bottom">
+                <div class="kpi-badge" style="color:#3b82f6; background:#eff6ff;">Sheets</div>
+                <div class="kpi-subtitle">Database status</div>
+            </div>
+            <div class="kpi-arrow"> </div>
+        </div>
+        ''', unsafe_allow_html=True)
 
     st.markdown("<br><hr><br>", unsafe_allow_html=True)
 
