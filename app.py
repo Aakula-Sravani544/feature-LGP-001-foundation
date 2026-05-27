@@ -215,12 +215,13 @@ div[data-testid="stHorizontalBlock"]:has(.login-card-marker) {
     display: flex !important;
     flex-direction: row !important;
     height: 100vh !important;
-    padding: 28px 64px !important;
+    padding: 10px 64px !important;
     box-sizing: border-box !important;
     overflow: hidden !important;
     align-items: center !important;
-    justify-content: space-between !important;
-    gap: 0px !important;
+    justify-content: center !important;
+    gap: 70px !important;
+    transform: translateY(-38px) !important;
 }
 
 /* Left Column Styling */
@@ -229,6 +230,8 @@ div[data-testid="stHorizontalBlock"]:has(.login-card-marker) > div[data-testid="
     flex: 0 0 46% !important;
     max-width: 520px !important;
     padding-left: 32px !important;
+    padding-top: 0px !important;
+    margin-top: -20px !important;
     display: flex !important;
     flex-direction: column !important;
     justify-content: center !important;
@@ -247,7 +250,7 @@ div:has(> div > div > div > div > .login-card-marker) {
     width: 470px !important;
     min-width: 470px !important;
     padding: 30px 34px !important;
-    margin-top: -8px !important;
+    margin-top: -30px !important;
     box-shadow: 0 25px 60px rgba(0,0,0,0.1), 0 8px 20px rgba(91,33,182,0.05) !important;
     display: flex !important;
     flex-direction: column !important;
@@ -276,13 +279,13 @@ div:has(> div > div > div > div > .login-card-marker) {
     font-size: 14px;
     color: rgba(255,255,255,0.82);
     line-height: 1.45;
-    margin-bottom: 22px;
+    margin-bottom: 18px;
     font-weight: 400;
 }
 .feat-row {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 10px;
     margin-bottom: 12px !important;
 }
 .feat-icon-box {
@@ -310,7 +313,7 @@ div:has(> div > div > div > div > .login-card-marker) {
 .trust-bar-bottom {
     display: flex;
     gap: 32px;
-    padding-top: 12px !important; margin-top: 14px !important;
+    padding-top: 12px !important; margin-top: 10px !important;
     border-top: 1px solid rgba(255,255,255,0.1);
     color: rgba(255,255,255,0.72);
     font-size: 12px;
