@@ -184,21 +184,20 @@ def render_login_page():
 [data-testid="stSidebar"]{display:none !important;}
 
 ::-webkit-scrollbar { display: none !important; }
-html, body {
-    -ms-overflow-style: none !important;
-    scrollbar-width: none !important;
-    overflow: hidden !important;
+html, body, .stApp {
     height: 100vh !important;
+    max-height: 100vh !important;
+    overflow: hidden !important;
     margin: 0 !important;
     padding: 0 !important;
 }
-
-.main .block-container {
-    padding: 0 !important;
+[data-testid="stAppViewContainer"],
+[data-testid="stMainBlockContainer"],
+.main,
+.block-container {
+    height: 100vh !important;
+    max-height: 100vh !important;
     overflow: hidden !important;
-    max-width: 100% !important;
-}
-[data-testid="stAppViewContainer"] > section > div > div > div {
     padding: 0 !important;
 }
 
@@ -211,38 +210,51 @@ html, body {
                 linear-gradient(135deg, #0a0520 0%, #1a0a4a 50%, #0f0635 100%) !important;
     font-family: 'Inter', sans-serif !important;
 }
-
 /* Vertically center the columns */
 [data-testid="stHorizontalBlock"] {
-    align-items: center !important;
     height: 100vh !important;
+    max-height: 100vh !important;
+    align-items: center !important;
+    overflow: hidden !important;
     margin: 0 !important;
     padding: 0 !important;
 }
 
-/* Left Column Styling */
+div[data-testid="column"]:nth-of-type(1),
+div[data-testid="column"]:nth-of-type(2) {
+    height: 100vh !important;
+    overflow: hidden !important;
+}
 div[data-testid="column"]:nth-of-type(1) {
     padding: 0 4vw 0 6vw !important;
+}
+
+div[data-testid="column"]:nth-of-type(2) {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
 }
 
 /* Right Column (Card) Styling */
 div:has(> div > div > div > div > .login-card-marker) {
     background: #ffffff !important;
     border-radius: 28px !important;
-    padding: 48px 40px !important;
+    max-height: 82vh !important;
+    width: 460px !important;
+    padding: 34px 40px !important;
+    overflow: hidden !important;
     box-shadow: 0 25px 60px rgba(0,0,0,0.1), 0 8px 20px rgba(91,33,182,0.05) !important;
-    max-width: 460px !important;
     margin: 0 auto !important;
 }
 .login-card-marker { display: none; }
 
 /* Left Panel HTML styling */
 .brand-title {
-    font-size: 64px;
+    font-size: 54px !important;
+    line-height: 1.08 !important;
+    margin-bottom: 18px !important;
     font-weight: 800;
     color: #ffffff;
-    line-height: 1.05;
-    margin-bottom: 24px;
     letter-spacing: -1px;
 }
 .brand-pro {
@@ -254,14 +266,14 @@ div:has(> div > div > div > div > .login-card-marker) {
     font-size: 18px;
     color: rgba(255,255,255,0.82);
     line-height: 1.6;
-    margin-bottom: 48px;
+    margin-bottom: 16px;
     font-weight: 400;
 }
 .feat-row {
     display: flex;
     align-items: center;
     gap: 16px;
-    margin-bottom: 28px;
+    margin-bottom: 16px !important;
 }
 .feat-icon-box {
     width: 48px; height: 48px;
@@ -288,7 +300,7 @@ div:has(> div > div > div > div > .login-card-marker) {
 .trust-bar-bottom {
     display: flex;
     gap: 32px;
-    padding-top: 32px;
+    padding-top: 18px !important; margin-top: 10px !important;
     border-top: 1px solid rgba(255,255,255,0.1);
     color: rgba(255,255,255,0.72);
     font-size: 14px;
@@ -368,7 +380,7 @@ div[role="radiogroup"] {
     border-radius: 14px;
     padding: 6px;
     display: flex;
-    margin-bottom: 24px;
+    margin-bottom: 16px;
 }
 div[role="radiogroup"] label {
     flex: 1;
@@ -392,7 +404,7 @@ div[role="radiogroup"] label[data-checked="true"] {
 
     with left:
         st.markdown('''
-<div style="display: flex; align-items: center; gap: 12px; margin-bottom: 48px;">
+<div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
     <div style="width: 42px; height: 42px; background: #6d28d9; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 22px;">📊</div>
     <div style="font-size: 22px; font-weight: 800; color: #ffffff;">LeadPulse <span style="color: #c084fc;">Pro</span></div>
 </div>
@@ -437,7 +449,7 @@ div[role="radiogroup"] label[data-checked="true"] {
         st.markdown('<div class="login-card-marker"></div>', unsafe_allow_html=True)
         
         st.markdown('<div style="text-align:center; font-size:38px; font-weight:800; color:#0f172a; margin-bottom:6px; letter-spacing:-0.5px;">Welcome Back</div>', unsafe_allow_html=True)
-        st.markdown('<div style="text-align:center; font-size:15px; color:#6b7280; margin-bottom:32px; font-weight:400;">Sign in to access your account</div>', unsafe_allow_html=True)
+        st.markdown('<div style="text-align:center; font-size:15px; color:#6b7280; margin-bottom:20px; font-weight:400;">Sign in to access your account</div>', unsafe_allow_html=True)
 
         if "show_forgot_password" not in st.session_state:
             st.session_state["show_forgot_password"] = False
@@ -463,7 +475,7 @@ div[role="radiogroup"] label[data-checked="true"] {
                 else:
                     st.error("Passwords must match and be at least 4 characters.")
             
-            st.markdown('<br>', unsafe_allow_html=True)
+            # st.markdown('<br>', unsafe_allow_html=True)
             _, c_back, _ = st.columns([1, 1, 1])
             with c_back:
                 if st.button("Back to Login", key="f_back_btn", type="tertiary", use_container_width=True):
@@ -487,7 +499,7 @@ div[role="radiogroup"] label[data-checked="true"] {
                 else:
                     st.error("Username or email may already exist.")
             
-            st.markdown('<br>', unsafe_allow_html=True)
+            # st.markdown('<br>', unsafe_allow_html=True)
             _, c_back_r, _ = st.columns([1, 1, 1])
             with c_back_r:
                 if st.button("Back to Login", key="r_back_btn", type="tertiary", use_container_width=True):
@@ -2182,10 +2194,10 @@ def show_user_dashboard():
 
     # 4 horizontal tabs matching My Leads etc.
     tab1, tab2, tab3, tab4 = st.tabs([
-        "[Generate] Generate",
-        "[Leads] My Leads",
-        "[Analytics] Analytics",
-        "[Billing] Billing"
+        "🚀 Generate",
+        "📋 My Leads",
+        "📊 Analytics",
+        "💳 Billing"
     ])
 
     with tab1:
@@ -2220,7 +2232,7 @@ def show_user_dashboard():
             user_cols = ["name", "address", "phone", "email", "rating", "reviews", "category", "validation_status"]
             st.dataframe(df[[c for c in user_cols if c in df.columns]], hide_index=True)
             st.markdown("---")
-            render_export_ui(df, "[Leads] My Leads")
+            render_export_ui(df, "📋 My Leads")
         else:
             st.info("🚀 Generate leads first to see your leads table.")
 
@@ -2363,6 +2375,9 @@ def show_admin_dashboard():
     c1, c2, c3, c4, c5 = st.columns(5)
     
     with c1:
+        if st.button(" ", key="btn_kpi_1", use_container_width=True):
+            st.session_state["admin_nav"] = "🗄️ Master Database"
+            st.rerun()
         st.markdown(f"""
         <div class="kpi-card">
             <div class="kpi-top">
@@ -2379,6 +2394,9 @@ def show_admin_dashboard():
         """, unsafe_allow_html=True)
 
     with c2:
+        if st.button(" ", key="btn_kpi_2", use_container_width=True):
+            st.session_state["admin_nav"] = "👥 User Management"
+            st.rerun()
         st.markdown(f"""
         <div class="kpi-card">
             <div class="kpi-top">
@@ -2395,6 +2413,9 @@ def show_admin_dashboard():
         """, unsafe_allow_html=True)
 
     with c3:
+        if st.button(" ", key="btn_kpi_3", use_container_width=True):
+            st.session_state["admin_nav"] = "📊 Analytics"
+            st.rerun()
         st.markdown(f"""
         <div class="kpi-card">
             <div class="kpi-top">
@@ -2411,6 +2432,9 @@ def show_admin_dashboard():
         """, unsafe_allow_html=True)
 
     with c4:
+        if st.button(" ", key="btn_kpi_4", use_container_width=True):
+            st.session_state["admin_nav"] = "💰 Revenue"
+            st.rerun()
         st.markdown(f"""
         <div class="kpi-card">
             <div class="kpi-top">
@@ -2427,6 +2451,9 @@ def show_admin_dashboard():
         """, unsafe_allow_html=True)
 
     with c5:
+        if st.button(" ", key="btn_kpi_5", use_container_width=True):
+            st.session_state["admin_nav"] = "👥 User Management"
+            st.rerun()
         st.markdown(f"""
         <div class="kpi-card">
             <div class="kpi-top">
@@ -2506,14 +2533,14 @@ def show_admin_dashboard():
     """, unsafe_allow_html=True)
 
     tabs = [
-        "[Generate] Generate",
-        "[DB] Master Database",
-        "[Users] User Management",
-        "[Logs] Activity Logs",
-        "[Analytics] Analytics",
-        "[Revenue] Revenue",
-        "[Scheduler] Scheduler",
-        "[System] System Settings"
+        "🚀 Generate",
+        "🗄️ Master Database",
+        "👥 User Management",
+        "📜 Activity Logs",
+        "📊 Analytics",
+        "💰 Revenue",
+        "⏰ Scheduler",
+        "🛠️ System"
     ]
     
     selected_tab = st.radio("Navigation", tabs, horizontal=True, label_visibility="collapsed", key="admin_nav")
@@ -2590,13 +2617,13 @@ def show_admin_dashboard():
             st.markdown("---")
             with st.expander("🛠️ Advanced Export Tools (Excel, PDF, Google Sheets)", expanded=True):
                 from export_module import render_export_ui
-                render_export_ui(filtered, "[DB] Master Database")
+                render_export_ui(filtered, "🗄️ Master Database")
 
     # ==========================================
     # TAB 3 - User Management (CRUD)
     # ==========================================
     if selected_tab == tabs[2]:
-        st.markdown("[Users] User Management")
+        st.markdown("👥 User Management")
         from auth import register_user, delete_user, update_user_plan, update_password
 
         # Use cached list (except when mutating)
@@ -2660,7 +2687,7 @@ def show_admin_dashboard():
     # TAB 4 - Activity Logs
     # ==========================================
     if selected_tab == tabs[3]:
-        st.markdown("[Logs] Activity Logs")
+        st.markdown("📜 Activity Logs")
         try:
             logs_df = database.get_logs()
             if not logs_df.empty:
@@ -2674,7 +2701,7 @@ def show_admin_dashboard():
     # TAB 5 - Analytics
     # ==========================================
     if selected_tab == tabs[4]:
-        st.markdown("[Analytics] Analytics")
+        st.markdown("📊 Analytics")
         if not df_master.empty:
             import plotly.express as px
 
@@ -2776,7 +2803,7 @@ def show_admin_dashboard():
     # TAB 8 — System Settings
     # ==========================================
     if selected_tab == tabs[7]:
-        st.markdown("[System] System Settings")
+        st.markdown("🛠️ System")
 
         st.markdown("#### ☁️ Google Sheets Sync")
         col1, col2 = st.columns(2)
