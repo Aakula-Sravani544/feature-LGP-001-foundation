@@ -215,26 +215,27 @@ div[data-testid="stHorizontalBlock"]:has(.login-card-marker) {
     display: flex !important;
     flex-direction: row !important;
     height: 100vh !important;
-    padding: 48px 72px !important;
+    padding: 28px 64px !important;
     box-sizing: border-box !important;
     overflow: hidden !important;
     align-items: center !important;
+    justify-content: space-between !important;
     gap: 0px !important;
 }
 
 /* Left Column Styling */
 div[data-testid="stHorizontalBlock"]:has(.login-card-marker) > div[data-testid="column"]:nth-of-type(1) {
-    width: 52% !important;
-    flex: 0 0 52% !important;
-    max-width: 560px !important;
+    width: 46% !important;
+    flex: 0 0 46% !important;
+    max-width: 520px !important;
     padding-left: 32px !important;
     display: flex !important;
     flex-direction: column !important;
     justify-content: center !important;
 }
 div[data-testid="stHorizontalBlock"]:has(.login-card-marker) > div[data-testid="column"]:nth-of-type(2) {
-    width: 48% !important;
-    flex: 0 0 48% !important;
+    width: 54% !important;
+    flex: 0 0 54% !important;
     display: flex !important;
     justify-content: center !important;
 }
@@ -242,10 +243,11 @@ div[data-testid="stHorizontalBlock"]:has(.login-card-marker) > div[data-testid="
 /* Right Column (Card) Styling */
 div:has(> div > div > div > div > .login-card-marker) {
     background: #ffffff !important;
-    border-radius: 24px !important;
-    width: 440px !important;
-    max-width: 440px !important;
-    padding: 30px 36px !important;
+    border-radius: 28px !important;
+    width: 470px !important;
+    min-width: 470px !important;
+    padding: 30px 34px !important;
+    margin-top: -8px !important;
     box-shadow: 0 25px 60px rgba(0,0,0,0.1), 0 8px 20px rgba(91,33,182,0.05) !important;
     display: flex !important;
     flex-direction: column !important;
@@ -259,7 +261,7 @@ div:has(> div > div > div > div > .login-card-marker) {
 /* Left Panel HTML styling */
 .brand-title {
     font-size: 42px !important;
-    line-height: 1.12 !important;
+    line-height: 1.06 !important;
     margin-bottom: 18px !important;
     font-weight: 800;
     color: #ffffff;
@@ -271,10 +273,10 @@ div:has(> div > div > div > div > .login-card-marker) {
     -webkit-text-fill-color: transparent;
 }
 .brand-subtitle {
-    font-size: 15px;
+    font-size: 14px;
     color: rgba(255,255,255,0.82);
     line-height: 1.45;
-    margin-bottom: 28px;
+    margin-bottom: 22px;
     font-weight: 400;
 }
 .feat-row {
@@ -298,17 +300,17 @@ div:has(> div > div > div > div > .login-card-marker) {
     color: #ffffff;
     font-weight: 600;
     font-size: 14px;
-    margin-bottom: 4px;
+    margin-bottom: 2px;
 }
 .feat-text-sub {
     color: rgba(255,255,255,0.68);
     font-size: 12px;
-    line-height: 1.4;
+    line-height: 1.35;
 }
 .trust-bar-bottom {
     display: flex;
     gap: 32px;
-    padding-top: 14px !important; margin-top: 14px !important;
+    padding-top: 12px !important; margin-top: 14px !important;
     border-top: 1px solid rgba(255,255,255,0.1);
     color: rgba(255,255,255,0.72);
     font-size: 12px;
@@ -317,7 +319,7 @@ div:has(> div > div > div > div > .login-card-marker) {
 
 /* Right Panel Streamlit Widget Styling */
 div[data-testid="stTextInput"] {
-    margin-bottom: 14px !important;
+    margin-bottom: 12px !important;
 }
 
 .stTextInput input {
@@ -325,8 +327,8 @@ div[data-testid="stTextInput"] {
     border: 1px solid #d9dce3 !important;
     border-radius: 14px !important;
     width: 100% !important;
-    height: 56px !important;
-    font-size: 16px !important;
+    height: 44px !important;
+    font-size: 14px !important;
     color: #111827 !important;
     -webkit-text-fill-color: #111827 !important;
     font-weight: 500 !important;
@@ -345,8 +347,8 @@ div[data-testid="stTextInput"] {
 .stTextInput label {
     color: #111827 !important;
     font-weight: 700 !important;
-    font-size: 14px !important;
-    margin-bottom: 6px !important;
+    font-size: 12px !important;
+    margin-bottom: 4px !important;
     opacity: 1 !important;
 }
 
@@ -355,12 +357,13 @@ div[data-testid="stTextInput"] {
     color: #ffffff !important;
     border: none !important;
     border-radius: 10px !important;
-    height: 48px !important;
-    font-size: 15px !important;
+    height: 46px !important;
+    font-size: 16px !important;
     font-weight: 600 !important;
     width: 100% !important;
     margin-top: 0px !important;
-    margin-bottom: 18px !important;
+    margin-bottom: 14px !important;
+    display: block !important;
     box-shadow: 0 10px 30px rgba(124, 58, 237, 0.35) !important;
     transition: all 0.2s ease !important;
 }
@@ -371,15 +374,15 @@ div[data-testid="stTextInput"] {
 }
 .stButton > button[kind="tertiary"] {
     background: transparent !important;
-    color: #6d28d9 !important;
+    color: #8b3dff !important;
     border: none !important;
     box-shadow: none !important;
     padding: 0 !important;
     height: auto !important;
-    font-size: 14px !important;
-    font-weight: 600 !important;
+    font-size: 15px !important;
+    font-weight: 700 !important;
     width: auto !important;
-    margin-top: 8px !important;
+    margin-top: 6px !important;
     text-align: center !important;
     display: block !important;
 }
@@ -416,11 +419,11 @@ div[role="radiogroup"] label[data-checked="true"] {
 </style>
     ''', unsafe_allow_html=True)
 
-    left, right = st.columns([52, 48])
+    left, right = st.columns([46, 54])
 
     with left:
         st.markdown('''
-<div style="display: flex; align-items: center; gap: 12px; margin-bottom: 34px;">
+<div style="display: flex; align-items: center; gap: 12px; margin-bottom: 26px;">
     <div style="width: 42px; height: 42px; background: #6d28d9; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 22px;">📊</div>
     <div style="font-size: 22px; font-weight: 800; color: #ffffff;">LeadPulse <span style="color: #c084fc;">Pro</span></div>
 </div>
@@ -464,8 +467,8 @@ div[role="radiogroup"] label[data-checked="true"] {
         # Marker for CSS styling
         st.markdown('<div class="login-card-marker"></div>', unsafe_allow_html=True)
         
-        st.markdown('<div style="text-align:center; font-size:32px; line-height:1.1; white-space:nowrap; font-weight:800; color:#0f172a; margin-bottom:8px; letter-spacing:-0.5px;">Welcome Back</div>', unsafe_allow_html=True)
-        st.markdown('<div style="text-align:center; font-size:14px; color:#6b7280; margin-bottom:22px; font-weight:400;">Sign in to access your account</div>', unsafe_allow_html=True)
+        st.markdown('<div style="text-align:center; font-size:30px; line-height:1.1; white-space:nowrap; font-weight:800; color:#0f172a; margin-bottom:6px; letter-spacing:-0.5px;">Welcome Back</div>', unsafe_allow_html=True)
+        st.markdown('<div style="text-align:center; font-size:14px; color:#6b7280; margin-bottom:18px; font-weight:400;">Sign in to access your account</div>', unsafe_allow_html=True)
 
         if "show_forgot_password" not in st.session_state:
             st.session_state["show_forgot_password"] = False
