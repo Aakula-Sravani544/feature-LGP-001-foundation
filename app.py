@@ -212,28 +212,28 @@ html, body, .stApp {
 }
 /* Top-level Layout only */
 div[data-testid="stHorizontalBlock"]:has(.login-card-marker) {
-    height: 100vh !important;
+    min-height: 100vh !important;
     display: flex !important;
     flex-direction: row !important;
     align-items: center !important;
-    justify-content: space-between !important;
-    padding: 32px 72px !important;
+    justify-content: center !important;
+    padding: 10px 64px !important;
     box-sizing: border-box !important;
     overflow: hidden !important;
 }
 
 /* Left Column Styling */
 div[data-testid="stHorizontalBlock"]:has(.login-card-marker) > div[data-testid="column"]:nth-of-type(1) {
-    width: 48% !important;
-    flex: 0 0 48% !important;
-    max-width: 540px !important;
+    width: 52% !important;
+    flex: 0 0 52% !important;
+    max-width: 500px !important;
     display: flex !important;
     flex-direction: column !important;
     justify-content: center !important;
 }
 div[data-testid="stHorizontalBlock"]:has(.login-card-marker) > div[data-testid="column"]:nth-of-type(2) {
-    width: 46% !important;
-    flex: 0 0 46% !important;
+    width: 48% !important;
+    flex: 0 0 48% !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
@@ -243,26 +243,24 @@ div[data-testid="stHorizontalBlock"]:has(.login-card-marker) > div[data-testid="
 div:has(> div > div > div > div > .login-card-marker) {
     background: #ffffff !important;
     border-radius: 28px !important;
-    width: 500px !important;
-    max-width: 500px !important;
-    padding: 34px 42px !important;
+    width: 470px !important;
+    max-width: 470px !important;
+    padding: 26px 34px !important;
     box-shadow: 0 25px 60px rgba(0,0,0,0.1), 0 8px 20px rgba(91,33,182,0.05) !important;
     display: flex !important;
     flex-direction: column !important;
-    align-items: stretch !important;
-    justify-content: center !important;
-    margin: 0 !important;
+    justify-content: flex-start !important;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
     position: relative !important;
-    top: 0 !important;
-    transform: none !important;
     overflow: visible !important;
 }
 .login-card-marker { display: none; }
 
 /* Left Panel HTML styling */
 .brand-title {
-    font-size: 42px !important;
-    line-height: 1.06 !important;
+    font-size: 56px !important;
+    line-height: 1.08 !important;
     margin-bottom: 18px !important;
     font-weight: 800;
     color: #ffffff;
@@ -274,9 +272,9 @@ div:has(> div > div > div > div > .login-card-marker) {
     -webkit-text-fill-color: transparent;
 }
 .brand-subtitle {
-    font-size: 14px;
+    font-size: 16px;
     color: rgba(255,255,255,0.82);
-    line-height: 1.45;
+    line-height: 1.5;
     margin-bottom: 18px;
     font-weight: 400;
 }
@@ -287,7 +285,7 @@ div:has(> div > div > div > div > .login-card-marker) {
     margin-bottom: 12px !important;
 }
 .feat-icon-box {
-    width: 40px; height: 40px;
+    width: 42px; height: 42px;
     background: rgba(109, 40, 217, 0.15);
     border: 1px solid rgba(139, 92, 246, 0.2);
     border-radius: 12px;
@@ -311,7 +309,7 @@ div:has(> div > div > div > div > .login-card-marker) {
 .trust-bar-bottom {
     display: flex;
     gap: 32px;
-    padding-top: 12px !important; margin-top: 10px !important;
+    padding-top: 12px !important; margin-top: 14px !important;
     border-top: 1px solid rgba(255,255,255,0.1);
     color: rgba(255,255,255,0.72);
     font-size: 12px;
@@ -320,7 +318,7 @@ div:has(> div > div > div > div > .login-card-marker) {
 
 /* Right Panel Streamlit Widget Styling */
 div[data-testid="stTextInput"] {
-    margin-bottom: 12px !important;
+    margin-bottom: 10px !important;
 }
 
 .stTextInput input {
@@ -362,8 +360,8 @@ div[data-testid="stTextInput"] {
     font-size: 16px !important;
     font-weight: 600 !important;
     width: 100% !important;
-    margin-top: 0px !important;
-    margin-bottom: 14px !important;
+    margin-top: 8px !important;
+    margin-bottom: 12px !important;
     display: block !important;
     box-shadow: 0 10px 30px rgba(124, 58, 237, 0.35) !important;
     transition: all 0.2s ease !important;
@@ -399,8 +397,10 @@ div[role="radiogroup"] {
     background: #f3f4f6;
     border-radius: 14px;
     padding: 6px;
+    margin-bottom: 14px !important;
     display: flex;
-    margin-bottom: 16px;
+    gap: 6px;
+    min-height: 54px !important;
 }
 div[role="radiogroup"] label {
     flex: 1;
@@ -420,7 +420,7 @@ div[role="radiogroup"] label[data-checked="true"] {
 </style>
     ''', unsafe_allow_html=True)
 
-    left, right = st.columns([48, 46])
+    left, right = st.columns([52, 48])
 
     with left:
         st.markdown('''
@@ -468,8 +468,8 @@ div[role="radiogroup"] label[data-checked="true"] {
         # Marker for CSS styling
         st.markdown('<div class="login-card-marker"></div>', unsafe_allow_html=True)
         
-        st.markdown('<div style="text-align:center; font-size:30px; line-height:1.1; white-space:nowrap; font-weight:800; color:#0f172a; margin-bottom:6px; letter-spacing:-0.5px;">Welcome Back</div>', unsafe_allow_html=True)
-        st.markdown('<div style="text-align:center; font-size:14px; color:#6b7280; margin-bottom:18px; font-weight:400;">Sign in to access your account</div>', unsafe_allow_html=True)
+        st.markdown('<div style="text-align:center; font-size:30px; line-height:1.1; white-space:nowrap; font-weight:800; color:#0f172a; margin-bottom:4px; letter-spacing:-0.5px;">Welcome Back</div>', unsafe_allow_html=True)
+        st.markdown('<div style="text-align:center; font-size:14px; color:#6b7280; margin-bottom:14px; font-weight:400;">Sign in to access your account</div>', unsafe_allow_html=True)
 
         if "show_forgot_password" not in st.session_state:
             st.session_state["show_forgot_password"] = False
@@ -561,7 +561,7 @@ div[role="radiogroup"] label[data-checked="true"] {
             login_btn = st.button("➜ Login", key="login_btn", use_container_width=True)
             
             st.markdown('''
-            <div style="text-align:center; color:#9ca3af; font-size:13px; margin: 14px 0; font-weight:500;">or</div>
+            <div style="text-align:center; color:#9ca3af; font-size:13px; margin: 8px 0; font-weight:500;">or</div>
             <div style="text-align:center; font-size:14px; color:#4b5563; font-weight:500;">
                 Don't have an account? 
             </div>
