@@ -212,34 +212,30 @@ html, body, .stApp {
 }
 /* Top-level Layout only */
 div[data-testid="stHorizontalBlock"]:has(.login-card-marker) {
+    height: 100vh !important;
     display: flex !important;
     flex-direction: row !important;
-    height: 100vh !important;
-    padding: 10px 64px !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    padding: 32px 72px !important;
     box-sizing: border-box !important;
     overflow: hidden !important;
-    align-items: center !important;
-    justify-content: center !important;
-    gap: 70px !important;
-    transform: translateY(-38px) !important;
 }
 
 /* Left Column Styling */
 div[data-testid="stHorizontalBlock"]:has(.login-card-marker) > div[data-testid="column"]:nth-of-type(1) {
-    width: 46% !important;
-    flex: 0 0 46% !important;
-    max-width: 520px !important;
-    padding-left: 32px !important;
-    padding-top: 0px !important;
-    margin-top: -20px !important;
+    width: 48% !important;
+    flex: 0 0 48% !important;
+    max-width: 540px !important;
     display: flex !important;
     flex-direction: column !important;
     justify-content: center !important;
 }
 div[data-testid="stHorizontalBlock"]:has(.login-card-marker) > div[data-testid="column"]:nth-of-type(2) {
-    width: 54% !important;
-    flex: 0 0 54% !important;
+    width: 46% !important;
+    flex: 0 0 46% !important;
     display: flex !important;
+    align-items: center !important;
     justify-content: center !important;
 }
 
@@ -247,16 +243,18 @@ div[data-testid="stHorizontalBlock"]:has(.login-card-marker) > div[data-testid="
 div:has(> div > div > div > div > .login-card-marker) {
     background: #ffffff !important;
     border-radius: 28px !important;
-    width: 470px !important;
-    min-width: 470px !important;
-    padding: 30px 34px !important;
-    margin-top: -30px !important;
+    width: 500px !important;
+    max-width: 500px !important;
+    padding: 34px 42px !important;
     box-shadow: 0 25px 60px rgba(0,0,0,0.1), 0 8px 20px rgba(91,33,182,0.05) !important;
     display: flex !important;
     flex-direction: column !important;
     align-items: stretch !important;
     justify-content: center !important;
-    margin: auto !important;
+    margin: 0 !important;
+    position: relative !important;
+    top: 0 !important;
+    transform: none !important;
     overflow: visible !important;
 }
 .login-card-marker { display: none; }
@@ -422,7 +420,7 @@ div[role="radiogroup"] label[data-checked="true"] {
 </style>
     ''', unsafe_allow_html=True)
 
-    left, right = st.columns([46, 54])
+    left, right = st.columns([48, 46])
 
     with left:
         st.markdown('''
