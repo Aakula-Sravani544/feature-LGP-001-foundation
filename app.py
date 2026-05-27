@@ -212,12 +212,18 @@ html, body, .stApp {
 }
 /* Vertically center the columns */
 [data-testid="stHorizontalBlock"] {
+    width: 100% !important;
+    max-width: 1280px !important;
     height: 100vh !important;
     max-height: 100vh !important;
+    margin: 0 auto !important;
+    display: grid !important;
+    grid-template-columns: 54% 46% !important;
     align-items: center !important;
+    gap: 40px !important;
+    padding: 32px 56px !important;
+    box-sizing: border-box !important;
     overflow: hidden !important;
-    margin: 0 !important;
-    padding: 0 !important;
 }
 
 div[data-testid="column"]:nth-of-type(1),
@@ -226,7 +232,8 @@ div[data-testid="column"]:nth-of-type(2) {
     overflow: hidden !important;
 }
 div[data-testid="column"]:nth-of-type(1) {
-    padding: 0 4vw 0 6vw !important;
+    padding-left: 40px !important;
+    padding-right: 30px !important;
 }
 
 div[data-testid="column"]:nth-of-type(2) {
@@ -239,10 +246,10 @@ div[data-testid="column"]:nth-of-type(2) {
 div:has(> div > div > div > div > .login-card-marker) {
     background: #ffffff !important;
     border-radius: 28px !important;
-    max-height: 82vh !important;
+    max-height: none !important;
     width: 460px !important;
     padding: 34px 40px !important;
-    overflow: hidden !important;
+    overflow: visible !important;
     box-shadow: 0 25px 60px rgba(0,0,0,0.1), 0 8px 20px rgba(91,33,182,0.05) !important;
     margin: 0 auto !important;
 }
@@ -250,9 +257,9 @@ div:has(> div > div > div > div > .login-card-marker) {
 
 /* Left Panel HTML styling */
 .brand-title {
-    font-size: 54px !important;
+    font-size: 52px !important;
     line-height: 1.08 !important;
-    margin-bottom: 18px !important;
+    margin-bottom: 22px !important;
     font-weight: 800;
     color: #ffffff;
     letter-spacing: -1px;
@@ -273,7 +280,7 @@ div:has(> div > div > div > div > .login-card-marker) {
     display: flex;
     align-items: center;
     gap: 16px;
-    margin-bottom: 16px !important;
+    margin-bottom: 14px !important;
 }
 .feat-icon-box {
     width: 48px; height: 48px;
@@ -308,11 +315,15 @@ div:has(> div > div > div > div > .login-card-marker) {
 }
 
 /* Right Panel Streamlit Widget Styling */
+div[data-testid="stTextInput"] {
+    margin-bottom: 14px !important;
+}
+
 .stTextInput input {
     background: #ffffff !important;
     border: 1px solid #d9dce3 !important;
     border-radius: 14px !important;
-    height: 58px !important;
+    height: 54px !important;
     font-size: 16px !important;
     color: #111827 !important;
     -webkit-text-fill-color: #111827 !important;
@@ -342,7 +353,7 @@ div:has(> div > div > div > div > .login-card-marker) {
     color: #ffffff !important;
     border: none !important;
     border-radius: 14px !important;
-    height: 58px !important;
+    height: 54px !important;
     font-size: 16px !important;
     font-weight: 600 !important;
     width: 100% !important;
@@ -448,8 +459,8 @@ div[role="radiogroup"] label[data-checked="true"] {
         # Marker for CSS styling
         st.markdown('<div class="login-card-marker"></div>', unsafe_allow_html=True)
         
-        st.markdown('<div style="text-align:center; font-size:38px; font-weight:800; color:#0f172a; margin-bottom:6px; letter-spacing:-0.5px;">Welcome Back</div>', unsafe_allow_html=True)
-        st.markdown('<div style="text-align:center; font-size:15px; color:#6b7280; margin-bottom:20px; font-weight:400;">Sign in to access your account</div>', unsafe_allow_html=True)
+        st.markdown('<div style="text-align:center; font-size:38px; font-weight:800; color:#0f172a; margin-bottom:8px; letter-spacing:-0.5px;">Welcome Back</div>', unsafe_allow_html=True)
+        st.markdown('<div style="text-align:center; font-size:15px; color:#6b7280; margin-bottom:28px; font-weight:400;">Sign in to access your account</div>', unsafe_allow_html=True)
 
         if "show_forgot_password" not in st.session_state:
             st.session_state["show_forgot_password"] = False
@@ -2883,7 +2894,7 @@ def show_admin_dashboard():
 with st.sidebar:
     st.markdown("""
     <div style="color:white; font-size:20px; 
-                font-weight:700; margin-bottom:20px;"> 🚀 LeadPulse Pro </div>
+                font-weight:700; margin-bottom:28px;"> 🚀 LeadPulse Pro </div>
     """, unsafe_allow_html=True)
     
     # Show plan badge in sidebar
