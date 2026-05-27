@@ -218,6 +218,7 @@ div[data-testid="stHorizontalBlock"]:has(.login-card-marker) {
     flex-direction: row !important;
     align-items: center !important;
     justify-content: center !important;
+    gap: 20px !important;
     padding: 10px 64px !important;
     box-sizing: border-box !important;
     overflow-y: auto !important;
@@ -228,7 +229,9 @@ div[data-testid="stHorizontalBlock"]:has(.login-card-marker) {
 div[data-testid="stHorizontalBlock"]:has(.login-card-marker) > div[data-testid="column"]:nth-of-type(1) {
     width: 52% !important;
     flex: 0 0 52% !important;
-    max-width: 500px !important;
+    max-width: 460px !important;
+    margin-left: auto !important;
+    padding-right: 24px !important;
     display: flex !important;
     flex-direction: column !important;
     justify-content: center !important;
