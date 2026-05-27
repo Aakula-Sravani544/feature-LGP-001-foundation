@@ -185,9 +185,9 @@ def render_login_page():
 
 ::-webkit-scrollbar { display: none !important; }
 html, body, .stApp {
-    height: 100vh !important;
-    max-height: 100vh !important;
-    overflow: hidden !important;
+    min-height: 100vh !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
     margin: 0 !important;
     padding: 0 !important;
 }
@@ -195,16 +195,17 @@ html, body, .stApp {
 [data-testid="stMainBlockContainer"],
 .main,
 .block-container {
-    height: 100vh !important;
-    max-height: 100vh !important;
-    overflow: hidden !important;
+    min-height: 100vh !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
     padding: 0 !important;
 }
 
 /* Background with radial glow */
 .stApp {
-    overflow: hidden !important;
-    height: 100vh !important;
+    min-height: 100vh !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
     background: radial-gradient(circle at 15% 50%, rgba(91, 33, 182, 0.15), transparent 40%),
                 radial-gradient(circle at 85% 30%, rgba(76, 29, 149, 0.2), transparent 50%),
                 linear-gradient(135deg, #0a0520 0%, #1a0a4a 50%, #0f0635 100%) !important;
@@ -219,7 +220,8 @@ div[data-testid="stHorizontalBlock"]:has(.login-card-marker) {
     justify-content: center !important;
     padding: 10px 64px !important;
     box-sizing: border-box !important;
-    overflow: hidden !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
 }
 
 /* Left Column Styling */
@@ -245,13 +247,12 @@ div:has(> div > div > div > div > .login-card-marker) {
     border-radius: 28px !important;
     width: 470px !important;
     max-width: 470px !important;
-    padding: 26px 34px !important;
+    padding: 22px 34px !important;
     box-shadow: 0 25px 60px rgba(0,0,0,0.1), 0 8px 20px rgba(91,33,182,0.05) !important;
     display: flex !important;
     flex-direction: column !important;
     justify-content: flex-start !important;
-    margin-top: 0 !important;
-    margin-bottom: 0 !important;
+    margin: 0 !important;
     position: relative !important;
     overflow: visible !important;
 }
@@ -259,9 +260,9 @@ div:has(> div > div > div > div > .login-card-marker) {
 
 /* Left Panel HTML styling */
 .brand-title {
-    font-size: 56px !important;
-    line-height: 1.08 !important;
-    margin-bottom: 18px !important;
+    font-size: 46px !important;
+    line-height: 1.05 !important;
+    margin-bottom: 12px !important;
     font-weight: 800;
     color: #ffffff;
     letter-spacing: -1px;
@@ -272,17 +273,17 @@ div:has(> div > div > div > div > .login-card-marker) {
     -webkit-text-fill-color: transparent;
 }
 .brand-subtitle {
-    font-size: 16px;
+    font-size: 15px;
     color: rgba(255,255,255,0.82);
     line-height: 1.5;
-    margin-bottom: 18px;
+    margin-bottom: 14px;
     font-weight: 400;
 }
 .feat-row {
     display: flex;
     align-items: center;
     gap: 10px;
-    margin-bottom: 12px !important;
+    margin-bottom: 8px !important;
 }
 .feat-icon-box {
     width: 42px; height: 42px;
@@ -309,7 +310,7 @@ div:has(> div > div > div > div > .login-card-marker) {
 .trust-bar-bottom {
     display: flex;
     gap: 32px;
-    padding-top: 12px !important; margin-top: 14px !important;
+    padding-top: 8px !important; margin-top: 8px !important;
     border-top: 1px solid rgba(255,255,255,0.1);
     color: rgba(255,255,255,0.72);
     font-size: 12px;
@@ -318,7 +319,7 @@ div:has(> div > div > div > div > .login-card-marker) {
 
 /* Right Panel Streamlit Widget Styling */
 div[data-testid="stTextInput"] {
-    margin-bottom: 10px !important;
+    margin-bottom: 8px !important;
 }
 
 .stTextInput input {
@@ -326,7 +327,7 @@ div[data-testid="stTextInput"] {
     border: 1px solid #d9dce3 !important;
     border-radius: 14px !important;
     width: 100% !important;
-    height: 44px !important;
+    height: 42px !important;
     font-size: 14px !important;
     color: #111827 !important;
     -webkit-text-fill-color: #111827 !important;
@@ -356,12 +357,12 @@ div[data-testid="stTextInput"] {
     color: #ffffff !important;
     border: none !important;
     border-radius: 10px !important;
-    height: 46px !important;
+    height: 44px !important;
     font-size: 16px !important;
     font-weight: 600 !important;
     width: 100% !important;
     margin-top: 8px !important;
-    margin-bottom: 12px !important;
+    margin-bottom: 6px !important;
     display: block !important;
     box-shadow: 0 10px 30px rgba(124, 58, 237, 0.35) !important;
     transition: all 0.2s ease !important;
@@ -397,7 +398,7 @@ div[role="radiogroup"] {
     background: #f3f4f6;
     border-radius: 14px;
     padding: 6px;
-    margin-bottom: 14px !important;
+    margin-bottom: 10px !important;
     display: flex;
     gap: 6px;
     min-height: 54px !important;
@@ -420,7 +421,7 @@ div[role="radiogroup"] label[data-checked="true"] {
 </style>
     ''', unsafe_allow_html=True)
 
-    left, right = st.columns([52, 48])
+    left, right = st.columns([55, 45])
 
     with left:
         st.markdown('''
